@@ -71,11 +71,11 @@ Create a new branch for your feature.
 Commit & push your changes.
 Open a pull request!
 ## 📌 Roadmap
-✅ Project Structure & GitHub Setup
-🔄 Render Pipeline (DX12/Vulkan API Layer) - In Progress
-⏳ UI Toolkit & Node-Based Editor
-⏳ Material System & Shader Compilation
-⏳ Final Optimization & Testing
+*✅ Project Structure & GitHub Setup*
+*🔄 Render Pipeline (DX12/Vulkan API Layer) - In Progress*
+*⏳ UI Toolkit & Node-Based Editor*
+*⏳ Material System & Shader Compilation*
+*⏳ Final Optimization & Testing*
 ## 📄 License
 📜 MIT License – Use it, modify it, contribute to it!
 
