@@ -34,6 +34,8 @@ desktop.ini
 *.VC.db
 *.VC.opendb
 *.VC.VC.opendb
+*.vcxproj
+*.filters
 *.suo
 *.ipch
 *.cache
