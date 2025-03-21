@@ -47,7 +47,7 @@ Windows SDK & Vulkan SDK
 Clone the Repository
 
 ~~~bash
-git clone https://github.com/yourusername/Spectra.git
+git clone https://github.com/devsw-prayas/Spectra.git
 cd Spectra
 ~~~
 
