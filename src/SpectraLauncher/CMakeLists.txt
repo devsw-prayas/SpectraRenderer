@@ -6,4 +6,4 @@ add_executable(SpectraLauncher
 
 target_include_directories(SpectraLauncher PUBLIC src/Public)
 
-target_link_libraries(SpectraLauncher SpectraEditor SpectraRenderEngine SpectraUI)
+target_link_libraries(SpectraLauncher SpectraEditor SpectraRenderEngine SpectraUI SpectraCore)
