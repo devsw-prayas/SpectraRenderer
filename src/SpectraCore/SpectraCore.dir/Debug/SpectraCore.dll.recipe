@@ -5,6 +5,9 @@
       <FullPath>C:\StormWeaver\Development\Graphics  Programming\Spectra\x64\Debug\ZERO_CHECK</FullPath>
     </ProjectOutput>
     <ProjectOutput>
+      <FullPath>C:\StormWeaver\Development\Graphics  Programming\Spectra\bin\Debug\SpectraInstrumentation.dll</FullPath>
+    </ProjectOutput>
+    <ProjectOutput>
       <FullPath>C:\StormWeaver\Development\Graphics  Programming\Spectra\bin\Debug\SpectraCore.dll</FullPath>
     </ProjectOutput>
   </ProjectOutputs>
