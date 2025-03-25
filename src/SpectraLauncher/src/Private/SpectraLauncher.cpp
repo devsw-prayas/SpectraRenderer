@@ -1,7 +1,9 @@
-#include "../../../SpectraInstrumentation/src/Public/SpectraInstrumentation.h"
+#include "SpectraInstrumentation.h"
 #include <iostream>
 #include <thread>
 #include <chrono>
+
+#include "S_int4.h"
 
 int main() {
     std::cout << "=== Starting Manual Tests for SpectraInstrumentation ===\n\n";
@@ -123,5 +125,8 @@ int main() {
     std::cout << "=== Manual Tests Complete ===\n";
     std::cout << "Verify the output in the console and math_log.txt file.\n";
 
+	spectra::core::math::S_int4 a(5);
+	a.print();
+    spectra::instrumentation::Instrumentation::flush();
     return 0;
 }
