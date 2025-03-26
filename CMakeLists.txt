@@ -23,6 +23,7 @@ add_subdirectory(src/SpectraUI)
 add_subdirectory(src/SpectraVulkanBackend)
 add_subdirectory(src/SpectraCore)
 add_subdirectory(src/SpectraInstrumentation)
+add_subdirectory(src/SpectraBenchmark)
 
 include_directories(common)
 

@@ -8,7 +8,8 @@ namespace spectra::core::math {
 		return bits;
 	}
 	void S_uint4::print() const {
-		instrumentation::Instrumentation::logMath(instrumentation::E_LogLevel::INFO, "spectra::core::math", "S_uint4", "Value: {}", value());
+		instrumentation::Instrumentation::log(instrumentation::E_LogLevel::INFO, "spectra::core::math",
+			"S_uint4", "Value: {}", instrumentation::E_LogComponent::MATH, value());
 	}
 
 	S_uint4::S_uint4(const S_uint4& other) = default;
@@ -31,7 +32,4 @@ namespace spectra::core::math {
 		}
 		return *this;
 	}
-
-
-
 }

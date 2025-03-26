@@ -9,7 +9,8 @@ namespace spectra::core::math {
 		return static_cast<int>((bits & 0x08) ? (bits | 0xFFFFFFF0) : bits);
 	}
 	void S_int4::print() const {
-		instrumentation::Instrumentation::logMath(instrumentation::E_LogLevel::INFO, "spectra::core::math", "S_int4", "Value: {}", value());
+		instrumentation::Instrumentation::log(instrumentation::E_LogLevel::INFO, "spectra::core::math",
+			"S_int4", "Value: {}", instrumentation::E_LogComponent::MATH, value());
 	}
 
 	S_int4::S_int4(const S_int4& other) = default;
@@ -38,7 +39,8 @@ namespace spectra::core::math {
 		int b = SIGN_EXTEND_4(other.bits);
 		int sum = a + b;
 		if (((a & b & ~sum) | (~a & ~b & sum)) & 0x08) {
-			instrumentation::Instrumentation::logMath(instrumentation::E_LogLevel::WARNING, "spectra::core::math", "S_int4", "Overflow in addition: {} + {} = {}", a, b, sum);
+			instrumentation::Instrumentation::log(instrumentation::E_LogLevel::WARNING, "spectra::core::math", "S_int4",
+				"Overflow in addition: {} + {} = {}", instrumentation::E_LogComponent::MATH, a, b, sum);
 		}
 		return { sum };
 	}
@@ -48,7 +50,6 @@ namespace spectra::core::math {
 		int b = SIGN_EXTEND_4(other.bits);
 		int diff = a - b;
 		if (((a & ~b & ~diff) | (~a & b & diff)) & 0x08) {
-			instrumentation::Instrumentation::logMath(instrumentation::E_LogLevel::WARNING, "spectra::core::math", "S_int4", "Overflow in subtraction: {} - {} = {}", a, b, diff);
 		}
 		return { diff };
 	}
@@ -58,7 +59,8 @@ namespace spectra::core::math {
 		int b = SIGN_EXTEND_4(other.bits);
 		int product = a * b;
 		if (SIGN_EXTEND_4((BIT_MASK_4(product))) != product) {
-			instrumentation::Instrumentation::logMath(instrumentation::E_LogLevel::WARNING, "spectra::core::math", "S_int4", "Overflow in multiplication: {} * {} = {}", a, b, product);
+			instrumentation::Instrumentation::log(instrumentation::E_LogLevel::WARNING, "spectra::core::math",
+				"S_int4", "Overflow in multiplication: {} * {} = {}", instrumentation::E_LogComponent::MATH, a, b, product);
 		}
 		return { product };
 	}
@@ -67,15 +69,18 @@ namespace spectra::core::math {
 		int a = SIGN_EXTEND_4(bits);
 		int b = SIGN_EXTEND_4(other.bits);
 		if (b == 0) {
-			instrumentation::Instrumentation::logMath(instrumentation::E_LogLevel::ERROR, "spectra::core::math", "S_int4", "Division by zero: {} / {}", a, b);
+			instrumentation::Instrumentation::log(instrumentation::E_LogLevel::ERROR, "spectra::core::math", ""
+				"S_int4", "Division by zero: {} / {}", instrumentation::E_LogComponent::MATH, a, b);
 		}
 		if (a == SIGN_EXTEND_4(0x08) && b == SIGN_EXTEND_4(0x0f)) {
-			instrumentation::Instrumentation::logMath(instrumentation::E_LogLevel::ERROR, "spectra::core::math", "S_int4", "Division overflow: {} / {}", a, b);
+			instrumentation::Instrumentation::log(instrumentation::E_LogLevel::ERROR, "spectra::core::math",
+				"S_int4", "Division overflow: {} / {}", instrumentation::E_LogComponent::MATH, a, b);
 		}
 
 		int result = a / b;
 		if (SIGN_EXTEND_4((BIT_MASK_4(result))) != result) {
-			instrumentation::Instrumentation::logMath(instrumentation::E_LogLevel::WARNING, "spectra::core::math", "S_int4", "Overflow in division: {} / {} = {}", a, b, result);
+			instrumentation::Instrumentation::log(instrumentation::E_LogLevel::WARNING, "spectra::core::math",
+				"S_int4", "Overflow in division: {} / {} = {}", instrumentation::E_LogComponent::MATH, a, b, result);
 		}
 		return { result };
 	}
@@ -84,14 +89,17 @@ namespace spectra::core::math {
 		int a = SIGN_EXTEND_4(bits);
 		int b = SIGN_EXTEND_4(other.bits);
 		if (b == 0) {
-			instrumentation::Instrumentation::logMath(instrumentation::E_LogLevel::ERROR, "spectra::core::math", "S_int4", "Division by zero: {} / {}", a, b);
+			instrumentation::Instrumentation::log(instrumentation::E_LogLevel::ERROR, "spectra::core::math",
+				"S_int4", "Division by zero: {} / {}", instrumentation::E_LogComponent::MATH, a, b);
 		}
 		if (a == SIGN_EXTEND_4(0x08) && b == SIGN_EXTEND_4(0x0f)) {
-			instrumentation::Instrumentation::logMath(instrumentation::E_LogLevel::ERROR, "spectra::core::math", "S_int4", "Division overflow: {} / {}", a, b);
+			instrumentation::Instrumentation::log(instrumentation::E_LogLevel::ERROR, "spectra::core::math",
+				"S_int4", "Division overflow: {} / {}", instrumentation::E_LogComponent::MATH, a, b);
 		}
 		int remainder = a % b;
 		if (SIGN_EXTEND_4((BIT_MASK_4(remainder))) != remainder) {
-			instrumentation::Instrumentation::logMath(instrumentation::E_LogLevel::WARNING, "spectra::core::math", "S_int4", "Overflow in modulo: {} % {} = {}", a, b, remainder);
+			instrumentation::Instrumentation::log(instrumentation::E_LogLevel::WARNING, "spectra::core::math",
+				"S_int4", "Overflow in modulo: {} % {} = {}", instrumentation::E_LogComponent::MATH, a, b, remainder);
 		}
 		return { remainder };
 	}
@@ -228,14 +236,16 @@ namespace spectra::core::math {
 
 	bool S_int4::getBit(int pos) const {
 		if (pos > 3 | pos < 0) {
-			instrumentation::Instrumentation::logMath(instrumentation::E_LogLevel::ERROR, "spectra::core::math", "S_int4", "Invalid bit position: {}", pos);
+			instrumentation::Instrumentation::log(instrumentation::E_LogLevel::ERROR, "spectra::core::math",
+				"S_int4", "Invalid bit position: {}", instrumentation::E_LogComponent::MATH, pos);
 		}
 		return (bits >> pos) & 1;
 	}
 
 	void S_int4::setBit(int pos, bool bit) {
 		if (pos > 3 | pos < 0) {
-			instrumentation::Instrumentation::logMath(instrumentation::E_LogLevel::ERROR, "spectra::core::math", "S_int4", "Invalid bit position: {}", pos);
+			instrumentation::Instrumentation::log(instrumentation::E_LogLevel::ERROR, "spectra::core::math",
+				"S_int4", "Invalid bit position: {}", instrumentation::E_LogComponent::MATH, pos);
 		}
 		int val = value();
 		if (val)bits |= 1 << pos;

@@ -100,10 +100,10 @@ echo Step 3: Writing CMakeLists.txt...
         echo add_executable^(!PROJECT_NAME! src/Private/!PROJECT_NAME!.cpp^)
     ) else if "!BUILD_TYPE!"=="2" (
         echo include_directories^(src/Public^)
-        echo add_library^(!PROJECT_NAME! SHARED src/Private/!PROJECT_NAME!.cpp^)
+        echo add_library^(!PROJECT_NAME! SHARED src/Private/!PROJECT_NAME!.cpp src/Public/!PROJECT_NAME!.h^)
     ) else (
         echo include_directories^(src/Public^)
-        echo add_library^(!PROJECT_NAME! STATIC src/Private/!PROJECT_NAME!.cpp^)
+        echo add_library^(!PROJECT_NAME! STATIC src/Private/!PROJECT_NAME!.cpp src/Public/!PROJECT_NAME!.h^)
     )
 ) > CMakeLists.txt || (echo Failed to write CMakeLists.txt! & goto :error)
 
