@@ -17,3 +17,7 @@ Added support for building to single output directory.
 
 ## Changelog 0.1.1
 Added support for auto project generation through progen.bat.
+
+## Changelog 0.2.0.a
+Added the CPU-based multithreading support (incomplete for now)
+

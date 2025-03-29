@@ -1,0 +1,65 @@
+{
+    "version": 1,
+    "revision": 0,
+    "rules": [
+        {
+            "primary-output": "SpectraCore.dir\\Debug\\PropIdl.obj",
+            "outputs": [
+                "SpectraCore.dir\\Debug\\PropIdl.Idl_E18E83DFDDF3094E.ifc.dt.module.json",
+                "SpectraCore.dir\\Debug\\PropIdl.Idl_E18E83DFDDF3094E.ifc.dt.d.json",
+                "PropIdl.Idl.ifc"
+            ],
+            "provides": [
+                {
+                    "logical-name": "C:\\Program Files (x86)\\Windows Kits\\10\\Include\\10.0.22621.0\\um\\PropIdl.Idl",
+                    "source-path": "c:\\program files (x86)\\windows kits\\10\\include\\10.0.22621.0\\um\\propidl.idl",
+                    "lookup-method": "absolute"
+                }
+            ],
+            "requires": [
+                {
+                    "logical-name": "objidl.idl",
+                    "source-path": "c:\\program files (x86)\\windows kits\\10\\include\\10.0.22621.0\\um\\objidl.idl",
+                    "lookup-method": "include-quote",
+                    "unique-on-source-path": true
+                },
+                {
+                    "logical-name": "unknwn.idl",
+                    "source-path": "c:\\program files (x86)\\windows kits\\10\\include\\10.0.22621.0\\um\\unknwn.idl",
+                    "lookup-method": "include-quote",
+                    "unique-on-source-path": true
+                },
+                {
+                    "logical-name": "wtypes.idl",
+                    "source-path": "c:\\program files (x86)\\windows kits\\10\\include\\10.0.22621.0\\shared\\wtypes.idl",
+                    "lookup-method": "include-quote",
+                    "unique-on-source-path": true
+                },
+                {
+                    "logical-name": "wtypesbase.idl",
+                    "source-path": "c:\\program files (x86)\\windows kits\\10\\include\\10.0.22621.0\\shared\\wtypesbase.idl",
+                    "lookup-method": "include-quote",
+                    "unique-on-source-path": true
+                },
+                {
+                    "logical-name": "basetsd.h",
+                    "source-path": "c:\\program files (x86)\\windows kits\\10\\include\\10.0.22621.0\\shared\\basetsd.h",
+                    "lookup-method": "include-quote",
+                    "unique-on-source-path": true
+                },
+                {
+                    "logical-name": "guiddef.h",
+                    "source-path": "c:\\program files (x86)\\windows kits\\10\\include\\10.0.22621.0\\shared\\guiddef.h",
+                    "lookup-method": "include-quote",
+                    "unique-on-source-path": true
+                },
+                {
+                    "logical-name": "oaidl.idl",
+                    "source-path": "c:\\program files (x86)\\windows kits\\10\\include\\10.0.22621.0\\um\\oaidl.idl",
+                    "lookup-method": "include-quote",
+                    "unique-on-source-path": true
+                }
+            ]
+        }
+    ]
+}

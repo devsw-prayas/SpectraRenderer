@@ -23,7 +23,7 @@ void BenchmarkOptions::toggleWriteHeavy(bool enable) {
 void BenchmarkOptions::setNumThreads(int threads) {
 	if (threads < 1)
 		spectra::instrumentation::Instrumentation::log(
-			spectra::instrumentation::E_LogLevel::ERROR,
+			spectra::instrumentation::E_LogLevel::ERROR_,
 			"SpectraBenchmark",
 			"BenchmarkOptions",
 			"Invalid number of threads: {}",
@@ -36,7 +36,7 @@ void BenchmarkOptions::setNumThreads(int threads) {
 void BenchmarkOptions::setWorkSize(int size) {
 	if (size < 1)
 		spectra::instrumentation::Instrumentation::log(
-			spectra::instrumentation::E_LogLevel::ERROR,
+			spectra::instrumentation::E_LogLevel::ERROR_,
 			"SpectraBenchmark",
 			"BenchmarkOptions",
 			"Invalid work size: {}",
@@ -49,7 +49,7 @@ void BenchmarkOptions::setWorkSize(int size) {
 void BenchmarkOptions::setChunks(int chunkCount) {
 	if (chunkCount < 1)
 		spectra::instrumentation::Instrumentation::log(
-			spectra::instrumentation::E_LogLevel::ERROR,
+			spectra::instrumentation::E_LogLevel::ERROR_,
 			"SpectraBenchmark",
 			"BenchmarkOptions",
 			"Invalid chunk count: {}",
@@ -62,7 +62,7 @@ void BenchmarkOptions::setChunks(int chunkCount) {
 void BenchmarkOptions::setIterations(int iters) {
 	if (iters < 1)
 		spectra::instrumentation::Instrumentation::log(
-			spectra::instrumentation::E_LogLevel::ERROR,
+			spectra::instrumentation::E_LogLevel::ERROR_,
 			"SpectraBenchmark",
 			"BenchmarkOptions",
 			"Invalid iteration count: {}",
@@ -82,7 +82,7 @@ int BenchmarkOptions::getIterations() const { return iterations; }
 void BenchmarkOptions::validate() const {
 	if (readHeavy && writeHeavy)
 		spectra::instrumentation::Instrumentation::log(
-			spectra::instrumentation::E_LogLevel::ERROR,
+			spectra::instrumentation::E_LogLevel::ERROR_,
 			"SpectraBenchmark",
 			"BenchmarkOptions",
 			"Cannot be both read-heavy and write-heavy",

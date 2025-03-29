@@ -1,0 +1,10 @@
+{
+    "Version": "1.2",
+    "Data": {
+        "Source": "c:\\stormweaver\\development\\graphics  programming\\spectra\\src\\spectracore\\src\\public\\threadsafepriorityqueue.ixx",
+        "ProvidedModule": "ThreadSafePriorityQueue",
+        "Includes": [],
+        "ImportedModules": [],
+        "ImportedHeaderUnits": []
+    }
+}

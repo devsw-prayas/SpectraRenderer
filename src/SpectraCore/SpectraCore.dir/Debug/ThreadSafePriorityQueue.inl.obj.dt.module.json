@@ -1,0 +1,14 @@
+{
+    "version": 1,
+    "revision": 0,
+    "rules": [
+        {
+            "primary-output": "SpectraCore.dir\\Debug\\ThreadSafePriorityQueue.obj",
+            "outputs": [
+                "SpectraCore.dir\\Debug\\ThreadSafePriorityQueue.inl.obj.dt.module.json",
+                "SpectraCore.dir\\Debug\\ThreadSafePriorityQueue.inl.obj.dt.d.json"
+            ],
+            "requires": []
+        }
+    ]
+}

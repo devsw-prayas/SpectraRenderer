@@ -54,17 +54,18 @@ namespace spectra::instrumentation {
 	/** @enum E_LogLevel
 		@brief Defines severity levels for log messages. */
 	enum class SPEC_INSTRUMENTATION E_LogLevel : uint8_t {
-		DEBUG = 0,   /**< Debug-level message for detailed diagnostics. */
-		INFO = 1,    /**< Informational message for general status updates. */
-		WARNING = 2, /**< Warning message indicating potential issues. */
-		ERROR = 3    /**< Error message indicating a failure or critical issue. */
+		DEBUG_ = 0,   /**< Debug-level message for detailed diagnostics. */
+		INFO_ = 1,    /**< Informational message for general status updates. */
+		WARNING_ = 2, /**< Warning message indicating potential issues. */
+		ERROR_ = 3    /**< Error message indicating a failure or critical issue. */
 	};
 
 	/** @enum E_LogComponent
 		@brief Identifies logging components within the Spectra framework. */
 	enum class SPEC_INSTRUMENTATION E_LogComponent : uint8_t {
 		MATH,      /**< Mathematical operations component. */
-		BENCHMARK  /**< Performance benchmarking component. */
+		BENCHMARK,  /**< Performance benchmarking component. */
+		CORE /**< Core framework component. */
 	};
 
 	/** @class LogEntry
@@ -324,6 +325,7 @@ namespace spectra::instrumentation {
 	private:
 		static BaseLogger mathLogger;      /**< Logger instance for mathematical operations. */
 		static BaseLogger benchmarkLogger; /**< Logger instance for benchmarking. */
+		static BaseLogger coreLogger; 	/**< Logger instance for core Spectra operations. */
 
 	public:
 		/** @brief Retrieves the logger instance for a given component.
@@ -428,6 +430,7 @@ namespace spectra::instrumentation {
 	// Static member definitions
 	inline Instrumentation::BaseLogger Instrumentation::mathLogger("spectra::math", "math_log.txt");
 	inline Instrumentation::BaseLogger Instrumentation::benchmarkLogger("spectra::benchmark", "benchmark_log.txt");
+	inline Instrumentation::BaseLogger Instrumentation::coreLogger("spectra::core", "core_log.txt");
 
 	inline const std::string Instrumentation::ANSI_COLOR_RED = "\033[31m";
 	inline const std::string Instrumentation::ANSI_COLOR_YELLOW = "\033[33m";

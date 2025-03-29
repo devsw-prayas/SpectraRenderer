@@ -40,10 +40,10 @@ namespace spectra::instrumentation {
 		@return ANSI color code string for the specified level. */
 	static std::string getColor(E_LogLevel level) {
 		switch (level) {
-		case E_LogLevel::DEBUG: return Instrumentation::ANSI_COLOR_BLUE;
-		case E_LogLevel::INFO: return Instrumentation::ANSI_COLOR_GREEN;
-		case E_LogLevel::WARNING: return Instrumentation::ANSI_COLOR_YELLOW;
-		case E_LogLevel::ERROR: return Instrumentation::ANSI_COLOR_RED;
+		case E_LogLevel::DEBUG_: return Instrumentation::ANSI_COLOR_BLUE;
+		case E_LogLevel::INFO_: return Instrumentation::ANSI_COLOR_GREEN;
+		case E_LogLevel::WARNING_: return Instrumentation::ANSI_COLOR_YELLOW;
+		case E_LogLevel::ERROR_: return Instrumentation::ANSI_COLOR_RED;
 		default: return Instrumentation::ANSI_COLOR_RESET;
 		}
 	}
@@ -67,7 +67,9 @@ namespace spectra::instrumentation {
 		switch (component) {
 		case E_LogComponent::BENCHMARK: return benchmarkLogger;
 		case E_LogComponent::MATH: return mathLogger;
+		case E_LogComponent::CORE: return coreLogger;
 		}
+		return coreLogger;
 	}
 
 	/** @brief Converts the log entry to a plain string representation.
@@ -117,19 +119,19 @@ namespace spectra::instrumentation {
 	std::string LogEntry::levelToString(E_LogLevel level, bool isColored) {
 		if (isColored) {
 			switch (level) {
-			case E_LogLevel::DEBUG: return Instrumentation::ANSI_COLOR_BLUE + "DEBUG" + Instrumentation::ANSI_COLOR_RESET;
-			case E_LogLevel::INFO: return Instrumentation::ANSI_COLOR_GREEN + "INFO" + Instrumentation::ANSI_COLOR_RESET;
-			case E_LogLevel::WARNING: return Instrumentation::ANSI_COLOR_YELLOW + "WARNING" + Instrumentation::ANSI_COLOR_RESET;
-			case E_LogLevel::ERROR: return Instrumentation::ANSI_COLOR_RED + "ERROR" + Instrumentation::ANSI_COLOR_RESET;
+			case E_LogLevel::DEBUG_: return Instrumentation::ANSI_COLOR_BLUE + "DEBUG_" + Instrumentation::ANSI_COLOR_RESET;
+			case E_LogLevel::INFO_: return Instrumentation::ANSI_COLOR_GREEN + "INFO_" + Instrumentation::ANSI_COLOR_RESET;
+			case E_LogLevel::WARNING_: return Instrumentation::ANSI_COLOR_YELLOW + "WARNING_" + Instrumentation::ANSI_COLOR_RESET;
+			case E_LogLevel::ERROR_: return Instrumentation::ANSI_COLOR_RED + "ERROR_" + Instrumentation::ANSI_COLOR_RESET;
 			default: return "UNKNOWN";
 			}
 		}
 		else {
 			switch (level) {
-			case E_LogLevel::DEBUG: return "DEBUG";
-			case E_LogLevel::INFO: return "INFO";
-			case E_LogLevel::WARNING: return "WARNING";
-			case E_LogLevel::ERROR: return "ERROR";
+			case E_LogLevel::DEBUG_: return "DEBUG_";
+			case E_LogLevel::INFO_: return "INFO_";
+			case E_LogLevel::WARNING_: return "WARNING_";
+			case E_LogLevel::ERROR_: return "ERROR_";
 			default: return "UNKNOWN";
 			}
 		}
@@ -194,15 +196,15 @@ namespace spectra::instrumentation {
 		@param name File path for log output.
 		@details Initializes default settings and opens file stream if FILE output is enabled. */
 	Instrumentation::BaseLogger::BaseLogger(std::string libName, std::string name)
-		: libraryName(std::move(libName)), enabled(true), minLevel(E_LogLevel::INFO), keepRunning(true),
+		: libraryName(std::move(libName)), enabled(true), minLevel(E_LogLevel::INFO_), keepRunning(true),
 		outputDestinations(E_LogOutput::CONSOLE | E_LogOutput::FILE), fileName(std::move(name)), coloredConsole(false) {
-		for (int i = static_cast<int>(E_LogLevel::DEBUG); i <= static_cast<int>(E_LogLevel::ERROR); ++i) {
+		for (int i = static_cast<int>(E_LogLevel::DEBUG_); i <= static_cast<int>(E_LogLevel::ERROR_); ++i) {
 			logCounts[static_cast<E_LogLevel>(i)] = 0;
 		}
 		if (UINT_8(outputDestinations & E_LogOutput::FILE)) {
 			fileStream.open(fileName, std::ios::app);
 			if (!fileStream.is_open()) {
-				std::cerr << "[WARNING] " << libraryName << ": Failed to open " << fileName << ", file logging off!\n";
+				std::cerr << "[WARNING_] " << libraryName << ": Failed to open " << fileName << ", file logging off!\n";
 				outputDestinations = E_LogOutput::CONSOLE;
 			}
 		}
@@ -224,7 +226,7 @@ namespace spectra::instrumentation {
 			return std::format("{:%Y-%m-%d %H:%M:%S}", localTime);
 		}
 		catch (const std::exception& e) {
-			return "[ERROR: Timestamp fail: " + std::string(e.what()) + "]";
+			return "[ERROR_: Timestamp fail: " + std::string(e.what()) + "]";
 		}
 	}
 
@@ -233,7 +235,7 @@ namespace spectra::instrumentation {
 		@return True if the level is within the defined range, false otherwise. */
 	bool Instrumentation::BaseLogger::isValidLevel(E_LogLevel level) {
 		const int l = static_cast<int>(level);
-		return l >= static_cast<int>(E_LogLevel::DEBUG) && l <= static_cast<int>(E_LogLevel::ERROR);
+		return l >= static_cast<int>(E_LogLevel::DEBUG_) && l <= static_cast<int>(E_LogLevel::ERROR_);
 	}
 
 	/** @brief Enables or disables colored console output.
@@ -254,7 +256,7 @@ namespace spectra::instrumentation {
 		const std::vector<std::any>& args) {
 		if (!isValidLevel(level)) {
 			if (UINT_8(outputDestinations & E_LogOutput::CONSOLE)) {
-				std::cerr << "[WARNING] " << libraryName << ": Invalid log level " << static_cast<int>(level) << ", ignored!\n";
+				std::cerr << "[WARNING_] " << libraryName << ": Invalid log level " << static_cast<int>(level) << ", ignored!\n";
 			}
 			return;
 		}
@@ -275,7 +277,7 @@ namespace spectra::instrumentation {
 			flushCV.notify_one();
 		}
 
-		if (level == E_LogLevel::ERROR) {
+		if (level == E_LogLevel::ERROR_) {
 			throw LoggedRuntimeError(entry.toString(), logHistory);
 		}
 	}
@@ -326,7 +328,7 @@ namespace spectra::instrumentation {
 	void Instrumentation::BaseLogger::setMinLevel(E_LogLevel level) {
 		if (isValidLevel(level)) minLevel = level;
 		else if (UINT_8(outputDestinations & E_LogOutput::CONSOLE)) {
-			std::cerr << "[WARNING] " << libraryName << ": Invalid log level " << static_cast<int>(level) << ", keeping previous!\n";
+			std::cerr << "[WARNING_] " << libraryName << ": Invalid log level " << static_cast<int>(level) << ", keeping previous!\n";
 		}
 	}
 
@@ -346,7 +348,7 @@ namespace spectra::instrumentation {
 			if (!UINT_8(outputDestinations & E_LogOutput::FILE) && UINT_8(destinations & E_LogOutput::FILE)) {
 				fileStream.open(fileName, std::ios::app);
 				if (!fileStream.is_open()) {
-					std::cerr << "[WARNING] " << libraryName << ": Failed to open " << fileName << ", no file logs!\n";
+					std::cerr << "[WARNING_] " << libraryName << ": Failed to open " << fileName << ", no file logs!\n";
 					outputDestinations = E_LogOutput::CONSOLE;
 					return;
 				}
@@ -434,7 +436,7 @@ namespace spectra::instrumentation {
 		if (UINT_8(outputDestinations & E_LogOutput::FILE)) {
 			fileStream.open(fileName, std::ios::app);
 			if (!fileStream.is_open()) {
-				std::cerr << "[WARNING] " << libraryName << ": Failed to open " << fileName << ", file logging off!\n";
+				std::cerr << "[WARNING_] " << libraryName << ": Failed to open " << fileName << ", file logging off!\n";
 				outputDestinations = E_LogOutput::CONSOLE;
 			}
 		}

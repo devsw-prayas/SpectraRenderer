@@ -1,0 +1,22 @@
+{
+    "version": 1,
+    "revision": 0,
+    "rules": [
+        {
+            "primary-output": "SpectraCore.dir\\Debug\\ThreadSafePriorityQueue.obj",
+            "outputs": [
+                "SpectraCore.dir\\Debug\\ThreadSafePriorityQueue.ixx.ifc.dt.module.json",
+                "SpectraCore.dir\\Debug\\ThreadSafePriorityQueue.ixx.ifc.dt.d.json",
+                "SpectraCore.dir\\Debug\\ThreadSafePriorityQueue.ifc"
+            ],
+            "provides": [
+                {
+                    "logical-name": "ThreadSafePriorityQueue",
+                    "source-path": "c:\\stormweaver\\development\\graphics  programming\\spectra\\src\\spectracore\\src\\public\\threadsafepriorityqueue.ixx",
+                    "is-interface": true
+                }
+            ],
+            "requires": []
+        }
+    ]
+}

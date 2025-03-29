@@ -1,0 +1,195 @@
+#pragma once
+#include <variant>
+
+#include "SpectraInstrumentation.h"
+#include "SpectraCore.h"
+
+#ifdef _WIN32
+#include <Windows.h>
+#undef max
+#undef min
+#else
+#include <pthread.h>
+#include <sched.h>
+#include <sys/sysinfo.h>
+#include <numa.h>
+#endif
+
+namespace spectra::core::concurrent::handles {
+	using THREAD_VARIANT = std::variant<std::thread, std::jthread>;
+
+	struct alignas(64) SPECTRA_CORE CPUThreadOptions {
+		std::string name;
+		int priority = -1;
+		int coreID = -1;
+		size_t stackSize = 0;
+		int numaNode = -1;
+
+		// Padding to ensure 64-byte alignment
+		char padding[64 - sizeof(numaNode) - sizeof(priority)
+			- sizeof(coreID) - sizeof(stackSize) - sizeof(name)];
+	};
+
+	// Helper class for platform - specific thread configuration
+	class CPUThreadHandle {
+	public:
+		// Get the number of available CPU cores
+		static int getNumCores() {
+#ifdef _WIN32
+			SYSTEM_INFO sysInfo;
+			GetSystemInfo(&sysInfo);
+			return static_cast<int>(sysInfo.dwNumberOfProcessors);
+#else
+			return sysconf(_SC_NPROCESSORS_ONLN);
+#endif
+		}
+
+		// Get the NUMA node for a given core (returns -1 if not supported)
+		static int getNumaNodeForCore(int coreId) {
+#ifdef _WIN32
+			UCHAR nodeNumber;
+			if (GetNumaProcessorNode(static_cast<UCHAR>(coreId), &nodeNumber) == 0) {
+				return -1; // Failed to get NUMA node
+			}
+			return static_cast<int>(nodeNumber);
+#else
+			if (numa_available() == -1) {
+				return -1; // NUMA not supported
+			}
+			return numa_node_of_cpu(coreId);
+#endif
+		}
+
+		// Configure the thread with the given settings
+		static void configureThread(THREAD_VARIANT& thread, const CPUThreadOptions& config) {
+			// Use std::visit to handle both std::thread and std::jthread
+			std::visit([&](auto& t) {
+				// Get the native handle
+#ifdef _WIN32
+				HANDLE handle = t.native_handle();
+#else
+				pthread_t handle = t.native_handle();
+#endif
+
+				// Set thread priority
+				setPriority(handle, config.priority);
+
+				// Set CPU affinity
+				if (config.coreID >= 0) {
+					setAffinity(handle, config.coreID);
+				}
+
+				// Set thread name
+				if (!config.name.empty()) {
+					setThreadName(handle, config.name);
+				}
+				}, thread);
+		}
+
+		// Allocate memory on a specific NUMA node (returns nullptr if not supported)
+		static void* allocateOnNumaNode(size_t size, int nodeId) {
+#ifdef _WIN32
+			if (nodeId < 0) {
+				return VirtualAlloc(nullptr, size, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+			}
+			return VirtualAllocExNuma(GetCurrentProcess(), nullptr, size,
+				MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE, nodeId);
+#else
+			if (numa_available() == -1 || nodeId < 0) {
+				return malloc(size);
+			}
+			return numa_alloc_onnode(size, nodeId);
+#endif
+		}
+
+		static int getNumaNodeCount() {
+#ifdef _WIN32
+			ULONG highest_node;
+			if (!GetNumaHighestNodeNumber(&highest_node)) {
+				return -1;  // Error
+			}
+			return static_cast<int>(highest_node + 1);
+#else
+			if (numa_available() < 0) return -1;
+			return numa_max_node() + 1;
+#endif
+		}
+
+	private:
+		// Set thread priority
+		static void setPriority(auto handle, int priority) {
+#ifdef _WIN32
+			int winPriority;
+			if (priority > 0) {
+				winPriority = THREAD_PRIORITY_ABOVE_NORMAL;
+			}
+			else if (priority < 0) {
+				winPriority = THREAD_PRIORITY_BELOW_NORMAL;
+			}
+			else {
+				winPriority = THREAD_PRIORITY_NORMAL;
+			}
+			if (!SetThreadPriority(handle, winPriority)) {
+				instrumentation::Instrumentation::log(instrumentation::E_LogLevel::ERROR_, "spectra::core::concurrent::handler",
+					"CPUThreadHandle", "Failed to set thread priority", instrumentation::E_LogComponent::CORE, LOCATION);
+			}
+#else
+			struct sched_param param;
+			int policy = SCHED_OTHER;
+			param.sched_priority = 0;
+
+			if (priority > 0) {
+				policy = SCHED_FIFO;
+				param.sched_priority = 50; // High priority (1-99 for SCHED_FIFO)
+			}
+			else if (priority < 0) {
+				if (nice(10) == -1) {
+					instrumentation::Instrumentation::log(instrumentation::E_LogLevel::ERROR_, "spectra::core::concurrent::handler",
+						"CPUThreadHandle", "Failed to set thread priority", instrumentation::E_LogComponent::CORE, LOCATION);
+				}
+			}
+
+			if (pthread_setschedparam(handle, policy, &param) != 0) {
+				instrumentation::Instrumentation::log(instrumentation::E_LogLevel::ERROR_, "spectra::core::concurrent::handler",
+					"CPUThreadHandle", "Failed to set thread priority", instrumentation::E_LogComponent::CORE, LOCATION);
+			}
+#endif
+		}
+
+		// Set CPU affinity
+		static void setAffinity(auto handle, int coreId) {
+			int numCores = getNumCores();
+			if (coreId >= numCores) {
+				instrumentation::Instrumentation::log(instrumentation::E_LogLevel::ERROR_, "spectra::core::concurrent::handler",
+					"CPUThreadHandle", "Invalid core ID: " + std::to_string(coreId) +
+					" (system has " + std::to_string(numCores) + " cores)", instrumentation::E_LogComponent::CORE, LOCATION);
+			}
+
+#ifdef _WIN32
+			DWORD_PTR affinityMask = 1ULL << coreId;
+			if (!SetThreadAffinityMask(handle, affinityMask)) {
+				instrumentation::Instrumentation::log(instrumentation::E_LogLevel::ERROR_, "spectra::core::concurrent::handler",
+					"CPUThreadHandle", "Failed to set CPU affinity", instrumentation::E_LogComponent::CORE, LOCATION);
+			}
+#else
+			cpu_set_t cpuset;
+			CPU_ZERO(&cpuset);
+			CPU_SET(coreId, &cpuset);
+			if (pthread_setaffinity_np(handle, sizeof(cpu_set_t), &cpuset) != 0) {
+				instrumentation::Instrumentation::log(instrumentation::E_LogLevel::ERROR_, "spectra::core::concurrent::handler",
+					"CPUThreadHandle", "Failed to set CPU affinity", instrumentation::E_LogComponent::CORE, LOCATION);
+			}
+#endif
+		}
+
+		// Set thread name
+		static void setThreadName(auto handle, const std::string& name) {
+#ifdef _WIN32
+			std::wstring wName(name.begin(), name.end());
+			SetThreadDescription(handle, wName.c_str());
+#else
+			pthread_setname_np(handle, name.c_str());
+#endif
+		}
+	};
+}
