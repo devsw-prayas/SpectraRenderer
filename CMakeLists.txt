@@ -13,6 +13,8 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin/$<CONFIG>)
 link_directories(${CMAKE_SOURCE_DIR}/bin/$<CONFIG>)
 
 # Include subprojects
+add_subdirectory(common/SpectraSTL)
+
 add_subdirectory(src/SpectraEditor)
 add_subdirectory(src/SpectraDX12Backend)
 add_subdirectory(src/SpectraLauncher)
@@ -28,5 +30,6 @@ add_subdirectory(src/SpectraBenchmark)
 include_directories(common)
 
 if (MSVC)
-    add_compile_options(/MP)  # Enables multi-core compilation
+	add_compile_options(/MP)  # Enables multi-core compilation
+	add_compile_options(/arch:AVX2 /O2)
 endif()

@@ -1,4 +1,5 @@
 project(SpectraViewports)
+set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
 add_library(SpectraViewports SHARED 
 	src/Private/SpectraViewports.cpp src/Public/SpectraViewports.h

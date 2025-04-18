@@ -1,4 +1,5 @@
 project(SpectraImGuiWrapper)
+set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
 add_library(SpectraImGuiWrapper SHARED 
 	src/Private/SpectraImGuiWrapper.cpp src/Public/SpectraImGuiWrapper.h

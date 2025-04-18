@@ -12,6 +12,8 @@ add_subdirectory(SpectraNodes)
 add_subdirectory(SpectraViewports)
 add_subdirectory(SpectraWidgets)
 
+set_property(GLOBAL PROPERTY USE_FOLDERS ON)
+
 # Create main UI library
 add_library(SpectraUI SHARED 
 	src/Private/SpectraUI.cpp src/Public/SpectraUI.h

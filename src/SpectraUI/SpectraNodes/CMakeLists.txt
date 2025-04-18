@@ -1,4 +1,5 @@
 project(SpectraNodes)
+set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
 add_library(SpectraNodes SHARED 
     src/Private/SpectraNodes.cpp src/Public/SpectraNodes.h

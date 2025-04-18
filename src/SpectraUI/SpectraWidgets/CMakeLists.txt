@@ -1,4 +1,5 @@
 project(SpectraWidgets)
+set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
 add_library(SpectraWidgets SHARED 
 	src/Private/SpectraWidgets.cpp src/Public/SpectraWidgets.h

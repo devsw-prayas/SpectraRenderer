@@ -1,5 +1,6 @@
 project(SpectraRenderEngine)
 
+set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 add_library(SpectraRenderEngine SHARED 
 	src/Private/SpectraRenderEngine.cpp src/Public/SpectraRenderEngine.h
 )

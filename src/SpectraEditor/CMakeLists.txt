@@ -1,5 +1,6 @@
 project(SpectraEditor)
 
+set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 add_library(SpectraEditor SHARED 
 	src/Private/SpectraEditor.cpp src/Public/SpectraEditor.h
 )
