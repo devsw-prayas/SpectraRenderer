@@ -176,8 +176,8 @@ using namespace std::chrono_literals;
 
 // Quick helper to sleep and print
 void sleepAndPrint(const std::string& msg, std::chrono::milliseconds duration = 100ms) {
-	std::cout << msg << std::endl;
 	std::this_thread::sleep_for(duration);
+	std::cout << msg << std::endl;
 }
 
 // Factory setup (assuming CPUThreadFactory works without NUMA)
@@ -217,13 +217,19 @@ void testPrioritySorting() {
 // Test 3: External Cancellation Before Execution
 void testExternalCancellation() {
 	ThreadPoolExecutor::DefaultThreadPool pool(1, factory);
-	auto handle = pool.submit([]() {
-		sleepAndPrint("Task running: I should NOT see this!");
+	std::shared_ptr<TaskHandle> handle = std::make_shared<TaskHandle>(0, false);
+	handle  = pool.submit([&handle]() {
+		std::this_thread::sleep_for(1s); // Simulate long task
+		if (handle->isCancelled) {
+			std::cout << "Task cancelled externally, not running!\n";
+			return;
+		}
+		sleepAndPrint("Task running: I should NOT see this!", 600ms);
 		});
 	sleepAndPrint("Submitted task ID: " + std::to_string(handle->id));
 	handle->isCancelled.store(true); // External cancel
 	sleepAndPrint("Cancelled task externally");
-	std::this_thread::sleep_for(200ms);
+	std::this_thread::sleep_for(100ms);
 	auto state = pool.getTaskState(*handle);
 	std::cout << "Task state: " << static_cast<int>(state) << " (3=Cancelled)\n";
 	// Expect: Task doesn’t run, state = Cancelled (3)
@@ -235,7 +241,13 @@ void testExternalCancellation() {
 // Test 4: Internal Cancellation via `cancel`
 void testInternalCancellation() {
 	ThreadPoolExecutor::DefaultThreadPool pool(1, factory);
-	auto handle = pool.submit([]() {
+	auto handle = std::make_shared<TaskHandle>(0, false);
+	handle = pool.submit([&handle]() {
+		std::this_thread::sleep_for(1s); // Simulate long task
+		if (handle->isCancelled) {
+			std::cout << "Task cancelled internally, not running!\n";
+			return;
+		}
 		sleepAndPrint("Task running: I should NOT see this!");
 		});
 	sleepAndPrint("Submitted task ID: " + std::to_string(handle->id));
@@ -258,8 +270,8 @@ void testBatchWithPriorities() {
 		[]() { sleepAndPrint("Task 2: Priority 1"); },
 		[]() { sleepAndPrint("Task 3: Priority 10"); }
 	};
-	TaskOptions opts{ 5 }; // Default priority
-	auto handles = pool.submitBatch(std::move(tasks), opts);
+	std::vector<TaskOptions> options = {{5}, {10}, {1}};
+	auto handles = pool.submitBatch(std::move(tasks),options);
 	sleepAndPrint("Submitted batch with IDs: " + std::to_string(handles[0]->id) + ", " +
 		std::to_string(handles[1]->id) + ", " + std::to_string(handles[2]->id));
 	std::this_thread::sleep_for(400ms);
@@ -335,12 +347,14 @@ void testTaskCounts() {
 void testStressBatch() {
 	ThreadPoolExecutor::DefaultThreadPool pool(4, factory);
 	std::vector<std::function<void()>> tasks(100);
+	std::vector<TaskOptions> options(100);
 	for (int i = 0; i < 100; ++i) {
 		tasks[i] = [i]() { sleepAndPrint("Task " + std::to_string(i) + " running"); };
+		options[i] = { 1 }; // All same priority
 	}
-	auto handles = pool.submitBatch(std::move(tasks));
+	auto handles = pool.submitBatch(std::move(tasks), options);
 	sleepAndPrint("Submitted 100 tasks—buckle up!");
-	std::this_thread::sleep_for(2s);
+	std::this_thread::sleep_for(4s);
 	size_t completed = pool.getCompletedTaskCount();
 	std::cout << "Completed tasks: " << completed << " (expect ~100)\n";
 	// Expect: All 100 tasks run across 4 workers
@@ -351,15 +365,25 @@ void testStressBatch() {
 
 int main() {
 	// Uncomment one test to run manually
+	std::cout << "Single task run\n";
 	testBasicSingleTask();
+	std::cout << "\n \nPriority Sorting\n";
 	testPrioritySorting();
+	std::cout << "\n \nExternal Cancellation\n";
 	testExternalCancellation();
+	std::cout << "\n \nInternal Cancellation\n";
 	testInternalCancellation();
+	std::cout << "\n \nBatch Runs with Priorities\n";
 	testBatchWithPriorities();
+	std::cout << "\n \nWorker Distribution";
 	testWorkerDistribution();
+	std::cout << "\n \nGraceful Shutdown\n";
 	testGracefulShutdown();
+	std::cout << "\n \nForced Shutdown\n";
 	testShutdownNow();
+	std::cout << "\n \nCounting tasks\n";
 	testTaskCounts();
+	std::cout << "\n \nBatch runs\n";
 	testStressBatch();
 
 	std::cout << "Pick a test, ya threading thrill-seeker! Uncomment and run!\n";

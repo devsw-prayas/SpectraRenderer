@@ -10,7 +10,6 @@
 #include <mutex>
 #include <optional>
 #include <random>
-#include <thread>
 #include <type_traits>
 #include <unordered_map>
 #include <vector>
@@ -112,8 +111,11 @@ namespace spectra::core::concurrent {
 			: handle(std::move(h)), task(std::move(t)), priority(p) {
 		}
 
+		bool operator>(const TaskEntry& rhs) const noexcept {
+			return priority > rhs.priority;
+		}
 		bool operator<(const TaskEntry& rhs) const noexcept {
-			return priority > rhs.priority; // Min-heap: lower priority pops first
+			return priority < rhs.priority;
 		}
 	};
 
@@ -139,7 +141,7 @@ namespace spectra::core::concurrent {
 
 	class SPECTRA_CORE ThreadExecutorService : public ThreadExecutor {
 	public:
-		virtual ~ThreadExecutorService() override = default;
+		~ThreadExecutorService() override = default;
 
 		virtual std::shared_ptr<TaskHandle> submit(std::function<void()> task,
 			const TaskOptions& options = {}) = 0;
@@ -158,7 +160,7 @@ namespace spectra::core::concurrent {
 		virtual size_t getCompletedTaskCount() const noexcept = 0;
 
 		virtual std::vector<std::shared_ptr<TaskHandle>> submitBatch(std::vector<std::function<void()>> tasks, 
-			const TaskOptions& options = {}) = 0;
+			const std::vector<TaskOptions>& options) = 0;
 
 		ThreadExecutorService(const ThreadExecutorService&) = delete;
 		ThreadExecutorService& operator=(const ThreadExecutorService&) = delete;
@@ -196,7 +198,7 @@ namespace spectra::core::concurrent {
 			// ThreadExecutorService overrides via Impl
 			void execute(std::function<void()> task) override;
 			std::shared_ptr<TaskHandle> submit(std::function<void()> task, const TaskOptions& options = {}) override;
-			std::vector<std::shared_ptr<TaskHandle>> submitBatch(std::vector<std::function<void()>> tasks, const TaskOptions& options = {}) override;
+			std::vector<std::shared_ptr<TaskHandle>> submitBatch(std::vector<std::function<void()>> tasks, const std::vector<TaskOptions>& options) override;
 			bool cancel(TaskHandle& handle) override;
 			TaskState getTaskState(TaskHandle& handle) const override;
 			void shutdown() override;
@@ -242,4 +244,4 @@ namespace spectra::core::concurrent {
 			std::condition_variable shutdownCV_;       //Shutdown trigger
 		};
 	};
-} // namespace spectra::core::concurrent
+} 

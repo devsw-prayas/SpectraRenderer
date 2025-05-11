@@ -136,8 +136,9 @@ namespace spectra::core::concurrent {
 		}
 		return std::ranges::any_of(workers_, [&handle](const std::unique_ptr<Worker>& worker) {
 			std::lock_guard<std::mutex> locker(worker->mutex);
-			if (worker->taskStates[handle.id] == TaskState::Pending) {
-				worker->taskStates[handle.id] = TaskState::Cancelled;
+			auto it = worker->taskStates.find(handle.id);
+			if (it != worker->taskStates.end() && it->second == TaskState::Pending || it->second == TaskState::Running) {
+				handle.isCancelled.store(true);
 				return true;
 			}
 			return false;
@@ -167,7 +168,7 @@ namespace spectra::core::concurrent {
 		return handle;
 	}
 
-	std::vector<std::shared_ptr<TaskHandle>> ThreadPoolExecutor::DefaultThreadPool::submitBatch(std::vector<std::function<void()>> tasks, const TaskOptions& options) {
+	std::vector<std::shared_ptr<TaskHandle>> ThreadPoolExecutor::DefaultThreadPool::submitBatch(std::vector<std::function<void()>> tasks, const std::vector<TaskOptions>& options) {
 		if (!isRunning() || isShutdown()) {
 			std::vector<std::shared_ptr<TaskHandle>> handles;
 			handles.reserve(tasks.size());
@@ -190,7 +191,7 @@ namespace spectra::core::concurrent {
 		if (handles::CPUThreadHandle::getNumaNodeCount() > 1) { // Assuming this is your NUMA check
 			std::shared_lock<std::shared_mutex> lock(numaMapMutex_);
 			for (size_t i = 0; i < tasks.size(); ++i) {
-				int affinity = options.numaNodeAffinity;
+				int affinity = options[i].numaNodeAffinity;
 				if (affinity >= 0 && !numaToWorkers_[affinity].empty()) {
 					workerIndices[i] = numaToWorkers_[affinity][i % numaToWorkers_[affinity].size()];
 				}
@@ -210,7 +211,7 @@ namespace spectra::core::concurrent {
 		for (size_t i = 0; i < size; ++i) {
 			size_t idx = workerIndices[i];
 			std::lock_guard<std::mutex> locker(workers_[idx]->mutex);
-			workers_[idx]->queue.push(TaskEntry(handles[i], std::move(tasks[i]), options.priority));
+			workers_[idx]->queue.push(TaskEntry(handles[i], std::move(tasks[i]), options[i].priority));
 			workers_[idx]->taskStates[handles[i]->id] = TaskState::Pending;
 			if (!notified[idx]) {
 				workers_[idx]->cv.notify_one();

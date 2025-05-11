@@ -11,10 +11,10 @@ add_library(SpectraCore SHARED
 	src/Public/ThreadSafeQueue.h src/Public/ThreadSafeQueue.inl
 	src/Public/ThreadSafePriorityQueue.h src/Public/ThreadSafePriorityQueue.inl
 	src/Public/PlatformHandles.h
-	src/Public/Vector.h src/Private/Vector.cpp
+	src/Public/Vector.h src/Private/Vector.cpp src/Public/Vector.inl
 )
 
 target_include_directories(SpectraCore PUBLIC src/Public)
 
-target_link_libraries(SpectraCore SpectraInstrumentation, SpectraSTL)
+target_link_libraries(SpectraCore SpectraInstrumentation SpectraSTL)
 
