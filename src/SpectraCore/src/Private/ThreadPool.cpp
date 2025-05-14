@@ -103,7 +103,7 @@ namespace spectra::core::concurrent {
 		return isTerminated_;
 	}
 
-	TaskState DefaultThreadPool::getTaskState(ActionHandle& handle) const {
+	TaskState DefaultThreadPool::getTaskState(IHandle& handle) const {
 		if (handle.getId() == static_cast<size_t>(-1)) {
 			return TaskState::Unknown;
 		}
@@ -133,7 +133,7 @@ namespace spectra::core::concurrent {
 			});
 	}
 
-	bool DefaultThreadPool::cancel(ActionHandle& handle) {
+	bool DefaultThreadPool::cancel(IHandle& handle) {
 		if (handle.getId() == static_cast<size_t>(-1)) {
 			return false;
 		}
@@ -148,11 +148,11 @@ namespace spectra::core::concurrent {
 		});
 	}
 
-	std::shared_ptr<ActionHandle> DefaultThreadPool::submit(std::function<void()> task, const TaskOptions& options) {
+	std::shared_ptr<IHandle> DefaultThreadPool::submit(std::function<void()> task, const TaskOptions& options) {
 		if (!isRunning() || isShutdown()) {
-			return std::make_shared<ActionHandle>(static_cast<size_t>(-1), true);
+			return std::make_shared<IHandle>(static_cast<size_t>(-1), true);
 		}
-		auto handle = std::make_shared<ActionHandle>(generateTaskId(), false);
+		auto handle = std::make_shared<IHandle>(generateTaskId(), false);
 		size_t workerIndex;
 
 		if (options.numaNodeAffinity >= 0) {
@@ -171,22 +171,22 @@ namespace spectra::core::concurrent {
 		return handle;
 	}
 
-	std::vector<std::shared_ptr<ActionHandle>> DefaultThreadPool::submitBatch(std::vector<std::function<void()>> tasks, const std::vector<TaskOptions>& options) {
+	std::vector<std::shared_ptr<IHandle>> DefaultThreadPool::submitBatch(std::vector<std::function<void()>> tasks, const std::vector<TaskOptions>& options) {
 		if (!isRunning() || isShutdown()) {
-			std::vector<std::shared_ptr<ActionHandle>> handles;
+			std::vector<std::shared_ptr<IHandle>> handles;
 			handles.reserve(tasks.size());
 			for (size_t i = 0; i < tasks.size(); ++i) {
-				handles.emplace_back(std::make_shared<ActionHandle>(static_cast<uint64_t>(-1), true));
+				handles.emplace_back(std::make_shared<IHandle>(static_cast<uint64_t>(-1), true));
 			}
 			return handles;
 		}
 
 		// Bulk ID generation
-		std::vector<std::shared_ptr<ActionHandle>> handles;
+		std::vector<std::shared_ptr<IHandle>> handles;
 		handles.reserve(tasks.size());
 		uint64_t baseId = taskIdCounter_.fetch_add(tasks.size(), std::memory_order_relaxed);
 		for (size_t i = 0; i < tasks.size(); ++i) {
-			handles.emplace_back(std::make_shared<ActionHandle>(baseId + i, false));
+			handles.emplace_back(std::make_shared<IHandle>(baseId + i, false));
 		}
 		size_t size = tasks.size();
 		// Scatter worker picks
@@ -225,10 +225,10 @@ namespace spectra::core::concurrent {
 		return handles;
 	}
 
-	std::shared_ptr<ActionHandle> DefaultThreadPool::submit(std::function<void(std::any)> task, std::any args, const TaskOptions& options) {
+	std::shared_ptr<IHandle> DefaultThreadPool::submit(std::function<void(std::any)> task, std::any args, const TaskOptions& options) {
 		if (!isRunning() || isShutdown())
-			return std::make_shared <ActionHandle>( static_cast<size_t>(-1), true );
-		auto handle = std::make_shared<ActionHandle>(generateTaskId(), false);
+			return std::make_shared <IHandle>( static_cast<size_t>(-1), true );
+		auto handle = std::make_shared<IHandle>(generateTaskId(), false);
 		size_t workerIndex;
 
 		if (options.numaNodeAffinity >= 0){
