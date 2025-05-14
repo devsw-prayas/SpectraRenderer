@@ -217,7 +217,7 @@ void testPrioritySorting() {
 // Test 3: External Cancellation Before Execution
 void testExternalCancellation() {
 	ThreadPoolExecutor::DefaultThreadPool pool(1, factory);
-	std::shared_ptr<TaskHandle> handle = std::make_shared<TaskHandle>(0, false);
+	std::shared_ptr<ActionHandle> handle = std::make_shared<ActionHandle>(0, false);
 	handle  = pool.submit([&handle]() {
 		std::this_thread::sleep_for(1s); // Simulate long task
 		if (handle->isCancelled) {
@@ -241,7 +241,7 @@ void testExternalCancellation() {
 // Test 4: Internal Cancellation via `cancel`
 void testInternalCancellation() {
 	ThreadPoolExecutor::DefaultThreadPool pool(1, factory);
-	auto handle = std::make_shared<TaskHandle>(0, false);
+	auto handle = std::make_shared<ActionHandle>(0, false);
 	handle = pool.submit([&handle]() {
 		std::this_thread::sleep_for(1s); // Simulate long task
 		if (handle->isCancelled) {

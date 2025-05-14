@@ -4,7 +4,10 @@
 #include <numeric>
 
 namespace spectra::core::concurrent {
-	ThreadPoolExecutor::DefaultThreadPool::DefaultThreadPool(size_t numThreads, CPUThreadFactory& factory) {
+	// =============================================
+	// Default Thread Pool Implementation
+	// =============================================
+	DefaultThreadPool::DefaultThreadPool(size_t numThreads, CPUThreadFactory& factory) {
 		if (numThreads <= 0) {
 			instrumentation::Instrumentation::log(
 				instrumentation::E_LogLevel::ERROR_,
@@ -34,7 +37,7 @@ namespace spectra::core::concurrent {
 		buildNumaWorkerMap();
 	}
 
-	void ThreadPoolExecutor::DefaultThreadPool::buildNumaWorkerMap() {
+	void DefaultThreadPool::buildNumaWorkerMap() {
 		std::unique_lock<std::shared_mutex> locker(numaMapMutex_);
 		if (handles::CPUThreadHandle::getNumaNodeCount() <= 1) {
 			numaToWorkers_[-1].resize(workers_.size());
@@ -47,11 +50,11 @@ namespace spectra::core::concurrent {
 		}
 	}
 
-	TaskID ThreadPoolExecutor::DefaultThreadPool::generateTaskId() noexcept {
+	TaskID DefaultThreadPool::generateTaskId() noexcept {
 		return taskIdCounter_.fetch_add(1, std::memory_order_relaxed);
 	}
 
-	size_t ThreadPoolExecutor::DefaultThreadPool::selectWorkerByNumaNode(int numaNode) const {
+	size_t DefaultThreadPool::selectWorkerByNumaNode(int numaNode) const {
 		std::shared_lock<std::shared_mutex> locker(numaMapMutex_);
 		auto it = numaToWorkers_.find(numaNode);
 		if (it == numaToWorkers_.end()) {
@@ -60,11 +63,11 @@ namespace spectra::core::concurrent {
 		return it->second[0];
 	}
 
-	ThreadPoolExecutor::DefaultThreadPool::~DefaultThreadPool() {
+	DefaultThreadPool::~DefaultThreadPool() {
 		shutdownNow();
 	}
 
-	size_t ThreadPoolExecutor::DefaultThreadPool::findLeastBusyWorker() const {
+	size_t DefaultThreadPool::findLeastBusyWorker() const {
 		if (workers_.empty()) {
 			return 0;
 		}
@@ -88,25 +91,25 @@ namespace spectra::core::concurrent {
 		return bestIndex;
 	}
 
-	bool ThreadPoolExecutor::DefaultThreadPool::isRunning() const noexcept {
+	bool DefaultThreadPool::isRunning() const noexcept {
 		return isRunning_;
 	}
 
-	bool ThreadPoolExecutor::DefaultThreadPool::isShutdown() const noexcept {
+	bool DefaultThreadPool::isShutdown() const noexcept {
 		return isShutdown_;
 	}
 
-	bool ThreadPoolExecutor::DefaultThreadPool::isTerminated() const noexcept {
+	bool DefaultThreadPool::isTerminated() const noexcept {
 		return isTerminated_;
 	}
 
-	TaskState ThreadPoolExecutor::DefaultThreadPool::getTaskState(TaskHandle& handle) const {
-		if (handle.id == static_cast<size_t>(-1)) {
+	TaskState DefaultThreadPool::getTaskState(ActionHandle& handle) const {
+		if (handle.getId() == static_cast<size_t>(-1)) {
 			return TaskState::Unknown;
 		}
 		for (const auto& worker : workers_) {
 			std::lock_guard<std::mutex> locker(worker->mutex);
-			auto it = worker->taskStates.find(handle.id);
+			auto it = worker->taskStates.find(handle.getId());
 			if (it != worker->taskStates.end()) {
 				return it->second;
 			}
@@ -114,7 +117,7 @@ namespace spectra::core::concurrent {
 		return TaskState::Unknown;
 	}
 
-	size_t ThreadPoolExecutor::DefaultThreadPool::getActiveTaskCount() const noexcept {
+	size_t DefaultThreadPool::getActiveTaskCount() const noexcept {
 		return std::accumulate(
 			std::ranges::begin(workers_), std::ranges::end(workers_), size_t{ 0 },
 			[](size_t sum, const auto& worker) {
@@ -122,7 +125,7 @@ namespace spectra::core::concurrent {
 			});
 	}
 
-	size_t ThreadPoolExecutor::DefaultThreadPool::getCompletedTaskCount() const noexcept {
+	size_t DefaultThreadPool::getCompletedTaskCount() const noexcept {
 		return std::accumulate(
 			std::ranges::begin(workers_), std::ranges::end(workers_), size_t{ 0 },
 			[](size_t sum, const auto& worker) {
@@ -130,26 +133,26 @@ namespace spectra::core::concurrent {
 			});
 	}
 
-	bool ThreadPoolExecutor::DefaultThreadPool::cancel(TaskHandle& handle) {
-		if (handle.id == static_cast<size_t>(-1)) {
+	bool DefaultThreadPool::cancel(ActionHandle& handle) {
+		if (handle.getId() == static_cast<size_t>(-1)) {
 			return false;
 		}
 		return std::ranges::any_of(workers_, [&handle](const std::unique_ptr<Worker>& worker) {
 			std::lock_guard<std::mutex> locker(worker->mutex);
-			auto it = worker->taskStates.find(handle.id);
+			auto it = worker->taskStates.find(handle.getId());
 			if (it != worker->taskStates.end() && it->second == TaskState::Pending || it->second == TaskState::Running) {
-				handle.isCancelled.store(true);
+				handle.setCancelled(true);
 				return true;
 			}
 			return false;
-			});
+		});
 	}
 
-	std::shared_ptr<TaskHandle> ThreadPoolExecutor::DefaultThreadPool::submit(std::function<void()> task, const TaskOptions& options) {
+	std::shared_ptr<ActionHandle> DefaultThreadPool::submit(std::function<void()> task, const TaskOptions& options) {
 		if (!isRunning() || isShutdown()) {
-			return std::make_shared<TaskHandle>(static_cast<size_t>(-1), true);
+			return std::make_shared<ActionHandle>(static_cast<size_t>(-1), true);
 		}
-		auto handle = std::make_shared<TaskHandle>(generateTaskId(), false);
+		auto handle = std::make_shared<ActionHandle>(generateTaskId(), false);
 		size_t workerIndex;
 
 		if (options.numaNodeAffinity >= 0) {
@@ -161,29 +164,29 @@ namespace spectra::core::concurrent {
 		{
 			std::lock_guard<std::mutex> locker(workers_[workerIndex]->mutex);
 			workers_[workerIndex]->queue.push(TaskEntry(handle, std::move(task), options.priority));
-			workers_[workerIndex]->taskStates[handle->id] = TaskState::Pending;
+			workers_[workerIndex]->taskStates[handle->getId()] = TaskState::Pending;
 		}
 
 		workers_[workerIndex]->cv.notify_one();
 		return handle;
 	}
 
-	std::vector<std::shared_ptr<TaskHandle>> ThreadPoolExecutor::DefaultThreadPool::submitBatch(std::vector<std::function<void()>> tasks, const std::vector<TaskOptions>& options) {
+	std::vector<std::shared_ptr<ActionHandle>> DefaultThreadPool::submitBatch(std::vector<std::function<void()>> tasks, const std::vector<TaskOptions>& options) {
 		if (!isRunning() || isShutdown()) {
-			std::vector<std::shared_ptr<TaskHandle>> handles;
+			std::vector<std::shared_ptr<ActionHandle>> handles;
 			handles.reserve(tasks.size());
 			for (size_t i = 0; i < tasks.size(); ++i) {
-				handles.emplace_back(std::make_shared<TaskHandle>(static_cast<uint64_t>(-1), true));
+				handles.emplace_back(std::make_shared<ActionHandle>(static_cast<uint64_t>(-1), true));
 			}
 			return handles;
 		}
 
 		// Bulk ID generation
-		std::vector<std::shared_ptr<TaskHandle>> handles;
+		std::vector<std::shared_ptr<ActionHandle>> handles;
 		handles.reserve(tasks.size());
 		uint64_t baseId = taskIdCounter_.fetch_add(tasks.size(), std::memory_order_relaxed);
 		for (size_t i = 0; i < tasks.size(); ++i) {
-			handles.emplace_back(std::make_shared<TaskHandle>(baseId + i, false));
+			handles.emplace_back(std::make_shared<ActionHandle>(baseId + i, false));
 		}
 		size_t size = tasks.size();
 		// Scatter worker picks
@@ -212,7 +215,7 @@ namespace spectra::core::concurrent {
 			size_t idx = workerIndices[i];
 			std::lock_guard<std::mutex> locker(workers_[idx]->mutex);
 			workers_[idx]->queue.push(TaskEntry(handles[i], std::move(tasks[i]), options[i].priority));
-			workers_[idx]->taskStates[handles[i]->id] = TaskState::Pending;
+			workers_[idx]->taskStates[handles[i]->getId()] = TaskState::Pending;
 			if (!notified[idx]) {
 				workers_[idx]->cv.notify_one();
 				notified[idx] = true;
@@ -222,11 +225,33 @@ namespace spectra::core::concurrent {
 		return handles;
 	}
 
-	void ThreadPoolExecutor::DefaultThreadPool::execute(std::function<void()> task) {
+	std::shared_ptr<ActionHandle> DefaultThreadPool::submit(std::function<void(std::any)> task, std::any args, const TaskOptions& options) {
+		if (!isRunning() || isShutdown())
+			return std::make_shared <ActionHandle>( static_cast<size_t>(-1), true );
+		auto handle = std::make_shared<ActionHandle>(generateTaskId(), false);
+		size_t workerIndex;
+
+		if (options.numaNodeAffinity >= 0){
+			workerIndex = selectWorkerByNumaNode(options.numaNodeAffinity);
+		}
+		else {
+			workerIndex = findLeastBusyWorker();
+		}
+		{
+			std::lock_guard<std::mutex> locker(workers_[workerIndex]->mutex);
+			workers_[workerIndex]->queue.push(TaskEntry(handle, std::move(task), options.priority));
+			workers_[workerIndex]->taskStates[handle->getId()] = TaskState::Pending;
+		}
+		workers_[workerIndex]->cv.notify_one();
+		return handle;
+	}
+
+
+	void DefaultThreadPool::execute(std::function<void()> task) {
 		submit(task);
 	}
 
-	void ThreadPoolExecutor::DefaultThreadPool::workerFunction(size_t workerIndex) const {
+	void DefaultThreadPool::workerFunction(size_t workerIndex) const {
 		Worker& worker = *workers_[workerIndex];
 
 		while (isRunning_.load() || (isShutdown_.load() && !worker.queue.empty())) {
@@ -245,19 +270,26 @@ namespace spectra::core::concurrent {
 				if (!task) continue;
 
 				// Skip if task was cancelled
-				if (task->handle->isCancelled.load()) {
-					worker.taskStates[task->handle->id] = TaskState::Cancelled;
+				if (task->handle->getIsCancelled()) {
+					worker.taskStates[task->handle->getId()] = TaskState::Cancelled;
 					continue;
 				}
 
-				worker.taskStates[task->handle->id] = TaskState::Running;
+				worker.taskStates[task->handle->getId()] = TaskState::Running;
 				worker.handle.activeTasks.fetch_add(1);
 			}
 
 			// Execute task
 			try {
-				if (!task->handle->isCancelled.load()) {
-					task->task();
+				if (!task->handle->getIsCancelled()) {
+					std::visit([&](auto& t) {
+						if constexpr (std::is_invocable_v<decltype(t), std::any>) {
+							t(std::any{});
+						}
+						else {
+							t();
+						}
+					}, task->task);
 				}
 			}
 			catch (...) {
@@ -269,15 +301,15 @@ namespace spectra::core::concurrent {
 					"Task execution failed",
 					instrumentation::E_LogComponent::CORE
 				);
-				worker.taskStates[task->handle->id] = TaskState::Failed;
+				worker.taskStates[task->handle->getId()] = TaskState::Failed;
 			}
 
 			{ // Update task state
 				std::lock_guard<std::mutex> lock(worker.mutex);
 				worker.handle.activeTasks.fetch_sub(1);
 				worker.handle.completedTasks.fetch_add(1);
-				worker.taskStates[task->handle->id] =
-					task->handle->isCancelled.load() ? TaskState::Cancelled : TaskState::Completed;
+				worker.taskStates[task->handle->getId()] =
+					task->handle->getIsCancelled() ? TaskState::Cancelled : TaskState::Completed;
 			}
 		}
 
@@ -285,19 +317,19 @@ namespace spectra::core::concurrent {
 		if (!isRunning_.load()) {
 			std::lock_guard<std::mutex> lock(worker.mutex);
 			while (auto task = worker.queue.tryPop()) {
-				worker.taskStates[task->handle->id] = TaskState::Cancelled;
+				worker.taskStates[task->handle->getId()] = TaskState::Cancelled;
 			}
 		}
 	}
 
-	bool ThreadPoolExecutor::DefaultThreadPool::awaitTermination(Nanoseconds timeout) {
+	bool DefaultThreadPool::awaitTermination(Nanoseconds timeout) {
 		if (isTerminated()) return true; // Already dead
 
 		std::unique_lock<std::mutex> lock(shutdownMutex_);
 		return shutdownCV_.wait_for(lock, timeout, [this] { return isTerminated(); });
 	}
 
-	void ThreadPoolExecutor::DefaultThreadPool::shutdown() {
+	void DefaultThreadPool::shutdown() {
 		if (isShutdown()) return;
 		// Graceful shutdown - complete queued tasks
 		isRunning_.store(false);
@@ -317,7 +349,7 @@ namespace spectra::core::concurrent {
 		isTerminated_.store(true);
 	}
 
-	void ThreadPoolExecutor::DefaultThreadPool::shutdownNow() {
+	void DefaultThreadPool::shutdownNow() {
 		if (isShutdown())return;
 		// Graceful shutdown - complete queued tasks
 		isRunning_.store(false);
@@ -329,8 +361,8 @@ namespace spectra::core::concurrent {
 
 			// Cancel all queued tasks
 			while (auto task = worker->queue.tryPop()) {
-				task->handle->isCancelled.store(true);
-				worker->taskStates[task->handle->id] = TaskState::Cancelled;
+				task->handle->setCancelled(true);
+				worker->taskStates[task->handle->getId()] = TaskState::Cancelled;
 			}
 
 			worker->cv.notify_all();  // Wake all workers
@@ -348,4 +380,9 @@ namespace spectra::core::concurrent {
 		isTerminated_.store(true);
 		shutdownCV_.notify_all();
 	}
+
+	// =============================================
+	// Scheduled Thread Pool
+	// =============================================
+
 }
