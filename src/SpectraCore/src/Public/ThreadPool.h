@@ -64,7 +64,8 @@ namespace spectra::core::concurrent {
 		virtual ~IHandle() = default;
 		virtual explicit operator bool() const noexcept = 0;
 		IHandle(size_t id, bool cancelled) : id(id), isCancelled(cancelled),
-			taskState(std::make_shared<TaskState>(TaskState::Unknown)) {}
+			taskState(std::make_shared<TaskState>(TaskState::Unknown)) {
+		}
 
 		IHandle(const IHandle&) = delete;
 		IHandle& operator=(const IHandle&) = delete;
@@ -122,9 +123,9 @@ namespace spectra::core::concurrent {
 			return id != 0;
 		}
 		~TaskHandle() override = default;
-		TaskHandle(size_t iD, bool cancelled, std::any res) : IHandle(iD, cancelled) {}
+		TaskHandle(size_t iD, bool cancelled, std::any res) : IHandle(iD, cancelled), result(res) {}
 
-		TaskHandle(TaskHandle&& other) noexcept : IHandle(std::move(other)) , result(std::move(other.result)) {}
+		TaskHandle(TaskHandle&& other) noexcept : IHandle(std::move(other)), result(std::move(other.result)) {}
 
 		TaskHandle& operator=(TaskHandle&& other) noexcept {
 			if (this != &other) {
@@ -136,8 +137,8 @@ namespace spectra::core::concurrent {
 
 		template<typename T >
 		T* getResult() {
-			if (*taskState == TaskState::Completed) return result;
-			else return nullptr;
+			if (*taskState == TaskState::Completed) return std::any_cast<T>(result);
+			return nullptr;
 		}
 	};
 
@@ -247,7 +248,7 @@ namespace spectra::core::concurrent {
 		}
 
 		virtual std::shared_ptr<IHandle> submit(std::function<void(std::any)> task, std::any args, const TaskOptions& options) = 0;
-		virtual std::shared_ptr<IHandle> submitBatch(std::vector<std::function<void(std::any)>> task,
+		virtual std::vector<std::shared_ptr<IHandle>> submitBatch(std::vector<std::function<void(std::any)>> task,
 			std::vector<std::any> argsVector, std::vector<TaskOptions>& options) = 0;
 		virtual std::shared_ptr<IHandle> submitCallable(std::function<std::any()> task,
 			const TaskOptions& options = {}) = 0;
@@ -294,11 +295,11 @@ namespace spectra::core::concurrent {
 		}
 
 		virtual std::shared_ptr<IHandle> schedule(std::function<void(std::any)> task, TaskOptions& options) = 0;
-		virtual std::shared_ptr<IHandle> scheduleBatch(std::vector<std::function<void(std::any)>> task,
+		virtual std::vector<std::shared_ptr<IHandle>> scheduleBatch(std::vector<std::function<void(std::any)>> task,
 			std::vector<TaskOptions>& options) = 0;
-		virtual std::shared_ptr<IHandle> schedule(std::function<std::any()> task,
+		virtual std::shared_ptr<IHandle> scheduleCallable(std::function<std::any()> task,
 			const TaskOptions& options = {}) = 0;
-		virtual std::shared_ptr<IHandle> scheduleBatch(std::vector<std::function<std::any()>> tasks,
+		virtual std::vector<std::shared_ptr<IHandle>> scheduleCallableBatch(std::vector<std::function<std::any()>> tasks,
 			std::vector<TaskOptions>& options) = 0;
 	};
 
@@ -383,7 +384,7 @@ namespace spectra::core::concurrent {
 		void buildNumaWorkerMap();
 		TaskID generateTaskId() noexcept override;
 		std::shared_ptr<IHandle> submit(std::function<void(std::any)> task, std::any args, const TaskOptions& options) override;
-		std::shared_ptr<IHandle> submitBatch(std::vector<std::function<void(std::any)>> task,
+		std::vector<std::shared_ptr<IHandle>> submitBatch(std::vector<std::function<void(std::any)>> task,
 			std::vector<std::any> argsVector, std::vector<TaskOptions>& options) override;
 		std::shared_ptr<IHandle> submitCallable(std::function<std::any()> task, const TaskOptions& options = {}) override;
 		std::shared_ptr<IHandle> submitBatchCallable(std::vector<std::function<std::any()>> tasks,

@@ -247,8 +247,58 @@ namespace spectra::core::concurrent {
 		return handle;
 	}
 
-	std::shared_ptr<IHandle> DefaultThreadPool::submitBatch(std::vector<std::function<void(std::any)>> task, std::vector<std::any> argsVector, std::vector<TaskOptions>& options) {
-		return std::shared_ptr<IHandle>{};
+	std::vector<std::shared_ptr<IHandle>> DefaultThreadPool::submitBatch(std::vector<std::function<void(std::any)>> tasks, std::vector<std::any> argsVector, std::vector<TaskOptions>& options) {
+		if (!isRunning() || isShutdown()) {
+			std::vector<std::shared_ptr<IHandle>> handles;
+			handles.reserve(tasks.size());
+			for (size_t i = 0; i < tasks.size(); ++i) {
+				handles.emplace_back(std::make_shared<IHandle>(static_cast<uint64_t>(-1), true));
+			}
+			return handles;
+		}
+
+		// Bulk ID generation
+		std::vector<std::shared_ptr<IHandle>> handles;
+		handles.reserve(tasks.size());
+		uint64_t baseId = taskIdCounter_.fetch_add(tasks.size(), std::memory_order_relaxed);
+		for (size_t i = 0; i < tasks.size(); ++i) {
+			handles.emplace_back(std::make_shared<IHandle>(baseId + i, false));
+		}
+		size_t size = tasks.size();
+		// Scatter worker picks
+		std::vector<size_t> workerIndices(tasks.size());
+		if (handles::CPUThreadHandle::getNumaNodeCount() > 1) { // Assuming this is your NUMA check
+			std::shared_lock<std::shared_mutex> lock(numaMapMutex_);
+			for (size_t i = 0; i < tasks.size(); ++i) {
+				int affinity = options[i].numaNodeAffinity;
+				if (affinity >= 0 && !numaToWorkers_[affinity].empty()) {
+					workerIndices[i] = numaToWorkers_[affinity][i % numaToWorkers_[affinity].size()];
+				}
+				else {
+					workerIndices[i] = i % workers_.size(); // Round-robin fallback
+				}
+			}
+		}
+		else {
+			for (size_t i = 0; i < tasks.size(); ++i) {
+				workerIndices[i] = i % workers_.size(); // Simple round-robin
+			}
+		}
+
+		// Queue tasks with per-worker locks
+		std::vector<bool> notified(workers_.size(), false);
+		for (size_t i = 0; i < size; ++i) {
+			size_t idx = workerIndices[i];
+			std::lock_guard<std::mutex> locker(workers_[idx]->mutex);
+			workers_[idx]->queue.push(TaskEntry(handles[i], std::move(tasks[i]), options[i].priority, std::move(argsVector[i])));
+			*workers_[idx]->taskStates[handles[i]->getId()].lock() = TaskState::Pending;
+			if (!notified[idx]) {
+				workers_[idx]->cv.notify_one();
+				notified[idx] = true;
+			}
+		}
+
+		return handles;
 	}
 
 	std::shared_ptr<IHandle> DefaultThreadPool::submitCallable(std::function<std::any()> task, const TaskOptions& options) {
@@ -312,7 +362,7 @@ namespace spectra::core::concurrent {
 			// Execute task
 			try {
 				if (!task->handle->getIsCancelled()) {
-					std::visit([&](auto& t) {
+					std::visit([&]<typename T>(T& t) {
 						if constexpr (std::is_invocable_r_v<void, decltype(t), std::any>) {
 							t(std::move(task.value().params));
 						}
@@ -320,10 +370,10 @@ namespace spectra::core::concurrent {
 							t();
 						}
 						else if constexpr (std::is_invocable_r_v<std::any, decltype(t)>) {
-							std::dynamic_pointer_cast<TaskHandle<std::any>>(task->handle)->setResult(t());
+							std::dynamic_pointer_cast<TaskHandle>(task->handle)->result = t();
 						}
 						else if constexpr (std::is_invocable_r_v<std::any, decltype(t), std::any>) {
-							std::dynamic_pointer_cast<TaskHandle<std::any>>(task->handle)->setResult(t(std::move(task.value().params)));
+							std::dynamic_pointer_cast<TaskHandle>(task->handle)->result = t(std::move(task.value().params));
 						}
 						}, task->task);
 				}
