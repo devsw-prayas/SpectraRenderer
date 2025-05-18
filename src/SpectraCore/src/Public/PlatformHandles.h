@@ -24,10 +24,6 @@ namespace spectra::core::concurrent::handles {
 		int coreID = -1;
 		size_t stackSize = 0;
 		int numaNode = -1;
-
-		// Padding to ensure 64-byte alignment
-		char padding[64 - sizeof(numaNode) - sizeof(priority)
-			- sizeof(coreID) - sizeof(stackSize) - sizeof(name)];
 	};
 
 	// Helper class for platform - specific thread configuration
