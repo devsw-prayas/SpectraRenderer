@@ -255,7 +255,7 @@ namespace spectra::core::concurrent {
 		if (!isRunning() || isShutdown()) {
 			return std::make_shared<IHandle>(static_cast<size_t>(-1), true);
 		}
-		auto handle = std::make_shared<TaskHandle<std::any>>(generateTaskId(), false, nullptr);
+		auto handle = std::make_shared<TaskHandle>( generateTaskId(), false, nullptr );
 		size_t workerIndex;
 		if (options.numaNodeAffinity >= 0) {
 			workerIndex = selectWorkerByNumaNode(options.numaNodeAffinity);
