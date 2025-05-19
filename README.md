@@ -30,6 +30,7 @@ Spectra/
 │   │── SpectraVulkanBackend/     # Vulkan Backend
 │   │── SpectraUI/                # UI Toolkit (ImGui Wrapper & Submodules)
 │── common/                       # Shared Headers & Utilities
+|   |── SpectraSTl                # Rewrite of the Standard Template Library for high performance rendering
 │── docs/                         # Documentation & Design Notes
 │── README.md                     # Project Readme
 │── .gitignore                     # Git Ignore File
