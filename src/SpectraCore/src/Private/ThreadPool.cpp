@@ -153,7 +153,7 @@ namespace spectra::core::concurrent {
 		if (!isRunning() || isShutdown()) {
 			return std::make_shared<IHandle>(static_cast<size_t>(-1), true);
 		}
-		auto handle = std::make_shared<IHandle>(generateTaskId(), false);
+		auto handle = std::make_shared<ActionHandle>(generateTaskId(), false);
 		size_t workerIndex;
 
 		if (options.numaNodeAffinity >= 0) {
@@ -177,7 +177,7 @@ namespace spectra::core::concurrent {
 			std::vector<std::shared_ptr<IHandle>> handles;
 			handles.reserve(tasks.size());
 			for (size_t i = 0; i < tasks.size(); ++i) {
-				handles.emplace_back(std::make_shared<IHandle>(static_cast<uint64_t>(-1), true));
+				handles.emplace_back(std::make_shared<ActionHandle>(static_cast<uint64_t>(-1), true));
 			}
 			return handles;
 		}
@@ -226,12 +226,12 @@ namespace spectra::core::concurrent {
 		return handles;
 	}
 
-	std::shared_ptr<IHandle> DefaultThreadPool::submit(std::function<void(std::any)> task, std::any args, const TaskOptions& options) {
-		if (!isRunning() || isShutdown())
-			return std::make_shared <IHandle>(static_cast<size_t>(-1), true);
-		auto handle = std::make_shared<IHandle>(generateTaskId(), false);
+	std::shared_ptr<IHandle> DefaultThreadPool::submitCallable(std::function<std::any()> task, const TaskOptions& options) {
+		if (!isRunning() || isShutdown()) {
+			return std::make_shared<IHandle>(static_cast<size_t>(-1), true);
+		}
+		auto handle = std::make_shared<TaskHandle>( generateTaskId(), false, nullptr );
 		size_t workerIndex;
-
 		if (options.numaNodeAffinity >= 0) {
 			workerIndex = selectWorkerByNumaNode(options.numaNodeAffinity);
 		}
@@ -240,19 +240,20 @@ namespace spectra::core::concurrent {
 		}
 		{
 			std::lock_guard<std::mutex> locker(workers_[workerIndex]->mutex);
-			workers_[workerIndex]->queue.push(TaskEntry(handle, std::move(task), options.priority, std::move(args)));
+			workers_[workerIndex]->queue.push(TaskEntry(handle, std::move(task), options.priority));
 			*workers_[workerIndex]->taskStates[handle->getId()].lock() = TaskState::Pending;
 		}
+
 		workers_[workerIndex]->cv.notify_one();
 		return handle;
 	}
 
-	std::vector<std::shared_ptr<IHandle>> DefaultThreadPool::submitBatch(std::vector<std::function<void(std::any)>> tasks, std::vector<std::any> argsVector, std::vector<TaskOptions>& options) {
+	std::vector<std::shared_ptr<IHandle>> DefaultThreadPool::submitBatchCallable(std::vector<std::function<std::any()>> tasks, std::vector<TaskOptions>& options) {
 		if (!isRunning() || isShutdown()) {
 			std::vector<std::shared_ptr<IHandle>> handles;
 			handles.reserve(tasks.size());
 			for (size_t i = 0; i < tasks.size(); ++i) {
-				handles.emplace_back(std::make_shared<IHandle>(static_cast<uint64_t>(-1), true));
+				handles.emplace_back(std::make_shared<ActionHandle>(static_cast<uint64_t>(-1), true));
 			}
 			return handles;
 		}
@@ -290,7 +291,7 @@ namespace spectra::core::concurrent {
 		for (size_t i = 0; i < size; ++i) {
 			size_t idx = workerIndices[i];
 			std::lock_guard<std::mutex> locker(workers_[idx]->mutex);
-			workers_[idx]->queue.push(TaskEntry(handles[i], std::move(tasks[i]), options[i].priority, std::move(argsVector[i])));
+			workers_[idx]->queue.push(TaskEntry(handles[i], std::move(tasks[i]), options[i].priority));
 			*workers_[idx]->taskStates[handles[i]->getId()].lock() = TaskState::Pending;
 			if (!notified[idx]) {
 				workers_[idx]->cv.notify_one();
@@ -299,32 +300,6 @@ namespace spectra::core::concurrent {
 		}
 
 		return handles;
-	}
-
-	std::shared_ptr<IHandle> DefaultThreadPool::submitCallable(std::function<std::any()> task, const TaskOptions& options) {
-		if (!isRunning() || isShutdown()) {
-			return std::make_shared<IHandle>(static_cast<size_t>(-1), true);
-		}
-		auto handle = std::make_shared<TaskHandle>( generateTaskId(), false, nullptr );
-		size_t workerIndex;
-		if (options.numaNodeAffinity >= 0) {
-			workerIndex = selectWorkerByNumaNode(options.numaNodeAffinity);
-		}
-		else {
-			workerIndex = findLeastBusyWorker();
-		}
-		{
-			std::lock_guard<std::mutex> locker(workers_[workerIndex]->mutex);
-			workers_[workerIndex]->queue.push(TaskEntry(handle, std::move(task), options.priority));
-			*workers_[workerIndex]->taskStates[handle->getId()].lock() = TaskState::Pending;
-		}
-
-		workers_[workerIndex]->cv.notify_one();
-		return handle;
-	}
-
-	std::shared_ptr<IHandle> DefaultThreadPool::submitBatchCallable(std::vector<std::function<std::any()>> tasks, std::vector<TaskOptions>& options) {
-		return std::shared_ptr<IHandle>{};
 	}
 
 	void DefaultThreadPool::execute(std::function<void()> task) {
