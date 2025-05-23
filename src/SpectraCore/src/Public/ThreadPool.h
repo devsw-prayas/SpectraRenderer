@@ -318,18 +318,6 @@ namespace spectra::core::concurrent {
 		std::shared_ptr<IHandle> submit(std::function<void()> task, const TaskOptions& options = {}) override;
 		std::vector<std::shared_ptr<IHandle>> submitBatch(std::vector<std::function<void()>> tasks, const std::vector<TaskOptions>& options) override;
 
-		template<typename... Params>
-		std::shared_ptr<IHandle> submit(std::function<void(Params&&...)> task, const TaskOptions& options, Params&&... params) {
-			using TupleType = std::tuple<std::decay_t<Params>...>;
-			auto argTuple = std::make_shared<TupleType>(std::forward<Params>(params)...);
-
-			auto wrapper = [task = std::move(task), argTuple](std::any a) {
-				auto& tup = *std::any_cast<std::shared_ptr<TupleType>>(&a);
-				std::apply(task, std::move(tup));
-				};
-			return submit(wrapper, argTuple, options);
-		}
-
 		template<typename T>
 		std::shared_ptr<IHandle> submit(std::function<T()> task, const TaskOptions& options = {}) {
 			auto handle = std::make_shared<TaskHandle<T>>(generateTaskId(), false, T{});

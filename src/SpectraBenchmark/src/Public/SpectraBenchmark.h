@@ -4,7 +4,6 @@
 #endif
 void SPEC_BENCHMARK Init();
 
-#include <string>
 #include <thread>
 #include <mutex>
 #include <atomic>
