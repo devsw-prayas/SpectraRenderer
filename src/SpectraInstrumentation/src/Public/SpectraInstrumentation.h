@@ -24,52 +24,35 @@
 #include <mutex>
 #include <deque>
 
-	/** @namespace spectra::instrumentation
-		@brief Namespace for logging and instrumentation utilities within the Spectra framework. */
 namespace spectra::instrumentation {
-	/** @enum E_LogOutput
-		@brief Specifies possible output destinations for log messages. */
+
 	enum class SPEC_INSTRUMENTATION E_LogOutput : uint8_t {
 		NONE = 0,           /**< No output destination. */
 		CONSOLE = 1 << 0,   /**< Output to console. */
 		FILE = 1 << 1       /**< Output to file. */
 	};
 
-	/** @brief Bitwise OR operator for combining E_LogOutput values.
-		@param lhs Left-hand side operand.
-		@param rhs Right-hand side operand.
-		@return Combined E_LogOutput value. */
 	inline E_LogOutput operator|(E_LogOutput lhs, E_LogOutput rhs) {
 		return static_cast<E_LogOutput>(static_cast<uint32_t>(lhs) | static_cast<uint32_t>(rhs));
 	}
 
-	/** @brief Bitwise AND operator for checking E_LogOutput flags.
-		@param lhs Left-hand side operand.
-		@param rhs Right-hand side operand.
-		@return Resulting E_LogOutput value after applying AND operation. */
 	inline E_LogOutput operator&(E_LogOutput lhs, E_LogOutput rhs) {
 		return static_cast<E_LogOutput>(static_cast<uint32_t>(lhs) & static_cast<uint32_t>(rhs));
 	}
 
-	/** @enum E_LogLevel
-		@brief Defines severity levels for log messages. */
 	enum class SPEC_INSTRUMENTATION E_LogLevel : uint8_t {
-		DEBUG_ = 0,   /**< Debug-level message for detailed diagnostics. */
-		INFO_ = 1,    /**< Informational message for general status updates. */
-		WARNING_ = 2, /**< Warning message indicating potential issues. */
-		ERROR_ = 3    /**< Error message indicating a failure or critical issue. */
+		DEBUG_ = 0,   
+		INFO_ = 1,    
+		WARNING_ = 2, 
+		ERROR_ = 3    
 	};
 
-	/** @enum E_LogComponent
-		@brief Identifies logging components within the Spectra framework. */
 	enum class SPEC_INSTRUMENTATION E_LogComponent : uint8_t {
 		MATH,      /**< Mathematical operations component. */
 		BENCHMARK,  /**< Performance benchmarking component. */
 		CORE /**< Core framework component. */
 	};
 
-	/** @class LogEntry
-		@brief Represents a single log entry with associated metadata. */
 	class SPEC_INSTRUMENTATION LogEntry {
 	public:
 		std::string timestamp;            /**< Timestamp of the log entry. */
@@ -81,36 +64,19 @@ namespace spectra::instrumentation {
 		std::vector<std::string> formattedArgs; /**< Formatted arguments associated with the message. */
 		bool isColored;                   /**< Flag indicating if the log should be colored in console output. */
 
-		/** @brief Constructs a log entry with the specified parameters.
-			@param ts Timestamp of the log entry.
-			@param lvl Log severity level.
-			@param lib Library name.
-			@param comp Component name.
-			@param subComp Sub-component name.
-			@param msg Log message.
-			@param args Formatted arguments.
-			@param isColored Whether to apply color formatting. */
+		
 		LogEntry(std::string ts, E_LogLevel lvl, const std::string& lib, const std::string& comp,
 			const std::string& subComp, const std::string& msg, const std::vector<std::string>& args, bool isColored);
 
-		/** @brief Converts the log entry to a plain string representation.
-			@return String representation of the log entry. */
 		[[nodiscard]] std::string toString() const;
 
-		/** @brief Converts the log entry to a colored string representation for console output.
-			@return Colored string representation of the log entry. */
 		[[nodiscard]] std::string toColoredString() const;
 
 	private:
-		/** @brief Converts a log level to its string representation, optionally with color.
-			@param level Log severity level.
-			@param isColored Whether to apply color codes.
-			@return String representation of the log level. */
 		static std::string levelToString(E_LogLevel level, bool isColored);
 	};
 
-	/** @class LogHistory
-		@brief Manages a history of log entries with a fixed maximum size. */
+	
 	class SPEC_INSTRUMENTATION LogHistory {
 	private:
 		static constexpr size_t MAX_HISTORY_SIZE = 100; /**< Maximum number of log entries to retain. */
@@ -118,54 +84,31 @@ namespace spectra::instrumentation {
 		mutable std::mutex historyMutex;                /**< Mutex for thread-safe access to history. */
 
 	public:
-		/** @brief Adds a log entry to the history, removing the oldest if exceeding capacity.
-			@param entry Log entry to add. */
 		void addLog(const LogEntry& entry);
 
-		/** @brief Retrieves the log history as a vector of strings.
-			@return Vector of log entry strings. */
 		std::vector<std::string> getHistory() const;
 
-		/** @brief Retrieves the log history as a single formatted string.
-			@return Formatted string of the log history. */
 		std::string getHistoryAsString() const;
 	};
 
-	/** @class LoggedRuntimeError
-		@brief Exception class that includes log history with the error message. */
 	class SPEC_INSTRUMENTATION LoggedRuntimeError : public std::runtime_error {
 	private:
 		std::vector<std::string> history; /**< Log history associated with the error. */
 
 	public:
-		/** @brief Constructs an error with a message and associated log history.
-			@param message Error message.
-			@param logHistory Log history to include. */
 		LoggedRuntimeError(const std::string& message, const LogHistory& logHistory);
 
-		/** @brief Retrieves the log history associated with the error.
-			@return Vector of log entry strings. */
 		[[nodiscard]] const std::vector<std::string>& getLogHistory() const;
 
-		/** @brief Retrieves the full error message including log history.
-			@return Full error message string. */
 		[[nodiscard]] std::string getFullMessage() const;
 	};
 
-	/** @class I_Logger
-		@brief Abstract interface for logging functionality. */
-	class SPEC_INSTRUMENTATION I_Logger {
+	class SPEC_INSTRUMENTATION ILogger {
 	public:
-		I_Logger() = default;
-		virtual ~I_Logger() = default;
+		ILogger() = default;
+		virtual ~ILogger() = default;
 
 	protected:
-		/** @brief Internal method to process a log entry.
-			@param level Log severity level.
-			@param component Component name.
-			@param subComponent Sub-component name.
-			@param message Log message.
-			@param args Arguments to format into the log. */
 		virtual void logInternal(E_LogLevel level, const std::string& component, const std::string& subComponent,
 			const std::string& message, const std::vector<std::any>& args) = 0;
 
@@ -200,7 +143,7 @@ namespace spectra::instrumentation {
 
 		/** @class BaseLogger
 			@brief Concrete implementation of the I_Logger interface for logging operations. */
-		class SPEC_INSTRUMENTATION BaseLogger final : public I_Logger {
+		class SPEC_INSTRUMENTATION BaseLogger final : public ILogger {
 			std::string libraryName;                     /**< Name of the library this logger serves. */
 			bool enabled;                                /**< Flag indicating if logging is enabled. */
 			E_LogLevel minLevel;                         /**< Minimum log level to process. */
@@ -328,100 +271,54 @@ namespace spectra::instrumentation {
 		static BaseLogger coreLogger; 	/**< Logger instance for core Spectra operations. */
 
 	public:
-		/** @brief Retrieves the logger instance for a given component.
-			@param component Component to retrieve logger for.
-			@return Reference to the corresponding BaseLogger instance.
-			@throws std::invalid_argument If the component is unknown. */
 		static BaseLogger& getLogger(E_LogComponent component);
 
-	public:
-		/** @brief Logs a message with variadic arguments to a specified component.
-			@tparam Args Variadic argument types.
-			@param level Log severity level.
-			@param component Component name.
-			@param subComponent Sub-component name.
-			@param message Log message.
-			@param buffer Component to log to (MATH or BENCHMARK).
-			@param args Arguments to include in the log. */
 		template<typename... Args>
 		static void log(E_LogLevel level, const std::string& component, const std::string& subComponent,
 			const std::string& message, E_LogComponent buffer, Args&&... args) {
 			getLogger(buffer).log(level, component, subComponent, message, std::forward<Args>(args)...);
 		}
 
-		/** @brief Enables or disables logging for a component.
-			@param enable True to enable, false to disable.
-			@param component Component to configure. */
 		static void setEnabled(bool enable, E_LogComponent component) {
 			getLogger(component).setEnabled(enable);
 		}
 
-		/** @brief Checks if logging is enabled for a component.
-			@param component Component to query.
-			@return True if enabled, false otherwise. */
 		static bool isEnabled(E_LogComponent component) {
 			return getLogger(component).isEnabled();
 		}
 
-		/** @brief Sets the minimum log level for a component.
-			@param level Minimum log level.
-			@param component Component to configure. */
 		static void setMinLevel(E_LogLevel level, E_LogComponent component) {
 			getLogger(component).setMinLevel(level);
 		}
 
-		/** @brief Retrieves the minimum log level for a component.
-			@param component Component to query.
-			@return Current minimum log level. */
 		static E_LogLevel getMinLevel(E_LogComponent component) {
 			return getLogger(component).getMinLevel();
 		}
 
-		/** @brief Sets the output destinations for a component.
-			@param destinations Output destinations.
-			@param component Component to configure. */
 		static void setOutputDestinations(E_LogOutput destinations, E_LogComponent component) {
 			getLogger(component).setOutputDestinations(destinations);
 		}
 
-		/** @brief Retrieves the output destinations for a component.
-			@param component Component to query.
-			@return Current output destinations. */
 		static E_LogOutput getOutputDestinations(E_LogComponent component) {
 			return getLogger(component).getOutputDestinations();
 		}
 
-		/** @brief Retrieves the log count for a level and component.
-			@param level Log level to query.
-			@param component Component to query.
-			@return Number of logs at the specified level. */
 		static int getLogCount(E_LogLevel level, E_LogComponent component) {
 			return getLogger(component).getLogCount(level);
 		}
 
-		/** @brief Retrieves the total log count for a component.
-			@param component Component to query.
-			@return Total number of logs processed. */
 		static int getTotalLogCount(E_LogComponent component) {
 			return getLogger(component).getTotalLogCount();
 		}
-
-		/** @brief Flushes the log buffer synchronously for a component.
-			@param component Component to flush. */
+		
 		static void synchronousFlush(E_LogComponent component) {
 			getLogger(component).synchronousFlush();
 		}
 
-		/** @brief Sets the file location for log output for a component.
-			@param location New file path for logs.
-			@param component Component to configure. */
 		static void setOutputLocation(std::string& location, E_LogComponent component) {
 			getLogger(component).setOutputLocation(location);
 		}
 
-		/** @brief Enables or disables colored console output for a component.
-			@param value True to enable, false to disable.
-			@param component Component to configure. */
 		static void enableColoredConsole(bool value, E_LogComponent component) {
 			getLogger(component).enableColoredConsole(value);
 		}
