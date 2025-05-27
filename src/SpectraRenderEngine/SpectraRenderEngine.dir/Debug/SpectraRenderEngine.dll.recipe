@@ -2,19 +2,19 @@
 <Project>
   <ProjectOutputs>
     <ProjectOutput>
-      <FullPath>C:\StormWeaver\Development\Graphics  Programming\SpectraRenderer\x64\Debug\ZERO_CHECK</FullPath>
+      <FullPath>C:\StormWeaver\Development\Graphics Programming\SpectraRenderer\x64\Debug\ZERO_CHECK</FullPath>
     </ProjectOutput>
     <ProjectOutput>
-      <FullPath>C:\StormWeaver\Development\Graphics  Programming\SpectraRenderer\bin\Debug\SpectraDX12Backend.dll</FullPath>
+      <FullPath>C:\StormWeaver\Development\Graphics Programming\SpectraRenderer\bin\Debug\SpectraDX12Backend.dll</FullPath>
     </ProjectOutput>
     <ProjectOutput>
-      <FullPath>C:\StormWeaver\Development\Graphics  Programming\SpectraRenderer\bin\Debug\SpectraVulkanBackend.dll</FullPath>
+      <FullPath>C:\StormWeaver\Development\Graphics Programming\SpectraRenderer\bin\Debug\SpectraVulkanBackend.dll</FullPath>
     </ProjectOutput>
     <ProjectOutput>
-      <FullPath>C:\StormWeaver\Development\Graphics  Programming\SpectraRenderer\bin\Debug\SpectraRenderPipeline.dll</FullPath>
+      <FullPath>C:\StormWeaver\Development\Graphics Programming\SpectraRenderer\bin\Debug\SpectraRenderPipeline.dll</FullPath>
     </ProjectOutput>
     <ProjectOutput>
-      <FullPath>C:\StormWeaver\Development\Graphics  Programming\SpectraRenderer\bin\Debug\SpectraRenderEngine.dll</FullPath>
+      <FullPath>C:\StormWeaver\Development\Graphics Programming\SpectraRenderer\bin\Debug\SpectraRenderEngine.dll</FullPath>
     </ProjectOutput>
   </ProjectOutputs>
   <ContentFiles />

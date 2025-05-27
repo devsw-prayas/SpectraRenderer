@@ -185,11 +185,11 @@ DefaultCPUThreadFactory factory; // Adjust if your factory needs params
 
 // Test 1: Basic Single Task Execution
 void testBasicSingleTask() {
-	ThreadPoolExecutor::DefaultThreadPool pool(2, factory);
+	DefaultThreadPool pool(2, factory);
 	auto handle = pool.submit([]() {
 		sleepAndPrint("Task running: I’m alive!");
 		});
-	sleepAndPrint("Submitted task with ID: " + std::to_string(handle->id));
+	sleepAndPrint("Submitted task with ID: " + std::to_string(handle->getId()));
 	std::this_thread::sleep_for(200ms); // Let it finish
 	auto state = pool.getTaskState(*handle);
 	std::cout << "Task state: " << static_cast<int>(state) << " (0=Pending, 1=Running, 2=Completed)\n";
@@ -201,12 +201,12 @@ void testBasicSingleTask() {
 
 // Test 2: Priority Sorting
 void testPrioritySorting() {
-	ThreadPoolExecutor::DefaultThreadPool pool(1, factory); // Single worker for order
+	DefaultThreadPool pool(1, factory); // Single worker for order
 	TaskOptions lowPrio{ 10 };  // Low urgency
 	TaskOptions highPrio{ 1 };  // High urgency
 	auto h1 = pool.submit([]() { sleepAndPrint("Low priority task (should be last)"); }, lowPrio);
 	auto h2 = pool.submit([]() { sleepAndPrint("High priority task (should be first)"); }, highPrio);
-	sleepAndPrint("Submitted tasks: Low ID=" + std::to_string(h1->id) + ", High ID=" + std::to_string(h2->id));
+	sleepAndPrint("Submitted tasks: Low ID=" + std::to_string(h1->getId()) + ", High ID=" + std::to_string(h2->getId()));
 	std::this_thread::sleep_for(300ms);
 	// Expect: High priority (1) prints first, then Low priority (10)
 	std::cout << "Sassy check: VIPs first, peasants last—did High beat Low?\n";
@@ -216,18 +216,18 @@ void testPrioritySorting() {
 
 // Test 3: External Cancellation Before Execution
 void testExternalCancellation() {
-	ThreadPoolExecutor::DefaultThreadPool pool(1, factory);
-	std::shared_ptr<ActionHandle> handle = std::make_shared<ActionHandle>(0, false);
+	DefaultThreadPool pool(1, factory);
+	std::shared_ptr<IHandle> handle = std::make_shared<ActionHandle>(0, false);
 	handle  = pool.submit([&handle]() {
 		std::this_thread::sleep_for(1s); // Simulate long task
-		if (handle->isCancelled) {
+		if (handle->getIsCancelled()) {
 			std::cout << "Task cancelled externally, not running!\n";
 			return;
 		}
 		sleepAndPrint("Task running: I should NOT see this!", 600ms);
 		});
-	sleepAndPrint("Submitted task ID: " + std::to_string(handle->id));
-	handle->isCancelled.store(true); // External cancel
+	sleepAndPrint("Submitted task ID: " + std::to_string(handle->getId()));
+	handle->setCancelled(true); // External cancel
 	sleepAndPrint("Cancelled task externally");
 	std::this_thread::sleep_for(100ms);
 	auto state = pool.getTaskState(*handle);
@@ -240,17 +240,17 @@ void testExternalCancellation() {
 
 // Test 4: Internal Cancellation via `cancel`
 void testInternalCancellation() {
-	ThreadPoolExecutor::DefaultThreadPool pool(1, factory);
-	auto handle = std::make_shared<ActionHandle>(0, false);
+	DefaultThreadPool pool(1, factory);
+	std::shared_ptr<IHandle> handle = std::make_shared<ActionHandle>(0, false);
 	handle = pool.submit([&handle]() {
 		std::this_thread::sleep_for(1s); // Simulate long task
-		if (handle->isCancelled) {
+		if (handle->getIsCancelled()) {
 			std::cout << "Task cancelled internally, not running!\n";
 			return;
 		}
 		sleepAndPrint("Task running: I should NOT see this!");
 		});
-	sleepAndPrint("Submitted task ID: " + std::to_string(handle->id));
+	sleepAndPrint("Submitted task ID: " + std::to_string(handle->getId()));
 	bool cancelled = pool.cancel(*handle);
 	sleepAndPrint("Cancel result: " + std::string(cancelled ? "true" : "false"));
 	std::this_thread::sleep_for(200ms);
@@ -264,16 +264,16 @@ void testInternalCancellation() {
 
 // Test 5: Batch Submission with Mixed Priorities
 void testBatchWithPriorities() {
-	ThreadPoolExecutor::DefaultThreadPool pool(1, factory);
+	DefaultThreadPool pool(1, factory);
 	std::vector<std::function<void()>> tasks = {
 		[]() { sleepAndPrint("Task 1: Priority 5"); },
 		[]() { sleepAndPrint("Task 2: Priority 1"); },
 		[]() { sleepAndPrint("Task 3: Priority 10"); }
 	};
 	std::vector<TaskOptions> options = {{5}, {10}, {1}};
-	auto handles = pool.submitBatch(std::move(tasks),options);
-	sleepAndPrint("Submitted batch with IDs: " + std::to_string(handles[0]->id) + ", " +
-		std::to_string(handles[1]->id) + ", " + std::to_string(handles[2]->id));
+	std::vector<std::shared_ptr<IHandle>> handles = pool.submitBatch(std::move(tasks),options);
+	sleepAndPrint("Submitted batch with IDs: " + std::to_string(handles[0]->getId()) + ", " +
+		std::to_string(handles[1]->getId()) + ", " + std::to_string(handles[2]->getId()));
 	std::this_thread::sleep_for(400ms);
 	// Expect: Order: Task 2 (1), Task 1 (5), Task 3 (10)
 	std::cout << "Sassy check: Batch priorities—did Task 2 cut the line?\n";
@@ -283,10 +283,10 @@ void testBatchWithPriorities() {
 
 // Test 6: Worker Distribution (No NUMA)
 void testWorkerDistribution() {
-	ThreadPoolExecutor::DefaultThreadPool pool(2, factory);
+	DefaultThreadPool pool(2, factory);
 	auto h1 = pool.submit([]() { sleepAndPrint("Task 1 on some worker"); });
 	auto h2 = pool.submit([]() { sleepAndPrint("Task 2 on some worker"); });
-	sleepAndPrint("Submitted tasks: " + std::to_string(h1->id) + ", " + std::to_string(h2->id));
+	sleepAndPrint("Submitted tasks: " + std::to_string(h1->getId()) + ", " + std::to_string(h2->getId()));
 	std::this_thread::sleep_for(200ms);
 	std::cout << "Active tasks: " << pool.getActiveTaskCount() << "\n";
 	std::cout << "Completed tasks: " << pool.getCompletedTaskCount() << "\n";
@@ -298,10 +298,10 @@ void testWorkerDistribution() {
 
 // Test 7: Shutdown Graceful
 void testGracefulShutdown() {
-	ThreadPoolExecutor::DefaultThreadPool pool(1, factory);
+	DefaultThreadPool pool(1, factory);
 	auto h1 = pool.submit([]() { sleepAndPrint("Task 1 running"); });
 	auto h2 = pool.submit([]() { sleepAndPrint("Task 2 running"); });
-	sleepAndPrint("Submitted tasks: " + std::to_string(h1->id) + ", " + std::to_string(h2->id));
+	sleepAndPrint("Submitted tasks: " + std::to_string(h1->getId()) + ", " + std::to_string(h2->getId()));
 	pool.shutdown();
 	sleepAndPrint("Shutdown initiated—letting tasks finish");
 	pool.awaitTermination(500ms);
@@ -312,10 +312,10 @@ void testGracefulShutdown() {
 
 // Test 8: Shutdown Now with Cancellation
 void testShutdownNow() {
-	ThreadPoolExecutor::DefaultThreadPool pool(1, factory);
+	DefaultThreadPool pool(1, factory);
 	auto h1 = pool.submit([]() { std::this_thread::sleep_for(1s); sleepAndPrint("Task 1 (shouldn’t finish)"); });
 	auto h2 = pool.submit([]() { sleepAndPrint("Task 2 (won’t run)"); });
-	sleepAndPrint("Submitted tasks: " + std::to_string(h1->id) + ", " + std::to_string(h2->id));
+	sleepAndPrint("Submitted tasks: " + std::to_string(h1->getId()) + ", " + std::to_string(h2->getId()));
 	std::this_thread::sleep_for(50ms); // Let one start
 	pool.shutdownNow();
 	sleepAndPrint("ShutdownNow called—killing everything");
@@ -329,10 +329,10 @@ void testShutdownNow() {
 
 // Test 9: Active and Completed Task Counts
 void testTaskCounts() {
-	ThreadPoolExecutor::DefaultThreadPool pool(2, factory);
+	DefaultThreadPool pool(2, factory);
 	auto h1 = pool.submit([]() { std::this_thread::sleep_for(200ms); sleepAndPrint("Task 1 running"); });
 	auto h2 = pool.submit([]() { sleepAndPrint("Task 2 running"); });
-	sleepAndPrint("Submitted tasks: " + std::to_string(h1->id) + ", " + std::to_string(h2->id));
+	sleepAndPrint("Submitted tasks: " + std::to_string(h1->getId()) + ", " + std::to_string(h2->getId()));
 	std::this_thread::sleep_for(100ms);
 	std::cout << "Active tasks: " << pool.getActiveTaskCount() << "\n";
 	std::this_thread::sleep_for(200ms);
@@ -345,7 +345,7 @@ void testTaskCounts() {
 
 // Test 10: Stress Test with Batch
 void testStressBatch() {
-	ThreadPoolExecutor::DefaultThreadPool pool(4, factory);
+	DefaultThreadPool pool(4, factory);
 	std::vector<std::function<void()>> tasks(100);
 	std::vector<TaskOptions> options(100);
 	for (int i = 0; i < 100; ++i) {

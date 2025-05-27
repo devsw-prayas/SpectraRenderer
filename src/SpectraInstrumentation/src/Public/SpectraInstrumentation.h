@@ -50,7 +50,8 @@ namespace spectra::instrumentation {
 	enum class SPEC_INSTRUMENTATION E_LogComponent : uint8_t {
 		MATH,      /**< Mathematical operations component. */
 		BENCHMARK,  /**< Performance benchmarking component. */
-		CORE /**< Core framework component. */
+		CORE, /**< Core framework component. */
+		STL /**< Spectra STL component. */
 	};
 
 	class SPEC_INSTRUMENTATION LogEntry {
@@ -269,6 +270,7 @@ namespace spectra::instrumentation {
 		static BaseLogger mathLogger;      /**< Logger instance for mathematical operations. */
 		static BaseLogger benchmarkLogger; /**< Logger instance for benchmarking. */
 		static BaseLogger coreLogger; 	/**< Logger instance for core Spectra operations. */
+		static BaseLogger stlLogger; /**< Logger instance for STL operations. */
 
 	public:
 		static BaseLogger& getLogger(E_LogComponent component);
@@ -328,6 +330,7 @@ namespace spectra::instrumentation {
 	inline Instrumentation::BaseLogger Instrumentation::mathLogger("spectra::math", "math_log.txt");
 	inline Instrumentation::BaseLogger Instrumentation::benchmarkLogger("spectra::benchmark", "benchmark_log.txt");
 	inline Instrumentation::BaseLogger Instrumentation::coreLogger("spectra::core", "core_log.txt");
+	inline Instrumentation::BaseLogger Instrumentation::stlLogger("spectra::stl", "stl_log.txt");	
 
 	inline const std::string Instrumentation::ANSI_COLOR_RED = "\033[31m";
 	inline const std::string Instrumentation::ANSI_COLOR_YELLOW = "\033[33m";

@@ -134,24 +134,24 @@ namespace spectra::core::concurrent {
 			});
 	}
 
-	bool DefaultThreadPool::cancel(IHandle& handle) {
-		if (handle.getId() == static_cast<size_t>(-1)) {
+	bool DefaultThreadPool::cancelAllPending() const {
+		if (isShutdown() || isTerminated()) {
 			return false;
 		}
-		return std::ranges::any_of(workers_, [&handle](const std::unique_ptr<Worker>& worker) {
+		for (auto& worker : workers_) {
 			std::lock_guard<std::mutex> locker(worker->mutex);
-			auto it = worker->taskStates.find(handle.getId());
-			if (it != worker->taskStates.end() && *it->second.lock() == TaskState::Pending || *it->second.lock() == TaskState::Running) {
-				handle.setCancelled(true);
-				return true;
+			for (TaskEntry entry : worker->queue) {
+				if (getTaskState(*entry.handle) == TaskState::Pending) {
+					entry.handle->setCancelled(true);
+				}
 			}
-			return false;
-			});
+		}
+		return true;
 	}
 
 	std::shared_ptr<IHandle> DefaultThreadPool::submit(std::function<void()> task, const TaskOptions& options) {
 		if (!isRunning() || isShutdown()) {
-			return std::make_shared<IHandle>(static_cast<size_t>(-1), true);
+			return std::make_shared<ActionHandle>(static_cast<size_t>(-1), true);
 		}
 		auto handle = std::make_shared<ActionHandle>(generateTaskId(), false);
 		size_t workerIndex;
@@ -187,7 +187,7 @@ namespace spectra::core::concurrent {
 		handles.reserve(tasks.size());
 		uint64_t baseId = taskIdCounter_.fetch_add(tasks.size(), std::memory_order_relaxed);
 		for (size_t i = 0; i < tasks.size(); ++i) {
-			handles.emplace_back(std::make_shared<IHandle>(baseId + i, false));
+			handles.emplace_back(std::make_shared<ActionHandle>(baseId + i, false));
 		}
 		size_t size = tasks.size();
 		// Scatter worker picks
@@ -228,9 +228,9 @@ namespace spectra::core::concurrent {
 
 	std::shared_ptr<IHandle> DefaultThreadPool::submitCallable(std::function<std::any()> task, const TaskOptions& options) {
 		if (!isRunning() || isShutdown()) {
-			return std::make_shared<IHandle>(static_cast<size_t>(-1), true);
+			return std::make_shared<ActionHandle>(static_cast<size_t>(-1), true);
 		}
-		auto handle = std::make_shared<TaskHandle>( generateTaskId(), false, nullptr );
+		auto handle = std::make_shared<TaskHandle>(generateTaskId(), false, nullptr);
 		size_t workerIndex;
 		if (options.numaNodeAffinity >= 0) {
 			workerIndex = selectWorkerByNumaNode(options.numaNodeAffinity);
@@ -253,7 +253,7 @@ namespace spectra::core::concurrent {
 			std::vector<std::shared_ptr<IHandle>> handles;
 			handles.reserve(tasks.size());
 			for (size_t i = 0; i < tasks.size(); ++i) {
-				handles.emplace_back(std::make_shared<ActionHandle>(static_cast<uint64_t>(-1), true));
+				handles.emplace_back(std::make_shared<TaskHandle>(static_cast<uint64_t>(-1), true, nullptr));
 			}
 			return handles;
 		}
@@ -263,7 +263,7 @@ namespace spectra::core::concurrent {
 		handles.reserve(tasks.size());
 		uint64_t baseId = taskIdCounter_.fetch_add(tasks.size(), std::memory_order_relaxed);
 		for (size_t i = 0; i < tasks.size(); ++i) {
-			handles.emplace_back(std::make_shared<IHandle>(baseId + i, false));
+			handles.emplace_back(std::make_shared<TaskHandle>(baseId + i, false, nullptr));
 		}
 		size_t size = tasks.size();
 		// Scatter worker picks
@@ -298,7 +298,6 @@ namespace spectra::core::concurrent {
 				notified[idx] = true;
 			}
 		}
-
 		return handles;
 	}
 
@@ -337,7 +336,7 @@ namespace spectra::core::concurrent {
 			// Execute task
 			try {
 				if (!task->handle->getIsCancelled()) {
-					std::visit([&]<typename T>(T& t) {
+					std::visit([&]<typename T>(T & t) {
 						if constexpr (std::is_invocable_r_v<void, decltype(t), std::any>) {
 							t(std::move(task.value().params));
 						}
@@ -350,7 +349,7 @@ namespace spectra::core::concurrent {
 						else if constexpr (std::is_invocable_r_v<std::any, decltype(t), std::any>) {
 							std::dynamic_pointer_cast<TaskHandle>(task->handle)->result = t(std::move(task.value().params));
 						}
-						}, task->task);
+					}, task->task);
 				}
 			}
 			catch (...) {

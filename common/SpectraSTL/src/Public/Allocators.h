@@ -1,5 +1,6 @@
 #pragma once
 #include "SpectraSTL.h"
+#include "SpectraInstrumentation.h"
 #include <new>
 
 namespace spectra::stl {
@@ -101,7 +102,10 @@ namespace spectra::stl {
 
 		void deallocate(T* p, size_t n) noexcept override{
 			if (n != 1) {
-				//TODO throwing error
+				instrumentation::Instrumentation::log(instrumentation::E_LogLevel::ERROR_,
+					"SpectraSTL", "BlockAllocator::allocate()",
+					"Attempted to deallocate non-block-sized object", 
+					instrumentation::E_LogComponent::STL);
 			}
 			Block* block = reinterpret_cast<Block*>(p);
 			block->next = free_list;

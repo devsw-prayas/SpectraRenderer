@@ -68,6 +68,7 @@ namespace spectra::instrumentation {
 		case E_LogComponent::BENCHMARK: return benchmarkLogger;
 		case E_LogComponent::MATH: return mathLogger;
 		case E_LogComponent::CORE: return coreLogger;
+		case E_LogComponent::STL: return stlLogger;
 		}
 		return coreLogger;
 	}

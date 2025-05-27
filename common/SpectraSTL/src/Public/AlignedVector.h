@@ -114,7 +114,7 @@ namespace spectra::stl {
             T* new_data = static_cast<T*>(allocator_.allocate(32, new_capacity * sizeof(T)));
             if (!new_data)
 				instrumentation::Instrumentation::log(instrumentation::E_LogLevel::ERROR_, "spectra::stl", "AlignedVector",
-					"Failed to allocate memory", instrumentation::E_LogComponent::CORE, LOCATION);
+					"Failed to allocate memory", instrumentation::E_LogComponent::STL, LOCATION);
             if (data_) {
                 memcpy(new_data, data_, size_ * sizeof(T));
                 aligned_free(data_);

@@ -14,6 +14,10 @@ desktop.ini
 *.app
 *.pdb
 *.idb
+*.exp
+*.obj
+*.recipe
+*.ilk
 
 # Build and intermediate files
 /build/

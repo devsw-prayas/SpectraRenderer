@@ -190,6 +190,20 @@ namespace spectra::core::concurrent {
 		}
 	};
 
+	struct Worker {
+		alignas(CACHE_LINE_SIZE)
+		WorkerHandle handle;              // ID, core, NUMA, counters
+		std::condition_variable cv;           // Nap time trigger
+		std::mutex mutex;                     // Queue guard
+		ThreadSafePriorityQueue<TaskEntry> queue; // Task stash
+		std::unordered_map<TaskID, std::weak_ptr<TaskState>> taskStates; // Task tracker
+		WorkerState state = WorkerState::Idle; // Nap or grind?
+
+		Worker(int core, int numa) : handle{ 0, core, numa, 0, 0 } {}
+		Worker() = default;
+	};
+
+
 	// =============================================
 	// Base Executor Interfaces
 	// =============================================
@@ -217,8 +231,9 @@ namespace spectra::core::concurrent {
 		virtual std::shared_ptr<IHandle> submit(std::function<void()> task,
 			const TaskOptions& options = {}) = 0;
 
-		virtual bool cancel(IHandle& handle) = 0;
 		virtual TaskState getTaskState(IHandle& handle) const = 0;
+
+		virtual bool cancelAllPending() const = 0;
 
 		virtual void shutdown() = 0;
 		virtual void shutdownNow() = 0;
@@ -259,8 +274,9 @@ namespace spectra::core::concurrent {
 		~ScheduledThreadExecutorService() override = default;
 		virtual std::shared_ptr<IHandle> schedule(std::function<void()> task,
 			const TaskOptions& options) = 0;
+		virtual std::vector<std::shared_ptr<IHandle>> scheduleBatch(std::vector<std::function<void()>> tasks,
+			const std::vector<TaskOptions>& options) = 0;
 
-		virtual bool cancel(IHandle& handle) = 0;
 		virtual bool delayAndCancel(IHandle& handle, Duration duration) = 0;
 		virtual TaskState getTaskState(IHandle& handle) const = 0;
 
@@ -274,9 +290,6 @@ namespace spectra::core::concurrent {
 		[[nodiscard]] virtual bool isTerminated() const noexcept = 0;
 		[[nodiscard]] virtual size_t getActiveTaskCount() const noexcept = 0;
 		[[nodiscard]] virtual size_t getCompletedTaskCount() const noexcept = 0;
-
-		virtual std::vector<std::shared_ptr<IHandle>> scheduleBatch(std::vector<std::function<void()>> tasks,
-			const std::vector<TaskOptions>& options) = 0;
 
 		ScheduledThreadExecutorService(const ScheduledThreadExecutorService&) = delete;
 		ScheduledThreadExecutorService& operator=(const ScheduledThreadExecutorService&) = delete;
@@ -295,14 +308,13 @@ namespace spectra::core::concurrent {
 		virtual std::shared_ptr<IHandle> scheduleCallable(std::function<std::any()> task,
 			const TaskOptions& options = {}) = 0;
 		virtual std::vector<std::shared_ptr<IHandle>> scheduleCallableBatch(std::vector<std::function<std::any()>> tasks,
-			std::vector<TaskOptions>& options) = 0;
+			const std::vector<TaskOptions>& options) = 0;
 	};
 
 	// =============================================
 	// MACROS
 	// =============================================
-	//TODO
-	//
+	// TODO...
 
 	// =============================================
 	// Thread Pool Implementations
@@ -319,19 +331,18 @@ namespace spectra::core::concurrent {
 		std::vector<std::shared_ptr<IHandle>> submitBatch(std::vector<std::function<void()>> tasks, const std::vector<TaskOptions>& options) override;
 
 		template<typename T>
-		std::shared_ptr<IHandle> submit(std::function<T()> task, const TaskOptions& options = {}) {
-			auto handle = std::make_shared<TaskHandle<T>>(generateTaskId(), false, T{});
+		std::shared_ptr<IHandle> call(std::function<T()> task, const TaskOptions& options = {}) {
 			return submitCallable(task, options);
 		}
 
 		template<typename T >
-		std::shared_ptr<IHandle> submitBatch(std::vector<std::function<T()>> tasks,
+		std::shared_ptr<std::shared_ptr<TaskHandle>> callBatch(std::vector<std::function<T()>> tasks,
 			std::vector<TaskOptions>& options) {
 			return submitBatchCallable(tasks, options);
 		}
 
-		bool cancel(IHandle& handle) override;
 		TaskState getTaskState(IHandle& handle) const override;
+		bool cancelAllPending() const override;
 		void shutdown() override;
 		void shutdownNow() override;
 		bool awaitTermination(Nanoseconds timeout = Nanoseconds::max()) override;
@@ -342,19 +353,6 @@ namespace spectra::core::concurrent {
 		size_t getCompletedTaskCount() const noexcept override;
 
 	private:
-		struct Worker {
-			alignas(CACHE_LINE_SIZE)
-				WorkerHandle handle;              // ID, core, NUMA, counters
-			std::condition_variable cv;           // Nap time trigger
-			std::mutex mutex;                     // Queue guard
-			ThreadSafePriorityQueue<TaskEntry> queue; // Task stash
-			std::unordered_map<TaskID, std::weak_ptr<TaskState>> taskStates; // Task tracker
-			WorkerState state = WorkerState::Idle; // Nap or grind?
-
-			Worker(int core, int numa) : handle{ 0, core, numa, 0, 0 } {}
-			Worker() = default;
-		};
-
 		void workerFunction(size_t workerIndex) const;
 		size_t findLeastBusyWorker() const;
 		size_t selectWorkerByNumaNode(int numaNode) const;
@@ -377,5 +375,68 @@ namespace spectra::core::concurrent {
 		std::atomic<uint64_t> taskIdCounter_{ 0 }; //Task ID counter
 		std::mutex shutdownMutex_;                 //Shutdown guard
 		std::condition_variable shutdownCV_;       //Shutdown trigger
+	};
+
+	class SPECTRA_CORE DefaultScheduledThreadPool final : public ScheduledThreadExecutorService {
+		public:
+			DefaultScheduledThreadPool(size_t numThreads, CPUThreadFactory& factory);
+			~DefaultScheduledThreadPool() override;
+
+			//ThreadServiceExecutor overrides
+			void execute(std::function<void()> task) override;
+			std::shared_ptr<IHandle> schedule(std::function<void()> task, const TaskOptions& options) override;
+			std::vector<std::shared_ptr<IHandle>> scheduleBatch(std::vector<std::function<void()>> tasks,
+				const std::vector<TaskOptions>& options = {}) override;
+
+			template<typename T>
+			std::shared_ptr<IHandle> scheduleCall(std::function<T()> task, const TaskOptions& options = {}){
+				return scheduleCallable(task, options);
+			}
+
+			template<typename T>
+			std::shared_ptr<IHandle> scheduleCallBatch(std::vector<std::function<T()>> tasks, 
+				const std::vector<TaskOptions>& options = {}){
+				return scheduleCallableBatch(tasks, options);
+			}
+			
+			bool delayAndCancel(IHandle& handle, Duration duration) override;
+			TaskState getTaskState(IHandle& handle) const override;
+
+			void shutdown() override;
+			void delayAndShutdown(Duration duration) override;
+
+			void shutdownNow() override;
+			bool awaitTermination(Nanoseconds timeout = Nanoseconds::max() ) override;
+
+			bool isRunning() const noexcept override;
+			bool isShutdown() const noexcept override;
+			bool isTerminated() const noexcept override;
+			size_t getActiveTaskCount() const noexcept override;
+			size_t getCompletedTaskCount() const noexcept override;
+
+		private:
+			void workerFunction(size_t workerIndex) const;
+			size_t findLeastBusyWorker() const;
+			size_t selectWorkerByNumaNode(int numaNode) const;
+			void buildNumaWorkerMap();
+			TaskID generateTaskId() noexcept override;
+			std::shared_ptr<IHandle> scheduleCallable(std::function<std::any()> task,
+				const TaskOptions& options = {}) override;
+			std::vector<std::shared_ptr<IHandle>> scheduleCallableBatch(std::vector<std::function<std::any()>> tasks,
+				const std::vector<TaskOptions>& options) override;
+			
+			std::vector<std::unique_ptr<Worker>> workers_;
+			std::vector<std::pair<WorkerID, handles::THREAD_VARIANT>> threads_;
+			std::unordered_map<int, std::vector<size_t>> numaToWorkers_;
+			mutable std::shared_mutex numaMapMutex_;
+
+			std::atomic<bool> isRunning_{false};
+			std::atomic<bool> isShutdown_{false};
+			std::atomic<bool> isTerminated_{false};
+			std::atomic<size_t> activeWorkers_{0};
+			std::atomic<uint64_t> taskIdCounter_{0};
+			std::mutex shutdownMutex_;
+			std::condition_variable shutdonCV_;
+
 	};
 }
