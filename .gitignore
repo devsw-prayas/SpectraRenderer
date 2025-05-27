@@ -16,8 +16,9 @@ desktop.ini
 *.idb
 *.exp
 *.obj
-*.recipe
+*.dll.recipe
 *.ilk
+*.recipe
 
 # Build and intermediate files
 /build/
