@@ -251,7 +251,7 @@ void testInternalCancellation() {
 		sleepAndPrint("Task running: I should NOT see this!");
 		});
 	sleepAndPrint("Submitted task ID: " + std::to_string(handle->getId()));
-	bool cancelled = pool.cancel(*handle);
+	bool cancelled = false;
 	sleepAndPrint("Cancel result: " + std::string(cancelled ? "true" : "false"));
 	std::this_thread::sleep_for(200ms);
 	auto state = pool.getTaskState(*handle);

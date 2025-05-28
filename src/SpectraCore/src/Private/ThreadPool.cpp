@@ -134,20 +134,7 @@ namespace spectra::core::concurrent {
 			});
 	}
 
-	bool DefaultThreadPool::cancelAllPending() const {
-		if (isShutdown() || isTerminated()) {
-			return false;
-		}
-		for (auto& worker : workers_) {
-			std::lock_guard<std::mutex> locker(worker->mutex);
-			for (TaskEntry entry : worker->queue) {
-				if (getTaskState(*entry.handle) == TaskState::Pending) {
-					entry.handle->setCancelled(true);
-				}
-			}
-		}
-		return true;
-	}
+	
 
 	std::shared_ptr<IHandle> DefaultThreadPool::submit(std::function<void()> task, const TaskOptions& options) {
 		if (!isRunning() || isShutdown()) {
