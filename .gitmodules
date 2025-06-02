@@ -1,0 +1,4 @@
+[submodule "common/Instrumenta"]
+	path = common/Instrumenta
+	url = https://github.com/devsw-prayas/Instrumenta
+	branch = bleeding-edge

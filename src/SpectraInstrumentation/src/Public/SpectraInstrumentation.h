@@ -12,8 +12,7 @@
 
 #ifndef LOCATION
 #define LOCATION "Line Number: " + std::to_string(__LINE__), "Function call: " + std::string(__FUNCSIG__), "File: " + std::string(__FILE__)
-/** @brief Attempts to define a macro for embedding file, function, and line information as formatted strings.
-	@note This macro is invalid due to runtime operations in a preprocessor context; see implementation notes for correction. */
+/** @brief Defines a macro for embedding file, function, and line information as formatted strings. */
 #endif
 
 #include <string>
