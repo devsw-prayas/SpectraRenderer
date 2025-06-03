@@ -12,8 +12,14 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin/$<CONFIG>)
 # Force the linker to look inside the bin directory also
 link_directories(${CMAKE_SOURCE_DIR}/bin/$<CONFIG>)
 
+option(INSTRUMENTA_STANDALONE "If ON, each module builds its own Instrumenta copy" OFF)
+set(INSTRUMENTA_STANDALONE ${INSTRUMENTA_STANDALONE} CACHE BOOL "Instrumenta standalone mode" FORCE)
+
+
 # Include subprojects
 add_subdirectory(common/Instrumenta)
+add_subdirectory(common/Blaze)
+add_subdirectory(common/devswSTL)
 add_subdirectory(src/SpectraDX12Backend)
 add_subdirectory(src/SpectraVulkanBackend)
 add_subdirectory(src/SpectraInstrumentation)
@@ -28,6 +34,32 @@ add_subdirectory(src/SpectraRenderPipeline)
 add_subdirectory(src/SpectraUI)
 
 include_directories(common)
+
+# Common Libraries
+set_target_properties(Blaze PROPERTIES FOLDER "Common")
+set_target_properties(devswSTL PROPERTIES FOLDER "Common")
+set_target_properties(Instrumenta PROPERTIES FOLDER "Common")
+
+# Engine Modules
+set_target_properties(SpectraCore PROPERTIES FOLDER "Engine")
+set_target_properties(SpectraRenderEngine PROPERTIES FOLDER "Engine")
+set_target_properties(SpectraRenderPipeline PROPERTIES FOLDER "Engine")
+set_target_properties(SpectraMaterials PROPERTIES FOLDER "Engine")
+set_target_properties(SpectraDX12Backend PROPERTIES FOLDER "Engine")
+set_target_properties(SpectraVulkanBackend PROPERTIES FOLDER "Engine")
+
+# Editor
+set_target_properties(SpectraEditor PROPERTIES FOLDER "Editor")
+
+# Launcher
+set_target_properties(SpectraLauncher PROPERTIES FOLDER "Launcher")
+
+# Tools
+set_target_properties(SpectraBenchmark PROPERTIES FOLDER "Tools")
+
+# UI
+set_target_properties(SpectraUI PROPERTIES FOLDER "UI")
+
 
 if (MSVC)
 	add_compile_options(/MP)  # Enables multi-core compilation
