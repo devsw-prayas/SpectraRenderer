@@ -2,3 +2,11 @@
 	path = common/Instrumenta
 	url = https://github.com/devsw-prayas/Instrumenta
 	branch = bleeding-edge
+[submodule "common/Blaze"]
+	path = common/Blaze
+	url = https://github.com/devsw-prayas/Blaze
+	branch = bleeding-edge
+[submodule "common/devswSTL"]
+	path = common/devswSTL
+	url = https://github.com/devsw-prayas/devswSTL
+	branch = bleeding-edge

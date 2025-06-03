@@ -13,19 +13,19 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin/$<CONFIG>)
 link_directories(${CMAKE_SOURCE_DIR}/bin/$<CONFIG>)
 
 # Include subprojects
-add_subdirectory(common/SpectraSTL)
-
-add_subdirectory(src/SpectraEditor)
+add_subdirectory(common/Instrumenta)
 add_subdirectory(src/SpectraDX12Backend)
+add_subdirectory(src/SpectraVulkanBackend)
+add_subdirectory(src/SpectraInstrumentation)
+add_subdirectory(src/SpectraBenchmark)
+add_subdirectory(src/SpectraCore)
+add_subdirectory(common/SpectraSTL)
+add_subdirectory(src/SpectraEditor)
 add_subdirectory(src/SpectraLauncher)
 add_subdirectory(src/SpectraMaterials)
 add_subdirectory(src/SpectraRenderEngine)
 add_subdirectory(src/SpectraRenderPipeline)
 add_subdirectory(src/SpectraUI)
-add_subdirectory(src/SpectraVulkanBackend)
-add_subdirectory(src/SpectraCore)
-add_subdirectory(src/SpectraInstrumentation)
-add_subdirectory(src/SpectraBenchmark)
 
 include_directories(common)
 
