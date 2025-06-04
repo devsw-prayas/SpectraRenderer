@@ -5,4 +5,4 @@ include_directories(src/Public)
 add_library(SpectraBenchmark SHARED 
 src/Private/SpectraBenchmark.cpp src/Public/SpectraBenchmark.h )
 
-target_link_libraries(SpectraBenchmark SpectraInstrumentation)
+target_link_libraries(SpectraBenchmark SpectraInstrumentation Instrumenta)

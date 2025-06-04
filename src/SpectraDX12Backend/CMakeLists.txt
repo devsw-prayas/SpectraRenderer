@@ -6,3 +6,5 @@ add_library(SpectraDX12Backend SHARED
 )
 
 target_include_directories(SpectraDX12Backend PUBLIC src/Public)
+
+target_link_libraries(SpectraDX12Backend Instrumenta)

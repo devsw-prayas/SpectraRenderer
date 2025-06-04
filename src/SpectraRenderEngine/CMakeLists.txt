@@ -7,4 +7,4 @@ add_library(SpectraRenderEngine SHARED
 
 target_include_directories(SpectraRenderEngine PUBLIC src/Public)
 
-target_link_libraries(SpectraRenderEngine SpectraRenderPipeline)
+target_link_libraries(SpectraRenderEngine SpectraRenderPipeline Instrumenta)

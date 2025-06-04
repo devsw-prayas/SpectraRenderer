@@ -1,6 +1,5 @@
 #pragma once
 #include <variant>
-
 #include "SpectraInstrumentation.h"
 #include "SpectraCore.h"
 

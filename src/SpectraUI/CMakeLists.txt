@@ -28,4 +28,11 @@ target_link_libraries(SpectraUI
     SpectraNodes 
     SpectraViewports 
     SpectraWidgets
+    Instrumenta
 )
+
+set_target_properties(SpectraEditors PROPERTIES FOLDER "UI")
+set_target_properties(SpectraImGuiWrapper PROPERTIES FOLDER "UI")
+set_target_properties(SpectraNodes PROPERTIES FOLDER "UI")
+set_target_properties(SpectraViewports PROPERTIES FOLDER "UI")
+set_target_properties(SpectraWidgets PROPERTIES FOLDER "UI")

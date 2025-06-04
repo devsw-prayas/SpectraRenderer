@@ -134,7 +134,9 @@ namespace spectra::core::concurrent {
 			});
 	}
 
-	
+	bool DefaultThreadPool::cancelAllPending() const {
+		return false; //TODO
+	}
 
 	std::shared_ptr<IHandle> DefaultThreadPool::submit(std::function<void()> task, const TaskOptions& options) {
 		if (!isRunning() || isShutdown()) {

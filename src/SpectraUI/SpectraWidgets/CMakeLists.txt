@@ -7,4 +7,4 @@ add_library(SpectraWidgets SHARED
 
 target_include_directories(SpectraWidgets PUBLIC src/Public)
 
-target_link_libraries(SpectraWidgets SpectraImGuiWrapper)
+target_link_libraries(SpectraWidgets SpectraImGuiWrapper Instrumenta)

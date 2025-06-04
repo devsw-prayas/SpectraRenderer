@@ -44,8 +44,8 @@ namespace spectra::instrumentation {
 		case E_LogLevel::INFO_: return Instrumentation::ANSI_COLOR_GREEN;
 		case E_LogLevel::WARNING_: return Instrumentation::ANSI_COLOR_YELLOW;
 		case E_LogLevel::ERROR_: return Instrumentation::ANSI_COLOR_RED;
-		default: return Instrumentation::ANSI_COLOR_RESET;
 		}
+		return Instrumentation::ANSI_COLOR_RESET;
 	}
 
 	/** @brief Constructs a log entry with the specified parameters.
@@ -124,7 +124,6 @@ namespace spectra::instrumentation {
 			case E_LogLevel::INFO_: return Instrumentation::ANSI_COLOR_GREEN + "INFO_" + Instrumentation::ANSI_COLOR_RESET;
 			case E_LogLevel::WARNING_: return Instrumentation::ANSI_COLOR_YELLOW + "WARNING_" + Instrumentation::ANSI_COLOR_RESET;
 			case E_LogLevel::ERROR_: return Instrumentation::ANSI_COLOR_RED + "ERROR_" + Instrumentation::ANSI_COLOR_RESET;
-			default: return "UNKNOWN";
 			}
 		}
 		else {
@@ -133,9 +132,9 @@ namespace spectra::instrumentation {
 			case E_LogLevel::INFO_: return "INFO_";
 			case E_LogLevel::WARNING_: return "WARNING_";
 			case E_LogLevel::ERROR_: return "ERROR_";
-			default: return "UNKNOWN";
 			}
 		}
+		return "UNKNOWN";
 	}
 
 	/** @brief Adds a log entry to the history, maintaining a maximum size.

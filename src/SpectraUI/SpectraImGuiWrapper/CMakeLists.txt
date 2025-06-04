@@ -6,3 +6,5 @@ add_library(SpectraImGuiWrapper SHARED
 )
 
 target_include_directories(SpectraImGuiWrapper PUBLIC src/Public)
+
+target_link_libraries(SpectraImGuiWrapper Instrumenta)

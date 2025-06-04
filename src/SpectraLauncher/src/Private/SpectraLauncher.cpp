@@ -218,7 +218,7 @@ void testPrioritySorting() {
 void testExternalCancellation() {
 	DefaultThreadPool pool(1, factory);
 	std::shared_ptr<IHandle> handle = std::make_shared<ActionHandle>(0, false);
-	handle  = pool.submit([&handle]() {
+	handle = pool.submit([&handle]() {
 		std::this_thread::sleep_for(1s); // Simulate long task
 		if (handle->getIsCancelled()) {
 			std::cout << "Task cancelled externally, not running!\n";
@@ -270,8 +270,8 @@ void testBatchWithPriorities() {
 		[]() { sleepAndPrint("Task 2: Priority 1"); },
 		[]() { sleepAndPrint("Task 3: Priority 10"); }
 	};
-	std::vector<TaskOptions> options = {{5}, {10}, {1}};
-	std::vector<std::shared_ptr<IHandle>> handles = pool.submitBatch(std::move(tasks),options);
+	std::vector<TaskOptions> options = { {5}, {10}, {1} };
+	std::vector<std::shared_ptr<IHandle>> handles = pool.submitBatch(std::move(tasks), options);
 	sleepAndPrint("Submitted batch with IDs: " + std::to_string(handles[0]->getId()) + ", " +
 		std::to_string(handles[1]->getId()) + ", " + std::to_string(handles[2]->getId()));
 	std::this_thread::sleep_for(400ms);
@@ -324,7 +324,6 @@ void testShutdownNow() {
 	std::cout << "Task 2 state: " << static_cast<int>(pool.getTaskState(*h2)) << "\n";
 	// Expect: Task 1 might run or cancel, Task 2 cancels, states = Cancelled (3)
 	std::cout << "Sassy check: Pool yanked the plug—did tasks get the axe?\n";
-
 }
 
 // Test 9: Active and Completed Task Counts
@@ -363,7 +362,7 @@ void testStressBatch() {
 	pool.awaitTermination();
 }
 
-int main() {
+void tests() {
 	// Uncomment one test to run manually
 	std::cout << "Single task run\n";
 	testBasicSingleTask();
@@ -387,5 +386,24 @@ int main() {
 	testStressBatch();
 
 	std::cout << "Pick a test, ya threading thrill-seeker! Uncomment and run!\n";
-	return 0;
+}
+
+#include "Instrumenta.h"
+
+int main() {
+	instrumenta::BaseLogger& logger = instrumenta::BaseLogger::getInstance();
+	logger.registerSink("console", instrumenta::LogSinkFactory::createConsoleSink());
+	logger.registerSink("file", instrumenta::LogSinkFactory::createFileSink("spectra_log.txt"));
+
+	instrumenta::Instrumentation& orchestrator = instrumenta::Instrumentation::getInstance();
+	orchestrator.registerLogger("Base", &logger);
+	try {
+		orchestrator.getLogger("Base")->log(instrumenta::E_LogLevel::ERROR_,
+			"Sample ", "Another one", "Hey there", "Tagged", LOCATION);
+	}
+	catch (instrumenta::LoggedRuntimeError& err) {
+		for (auto& s : err.getLogHistory()) {
+			std::cout << s;
+		}
+	}
 }
