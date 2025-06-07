@@ -11,6 +11,7 @@
 #include <atomic>
 #include "ThreadPool.h"  // Your header
 #include "ThreadFactory.h"  // Your header
+#include "Instrumentation.h"
 using namespace spectra::core::concurrent;
 
 void loggingTests() {
