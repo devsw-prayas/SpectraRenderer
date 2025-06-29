@@ -28,6 +28,7 @@ add_subdirectory(src/SpectraLauncher)
 add_subdirectory(src/SpectraMaterials)
 add_subdirectory(src/SpectraRenderEngine)
 add_subdirectory(src/SpectraRenderPipeline)
+add_subdirectory(src/SpectraPlatformRuntime)
 add_subdirectory(src/SpectraUI)
 
 include_directories(common)
@@ -57,6 +58,9 @@ set_target_properties(Kerbecs PROPERTIES FOLDER "Tools")
 
 # UI
 set_target_properties(SpectraUI PROPERTIES FOLDER "UI")
+
+# Platform Runtime
+set_target_properties(SpectraPlatformRuntime PROPERTIES FOLDER "PlatformRuntime")
 
 
 if (MSVC)

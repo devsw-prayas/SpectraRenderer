@@ -1,0 +1,4 @@
+cmake_minimum_required(VERSION 3.20)
+project(SpectraPlatformRuntime)
+add_library(SpectraPlatformRuntime SHARED src/Private/SpectraPlatformRuntime.cpp src/Public/SpectraPlatformRuntime.h)
+target_include_directories(SpectraPlatformRuntime PUBLIC src/Public)
