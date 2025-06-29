@@ -13,3 +13,4 @@
 [submodule "common/Kerbecs"]
 	path = common/Kerbecs
 	url = https://github.com/devsw-prayas/Kerbecs.git
+	branch = bleeding-edge
