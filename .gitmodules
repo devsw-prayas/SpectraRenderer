@@ -10,3 +10,6 @@
 	path = common/devswSTL
 	url = https://github.com/devsw-prayas/devswSTL
 	branch = bleeding-edge
+[submodule "common/Kerbecs"]
+	path = common/Kerbecs
+	url = https://github.com/devsw-prayas/Kerbecs.git

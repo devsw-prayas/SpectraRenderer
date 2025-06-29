@@ -12,20 +12,17 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin/$<CONFIG>)
 # Force the linker to look inside the bin directory also
 link_directories(${CMAKE_SOURCE_DIR}/bin/$<CONFIG>)
 
-option(INSTRUMENTA_STANDALONE "If ON, each module builds its own Instrumenta copy" OFF)
-set(INSTRUMENTA_STANDALONE ${INSTRUMENTA_STANDALONE} CACHE BOOL "Instrumenta standalone mode" FORCE)
-
-
 # Include subprojects
 add_subdirectory(common/Instrumenta)
 add_subdirectory(common/Blaze)
 add_subdirectory(common/devswSTL)
+add_subdirectory(common/Kerbecs)
+
 add_subdirectory(src/SpectraDX12Backend)
 add_subdirectory(src/SpectraVulkanBackend)
 add_subdirectory(src/SpectraInstrumentation)
 add_subdirectory(src/SpectraBenchmark)
 add_subdirectory(src/SpectraCore)
-add_subdirectory(common/SpectraSTL)
 add_subdirectory(src/SpectraEditor)
 add_subdirectory(src/SpectraLauncher)
 add_subdirectory(src/SpectraMaterials)
@@ -56,6 +53,7 @@ set_target_properties(SpectraLauncher PROPERTIES FOLDER "Launcher")
 
 # Tools
 set_target_properties(SpectraBenchmark PROPERTIES FOLDER "Tools")
+set_target_properties(Kerbecs PROPERTIES FOLDER "Tools")
 
 # UI
 set_target_properties(SpectraUI PROPERTIES FOLDER "UI")

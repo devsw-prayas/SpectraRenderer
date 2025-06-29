@@ -107,7 +107,7 @@ echo Step 3: Writing CMakeLists.txt...
     )
 ) > CMakeLists.txt || (echo Failed to write CMakeLists.txt! & goto :error)
 
-echo Ta-da! Your !BUILD_TYPE_NAME! project !PROJECT_NAME! is ready at !PROJECT_PATH!\!PROJECT_NAME!.
+echo Ta-da Your !BUILD_TYPE_NAME! project !PROJECT_NAME! is ready at !PROJECT_PATH!\!PROJECT_NAME!.
 echo To build, cd into !PROJECT_PATH!\!PROJECT_NAME!\build and run "cmake -B build . && cmake --build build"
 
 :loop_prompt
