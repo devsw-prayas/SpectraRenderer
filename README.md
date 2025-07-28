@@ -1,90 +1,106 @@
-# **📌 Spectra Render Engine**
+# 📌 Spectra Render Engine  
 *Ultra-High-Fidelity Render Engine for Still Images & Real-Time Rendering*
 
-## 🚀 Part of a 9-month graphics programming challenge to develop an industry-grade rendering engine.
+## 🚀 A Passion Project to Build a Bleeding-Edge, Industry-Grade Renderer from Scratch  
+Developed by: [Prayas Bharadwaj](https://www.linkedin.com/in/prayas-bharadwaj-053886323/)
 
-*📌 Developed by: [Prayas Bharadwaj](https://www.linkedin.com/in/prayas-bharadwaj-053886323/)*
+---
 
-## 🌟 Overview
-Spectra is a next-generation render engine designed for maximum quality rendering. It supports both real-time and software-based path-traced rendering, with an advanced material system, virtualized geometry, and a modular architecture.
+## 🌟 Overview  
+**Spectra** is a next-generation render engine designed for *ultra-high-fidelity* rendering. It powers both real-time and offline path-traced workflows with a spectral rendering core, a modular editor, custom threading, and a high-performance C++ backbone. Every component—from the renderer core to the scene editor—is handcrafted for speed, modularity, and clarity. Because who needs bloat when you can have brilliance?
 
-## 💡 Core Features:
+---
 
-Hybrid Rendering: DX12 & Vulkan backend with seamless switching.
-Ultra-High-Fidelity: Supports RTGI, PTGI, advanced materials, dynamic LOD, and high-performance shadows/reflections.
-Modular Architecture: Uses DLL-based components for flexibility and scalability.
-Powerful UI: ImGui-based custom UI toolkit with node-based material editing.
-Drag & Drop Editor: Place meshes, tweak materials, and build scenes effortlessly.
-## 📂 Project Structure
+## 💡 Core Features  
 
-``` bash
+- 🎯 **DirectX 12 Renderer**: Built directly on DX12 for low-level, high-performance rendering.  
+- 🌈 **Spectral Path Tracing**: Physically-based illumination with multi-wavelength simulation for that extra *ooh, shiny* factor.  
+- 🪓 **devswSTL**: A custom STL replacement with SIMD-accelerated containers to make your CPU sweat.  
+- 🔬 **Kerbecs**: Memory and thread sanitizer to keep your code squeaky clean and leak-free.  
+- 🧵 **Blaze**: NUMA-aware multithreading with lock-free task scheduling—because threads deserve to be free.  
+- 📦 **Modular System**: Runtime DLL loading for the editor, pipeline, materials, and backend. Plug and play, baby!  
+- 🛠 **ImGui-Based UI**: Custom node editors for materials and a drag-and-drop scene editor that’s smoother than your morning coffee.  
+- ⏱ **Instrumenta**: Internal profiler and metrics layer for CPU/GPU diagnostics. Know your bottlenecks before they know you.  
+
+---
+
+## 📂 Project Structure  
+
+```bash
 Spectra/
 │── CMakeLists.txt
 │── src/
 │   │── SpectraEditor/            # Main Editor (Uses UI & Render Engine)
 │   │── SpectraLauncher/          # Main Executable Entry Point
-│   │── SpectraRenderEngine/      # Core Render Engine (Uses Pipeline & Materials)
-│   │── SpectraRenderPipeline/    # Base API Wrapper (DX12 & Vulkan)
-│   │── SpectraMaterials/         # Material & Shader System
-│   │── SpectraDX12Backend/       # DirectX 12 Backend
-│   │── SpectraVulkanBackend/     # Vulkan Backend
-│   │── SpectraUI/                # UI Toolkit (ImGui Wrapper & Submodules)
-│── common/                       # Shared Headers & Utilities
-|   |── SpectraSTl                # Rewrite of the Standard Template Library for high performance rendering
-│── docs/                         # Documentation & Design Notes
-│── README.md                     # Project Readme
-│── .gitignore                     # Git Ignore File
-│── .github/                        # GitHub Workflows & Issues Templates
-
+│   │── SpectraRenderEngine/      # Core Render Engine (PTGI, RTGI, Pipeline)
+│   │── SpectraRenderPipeline/    # DX12 API Layer & Command Abstractions
+│   │── SpectraMaterials/         # Material Graph, Shader Authoring & Compilation
+│   │── SpectraDX12Backend/       # DirectX 12 Backend (Low-level device layer)
+│   │── SpectraUI/                # ImGui-based UI Toolkit & Node Graph Editor
+│
+│── common/
+│   │── devswSTL/                 # STL Rewrite (SIMD containers, allocators, traits)
+│   │── Blaze/                    # Multithreading & Fiber Framework
+│   │── Kerbecs/                  # Memory & Thread Sanitizer
+│   │── Instrumenta/              # Profiling, Metrics & Debug Hooks
+│
+│── docs/                         # Design Papers, Diagrams, Planning Notes
+│── README.md
+│── .gitignore
+│── .github/                      # GitHub Actions & Issue Templates
 ```
-## 🛠️ Setup & Build Instructions
-### 📌 Requirements
-C++ 20 Compiler (MSVC recommended)
-CMake 3.20+
-Visual Studio 2022
-Windows SDK & Vulkan SDK
 
-## 🔧 Build Steps
-Clone the Repository
+---
 
-~~~bash
-git clone https://github.com/devsw-prayas/Spectra.git
-cd Spectra
-~~~
+## 🛠️ Setup & Build Instructions  
 
-Generate Project Files (CMake)
+### 📌 Requirements  
+- C++20 Compiler (MSVC recommended, because we’re fancy like that)  
+- CMake 3.20+  
+- Visual Studio 2022  
+- Windows SDK  
 
-~~~bash
-mkdir build
-cd build
-cmake .. -G "Visual Studio 17 2022"
-~~~
+### 🔧 Build Steps  
+1. Clone the repository:  
+   ```bash
+   git clone https://github.com/devsw-prayas/Spectra.git
+   cd Spectra
+   ```  
+2. Generate project files:  
+   ```bash
+   mkdir build
+   cd build
+   cmake .. -G "Visual Studio 17 2022"
+   ```  
+3. Build the project:  
+   ```bash
+   cmake --build . --config Release
+   ```  
 
-Build the Project
-~~~bash
-cmake --build . --config Release
-~~~
-## 📜 Contribution Guidelines
-💡 Want to contribute? Follow these steps:
+---
 
-Fork the repository.
-Create a new branch for your feature.
-Commit & push your changes.
-Open a pull request!
-## 📌 Roadmap
-*✅ Project Structure & GitHub Setup*
+## 📜 Contribution Guidelines  
+Want to join the rendering revolution? Here’s how:  
+- Fork the repository.  
+- Create a new feature branch.  
+- Commit and push your changes.  
+- Open a pull request and bask in the glory of open-source.  
 
-*🔄 Render Pipeline (DX12/Vulkan API Layer) - In Progress*
+---
 
-*⏳ UI Toolkit & Node-Based Editor*
+## 🗺️ Roadmap  
+- ✅ Project Structure & GitHub Setup  
+- 🔄 Render Pipeline (DX12 API Layer) – In Progress  
+- ⏳ UI Toolkit & Node-Based Material Editor  
+- ⏳ Material System & Shader Compilation Stack  
+- ⏳ Final Optimization, Denoising, and Tooling Polish  
 
-*⏳ Material System & Shader Compilation*
+---
 
-*⏳ Final Optimization & Testing*
+## 📄 License  
+📜 MIT License – Use it, modify it, contribute to it freely! No strings attached, unless you’re into that sort of thing.
 
-## 📄 License
-📜 MIT License – Use it, modify it, contribute to it!
+---
 
-*🔥 Spectra is part of a 9-month graphics programming challenge aimed at pushing rendering technology forward. Stay tuned for updates!*
-
-*📌 Follow my journey: [My LinkedIn Profile](https://www.linkedin.com/in/prayas-bharadwaj-053886323/)*
+## 🔥 Follow the Journey  
+Spectra started as a humble challenge and has grown into a full-blown mission to push rendering tech to the limit with clean, handcrafted systems. Follow my updates on [LinkedIn](https://www.linkedin.com/in/prayas-bharadwaj-053886323/) for the latest on this pixel-pushing adventure!
