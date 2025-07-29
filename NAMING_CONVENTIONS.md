@@ -107,12 +107,12 @@ All code written across the entire development cycle must adhere strictly to the
    template<typename... Args>
    class Variadic;
    ```
-2. All template parameters must be converted into `using` declarations scoped privately inside the class, written in `snake_case` to denote placeholders.
+2. All template parameters must be converted into `using` declarations scoped privately inside the class, written in `PascalCase` to denote placeholders.
    ```cpp
    template<typename T>
    class Example {
    private:
-       using value_type = T;
+       using PascalCase = T;
    };
    ```
 3. Template non-type parameters (e.g., int N) must be Capitalized.
