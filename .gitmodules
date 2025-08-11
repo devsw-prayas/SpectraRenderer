@@ -4,7 +4,7 @@
 	branch = bleeding-edge
 [submodule "common/Corium"]
 	path = common/Corium
-	url = https://github.com/devsw-prayas/Corium
+	url = https://github.com/devsw-prayas/Corium.git
 	branch = bleeding-edge
 [submodule "common/devswSTL"]
 	path = common/devswSTL
