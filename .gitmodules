@@ -2,9 +2,9 @@
 	path = common/Instrumenta
 	url = https://github.com/devsw-prayas/Instrumenta
 	branch = bleeding-edge
-[submodule "common/Blaze"]
-	path = common/Blaze
-	url = https://github.com/devsw-prayas/Blaze
+[submodule "common/Corium"]
+	path = common/Corium
+	url = https://github.com/devsw-prayas/Corium.git
 	branch = bleeding-edge
 [submodule "common/devswSTL"]
 	path = common/devswSTL
