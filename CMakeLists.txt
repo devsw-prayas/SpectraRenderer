@@ -14,7 +14,7 @@ link_directories(${CMAKE_SOURCE_DIR}/bin/$<CONFIG>)
 
 # Include subprojects
 add_subdirectory(common/Instrumenta)
-add_subdirectory(common/Blaze)
+add_subdirectory(common/Corium)
 add_subdirectory(common/devswSTL)
 add_subdirectory(common/Kerbecs)
 
@@ -34,7 +34,7 @@ add_subdirectory(src/SpectraUI)
 include_directories(common)
 
 # Common Libraries
-set_target_properties(Blaze PROPERTIES FOLDER "Common")
+set_target_properties(Corium PROPERTIES FOLDER "Common")
 set_target_properties(devswSTL PROPERTIES FOLDER "Common")
 set_target_properties(Instrumenta PROPERTIES FOLDER "Common")
 
