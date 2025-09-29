@@ -1,7 +1,3 @@
-[submodule "common/Instrumenta"]
-	path = common/Instrumenta
-	url = https://github.com/devsw-prayas/Instrumenta
-	branch = bleeding-edge
 [submodule "common/Corium"]
 	path = common/Corium
 	url = https://github.com/devsw-prayas/Corium.git
@@ -13,4 +9,8 @@
 [submodule "common/Kerbecs"]
 	path = common/Kerbecs
 	url = https://github.com/devsw-prayas/Kerbecs.git
+	branch = bleeding-edge
+[submodule "common/Stratum"]
+	path = common/Stratum
+	url = https://github.com/devsw-prayas/Stratum.git
 	branch = bleeding-edge

@@ -11,5 +11,5 @@ add_library(SpectraCore SHARED
 
 target_include_directories(SpectraCore PUBLIC src/Public)
 
-target_link_libraries(SpectraCore SpectraInstrumentation SpectraSTL Instrumenta)
+target_link_libraries(SpectraCore)
 

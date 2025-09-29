@@ -7,4 +7,4 @@ add_library(SpectraNodes SHARED
 
 target_include_directories(SpectraNodes PUBLIC src/Public)
 
-target_link_libraries(SpectraNodes SpectraImGuiWrapper Instrumenta)
+target_link_libraries(SpectraNodes SpectraImGuiWrapper )

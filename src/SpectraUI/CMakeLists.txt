@@ -28,7 +28,6 @@ target_link_libraries(SpectraUI
     SpectraNodes 
     SpectraViewports 
     SpectraWidgets
-    Instrumenta
 )
 
 set_target_properties(SpectraEditors PROPERTIES FOLDER "UI")

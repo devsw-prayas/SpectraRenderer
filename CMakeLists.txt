@@ -13,14 +13,13 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin/$<CONFIG>)
 link_directories(${CMAKE_SOURCE_DIR}/bin/$<CONFIG>)
 
 # Include subprojects
-add_subdirectory(common/Instrumenta)
+add_subdirectory(common/Stratum)
 add_subdirectory(common/Corium)
 add_subdirectory(common/devswSTL)
 add_subdirectory(common/Kerbecs)
 
 add_subdirectory(src/SpectraDX12Backend)
 add_subdirectory(src/SpectraVulkanBackend)
-add_subdirectory(src/SpectraInstrumentation)
 add_subdirectory(src/SpectraBenchmark)
 add_subdirectory(src/SpectraCore)
 add_subdirectory(src/SpectraEditor)
@@ -36,7 +35,7 @@ include_directories(common)
 # Common Libraries
 set_target_properties(Corium PROPERTIES FOLDER "Common")
 set_target_properties(devswSTL PROPERTIES FOLDER "Common")
-set_target_properties(Instrumenta PROPERTIES FOLDER "Common")
+set_target_properties(Stratum PROPERTIES FOLDER "Common")
 
 # Engine Modules
 set_target_properties(SpectraCore PROPERTIES FOLDER "Engine")

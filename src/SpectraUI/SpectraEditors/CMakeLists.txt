@@ -7,4 +7,4 @@ add_library(SpectraEditors SHARED
 
 target_include_directories(SpectraEditors PUBLIC src/Public)
 
-target_link_libraries(SpectraEditors SpectraImGuiWrapper Instrumenta)
+target_link_libraries(SpectraEditors SpectraImGuiWrapper )

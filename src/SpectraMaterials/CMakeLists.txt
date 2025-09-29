@@ -7,4 +7,4 @@ add_library(SpectraMaterials SHARED
 
 target_include_directories(SpectraMaterials PUBLIC src/Public)
 
-target_link_libraries(SpectraMaterials SpectraRenderPipeline Instrumenta)
+target_link_libraries(SpectraMaterials SpectraRenderPipeline )

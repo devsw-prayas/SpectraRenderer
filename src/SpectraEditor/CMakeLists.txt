@@ -7,4 +7,4 @@ add_library(SpectraEditor SHARED
 
 target_include_directories(SpectraEditor PUBLIC src/Public)
 
-target_link_libraries(SpectraEditor SpectraUI SpectraRenderEngine Instrumenta)
+target_link_libraries(SpectraEditor SpectraUI SpectraRenderEngine )

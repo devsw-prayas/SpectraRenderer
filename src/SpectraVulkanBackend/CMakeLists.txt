@@ -8,4 +8,4 @@ add_library(SpectraVulkanBackend SHARED
 
 target_include_directories(SpectraVulkanBackend PUBLIC src/Public)
 
-target_link_libraries(SpectraVulkanBackend Instrumenta)
+target_link_libraries(SpectraVulkanBackend )
