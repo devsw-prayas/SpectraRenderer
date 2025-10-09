@@ -14,3 +14,7 @@
 	path = common/Stratum
 	url = https://github.com/devsw-prayas/Stratum.git
 	branch = bleeding-edge
+[submodule "common/Lebnitz"]
+	path = common/Lebnitz
+	url = https://github.com/devsw-prayas/Lebnitz
+	branch = bleeding-edge
