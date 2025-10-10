@@ -15,7 +15,7 @@ link_directories(${CMAKE_SOURCE_DIR}/bin/$<CONFIG>)
 # Include subprojects
 add_subdirectory(common/Stratum)
 add_subdirectory(common/Corium)
-add_subdirectory(common/devswSTL)
+add_subdirectory(common/StormSTL)
 add_subdirectory(common/Kerbecs)
 add_subdirectory(common/Lebnitz)
 
@@ -35,7 +35,7 @@ include_directories(common)
 
 # Common Libraries
 set_target_properties(Corium PROPERTIES FOLDER "Common")
-set_target_properties(devswSTL PROPERTIES FOLDER "Common")
+set_target_properties(StormSTL PROPERTIES FOLDER "Common")
 set_target_properties(Stratum PROPERTIES FOLDER "Common")
 set_target_properties(Lebnitz PROPERTIES FOLDER "Common")
 
