@@ -1,5 +1,4 @@
 #pragma once
-#ifndef SpectraPlatformRuntime
-#define SpectraPlatformRuntime __declspec(dllexport)
+#ifndef RUNTIME
+#define RUNTIME __declspec(dllexport)
 #endif
-void SpectraPlatformRuntime Init();
