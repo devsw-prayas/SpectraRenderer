@@ -17,7 +17,7 @@ add_subdirectory(common/Stratum)
 add_subdirectory(common/Corium)
 add_subdirectory(common/StormSTL)
 add_subdirectory(common/Kerbecs)
-add_subdirectory(common/Lebnitz)
+add_subdirectory(common/Leibniz)
 
 add_subdirectory(src/SpectraDX12Backend)
 add_subdirectory(src/SpectraVulkanBackend)
@@ -37,7 +37,7 @@ include_directories(common)
 set_target_properties(Corium PROPERTIES FOLDER "Common")
 set_target_properties(StormSTL PROPERTIES FOLDER "Common")
 set_target_properties(Stratum PROPERTIES FOLDER "Common")
-set_target_properties(Lebnitz PROPERTIES FOLDER "Common")
+set_target_properties(Leibniz PROPERTIES FOLDER "Common")
 
 # Engine Modules
 set_target_properties(SpectraCore PROPERTIES FOLDER "Engine")

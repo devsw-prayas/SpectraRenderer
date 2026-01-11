@@ -73,6 +73,7 @@ namespace Spectra::Platform::Runtime::Thread {
 
 	// [Payload]: 40B [sizeof]: 64B
 	struct RUNTIME alignas(32) ThreadLaunchExecDesc final {
+		// TODO Missing Detachable behavior
 		ProcessorIdx m_AffinityMask;
 		Dword        m_GroupID;
 
