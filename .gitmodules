@@ -10,11 +10,11 @@
 	path = common/Stratum
 	url = https://github.com/devsw-prayas/Stratum.git
 	branch = bleeding-edge
-[submodule "common/Lebnitz"]
-	path = common/Lebnitz
-	url = https://github.com/devsw-prayas/Lebnitz
-	branch = bleeding-edge
 [submodule "common/StormSTL"]
 	path = common/StormSTL
 	url = https://github.com/devsw-prayas/StormSTL.git
+	branch = bleeding-edge
+[submodule "common/Leibniz"]
+	path = common/Leibniz
+	url = https://github.com/devsw-prayas/Leibniz.git
 	branch = bleeding-edge
