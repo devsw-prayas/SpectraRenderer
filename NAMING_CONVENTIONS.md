@@ -4,7 +4,7 @@ All code written across the entire development cycle must adhere strictly to the
 
 ## [Naming Conventions]
 ### A) Type Naming
-1. All `class`  and `struct`  that define concrete implementations must use `PascalCase`.
+1. All `class`  and `struct` that define concrete implementations must use `PascalCase`.
    ```cpp
    class ConcreteClass { /* ... */ };
    struct DataStruct { /* ... */ };
@@ -28,7 +28,7 @@ All code written across the entire development cycle must adhere strictly to the
    ```cpp
    enum class Color : uint8_t { Red, Green, Blue };
    ```
-5. Usage of `union ` is prohibited. Tagged struct s or standard variants must be used instead.
+5. Usage of `union` is prohibited. Tagged structs or standard variants must be used instead.
    ```cpp
    struct TaggedStruct {
        bool isInt;
@@ -202,7 +202,7 @@ Such enforcement ensures:
 - No hidden heap allocations
 - Memory lifetime and ownership remain explicitly traceable
 
-#### When Prefixing May Berelaxed
+#### When Prefixing May Be relaxed
 Simplified prefixing (e.g., `v_`, `r_`, `p_`, `u_`) is allowed when:
 1. Writing ergonomic or user-facing interfaces
 2. Creating helper utilities or debug code

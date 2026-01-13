@@ -3,8 +3,9 @@
 #include <cstdint>
 #include <functional>
 
-namespace Spectra::Platform::Runtime::Thread {									
+#include "PlatformAtomics.h"
 
+namespace Spectra::Platform::Runtime::Thread {
 	using Dword = uint32_t;
 
 	using Flag = bool;
@@ -48,7 +49,6 @@ namespace Spectra::Platform::Runtime::Thread {
 	};
 
 	namespace this_platform_thread {
-
 	}
 
 	// [Payload]: 208B [sizeof]: 224B
@@ -62,7 +62,8 @@ namespace Spectra::Platform::Runtime::Thread {
 
 	public:
 		ThreadLaunchDesc() : m_StartLocation(nullptr), m_StartupHook(nullptr), m_ShutdownHook(nullptr),
-			m_StartsSuspended(Disallow) {}
+			m_StartsSuspended(Disallow) {
+		}
 
 		void launchFunction(auto&& u_StartLocation);
 		void startupHook(auto&& u_StartupHook = nullptr);
@@ -89,40 +90,50 @@ namespace Spectra::Platform::Runtime::Thread {
 		Flag         m_SupportsThreadGroup;
 	};
 
-	void initLaunchExecDesc(ThreadLaunchExecDesc& ro_Desc);
-	void commitStackSize(ThreadLaunchExecDesc& ro_Desc, Bytes v_Size);
-	void reserveStackSize(ThreadLaunchExecDesc& ro_Desc, Bytes v_Size);
+	void RUNTIME initLaunchExecDesc(ThreadLaunchExecDesc& ro_Desc);
+	void RUNTIME commitStackSize(ThreadLaunchExecDesc& ro_Desc, Bytes v_Size);
+	void RUNTIME reserveStackSize(ThreadLaunchExecDesc& ro_Desc, Bytes v_Size);
 
-	void enableGuardPage(ThreadLaunchExecDesc& ro_Desc, Flag v_Permission);
+	void RUNTIME enableGuardPage(ThreadLaunchExecDesc& ro_Desc, Flag v_Permission);
 
-	void supportIdealProcessor(ThreadLaunchExecDesc& ro_Desc, Flag v_Permission);
-	void idealProcessor(ThreadLaunchExecDesc& ro_Desc, Dword v_Processor);
+	void RUNTIME supportIdealProcessor(ThreadLaunchExecDesc& ro_Desc, Flag v_Permission);
+	void RUNTIME idealProcessor(ThreadLaunchExecDesc& ro_Desc, Dword v_Processor);
 
-	void supportProcessorGroups(ThreadLaunchExecDesc& ro_Desc, Flag v_Permission);
-	void groupID(ThreadLaunchExecDesc& ro_Desc, Dword v_GroupID);
+	void RUNTIME supportProcessorGroups(ThreadLaunchExecDesc& ro_Desc, Flag v_Permission);
+	void RUNTIME groupID(ThreadLaunchExecDesc& ro_Desc, Dword v_GroupID);
 
-	void affinityMask(ThreadLaunchExecDesc& ro_Desc, ProcessorIdx v_Mask);
+	void RUNTIME affinityMask(ThreadLaunchExecDesc& ro_Desc, ProcessorIdx v_Mask);
 
 	template<size_t N>
-	void affinityMaskFromFlags(ThreadLaunchExecDesc& ro_Desc, std::array<Flag, N> v_Cores [[maybe_unused]]) {
+	void RUNTIME affinityMaskFromFlags(ThreadLaunchExecDesc& ro_Desc, std::array<Flag, N> v_Cores [[maybe_unused]] ) {
 		ProcessorIdx mask = 0;
 		for (size_t i = 0; i < N; i++) if (v_Cores[i]) mask |= (static_cast<ProcessorIdx>(1) << i);
 		affinityMask(ro_Desc, mask);
 	}
 
 	template<size_t N>
-	void affinityMaskFromCores(ThreadLaunchExecDesc& ro_Desc, std::array<Dword, N> v_Cores [[maybe_unused]] ) {
+	void RUNTIME affinityMaskFromCores(ThreadLaunchExecDesc& ro_Desc, std::array<Dword, N> v_Cores [[maybe_unused]] ) {
 		ProcessorIdx mask = 0;
 		for (auto core : v_Cores) mask |= (static_cast<ProcessorIdx>(1) << core);
 		affinityMask(ro_Desc, mask);
 	}
 
-	void priorityBoosting(ThreadLaunchExecDesc& ro_Desc, Flag v_Permission);
-	void basePriority(ThreadLaunchExecDesc& ro_Desc, Priority v_BasePriority);
+	void RUNTIME priorityBoosting(ThreadLaunchExecDesc& ro_Desc, Flag v_Permission);
+	void RUNTIME basePriority(ThreadLaunchExecDesc& ro_Desc, Priority v_BasePriority);
 
-	bool validateLaunchExecDesc(const ThreadLaunchExecDesc& ro_Desc);
+	bool RUNTIME validateLaunchExecDesc(const ThreadLaunchExecDesc& ro_Desc);
 
-	struct RUNTIME ParkHandle final {
-		
+	// [Payload] : 32B [sizeof] : 32B
+	struct RUNTIME alignas(32) ParkHandle final {
+		Atomic::Atomic32 m_ParkingPermit;
+
+		explicit ParkHandle(Atomic::Integer32 v_Value) : m_ParkingPermit(v_Value) {}
+		~ParkHandle() = default;
+
+		ParkHandle(const ParkHandle&) = default;
+		ParkHandle& operator=(const ParkHandle&) = default;
+
+		ParkHandle(ParkHandle&&) noexcept = default;
+		ParkHandle& operator=(ParkHandle&&) noexcept = default;
 	};
 }

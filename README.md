@@ -1,106 +1,144 @@
-# 📌 Spectra Render Engine  
-*Ultra-High-Fidelity Render Engine for Still Images & Real-Time Rendering*
+# Spectra Render Engine  
+*Next-Generation High Performance Spectral Path Tracer*
 
-## 🚀 A Passion Project to Build a Bleeding-Edge, Industry-Grade Renderer from Scratch  
+## A Passion Project to Build a Bleeding-Edge, Industry-Grade Renderer from Scratch  
 Developed by: [Prayas Bharadwaj](https://www.linkedin.com/in/prayas-bharadwaj-053886323/)
 
 ---
 
-## 🌟 Overview  
-**Spectra** is a next-generation render engine designed for *ultra-high-fidelity* rendering. It powers both real-time and offline path-traced workflows with a spectral rendering core, a modular editor, custom threading, and a high-performance C++ backbone. Every component—from the renderer core to the scene editor—is handcrafted for speed, modularity, and clarity. Because who needs bloat when you can have brilliance?
-
+## Overview  
+**Spectra** belongs to the class of next-generation, truly *unbiased* and fully *GPU-Accelerated* Spectral Path Tracers.
+It is built as a pure implementation: every system required above the sys-call and driver boundary is implemented in-house, with no reliance on external runtime frameworks. This architectural discipline exists for one reason — to support **brute-force spectral light transport** at scale, without compromises in physical correctness, determinism, or performance.
 ---
 
-## 💡 Core Features  
+## Core Features  
 
-- 🎯 **DirectX 12 Renderer**: Built directly on DX12 for low-level, high-performance rendering.  
-- 🌈 **Spectral Path Tracing**: Physically-based illumination with multi-wavelength simulation for that extra *ooh, shiny* factor.  
-- 🪓 **devswSTL**: A custom STL replacement with SIMD-accelerated containers to make your CPU sweat.  
-- 🔬 **Kerbecs**: Memory and thread sanitizer to keep your code squeaky clean and leak-free.  
-- 🧵 **Blaze**: NUMA-aware multithreading with lock-free task scheduling—because threads deserve to be free.  
-- 📦 **Modular System**: Runtime DLL loading for the editor, pipeline, materials, and backend. Plug and play, baby!  
-- 🛠 **ImGui-Based UI**: Custom node editors for materials and a drag-and-drop scene editor that’s smoother than your morning coffee.  
-- ⏱ **Instrumenta**: Internal profiler and metrics layer for CPU/GPU diagnostics. Know your bottlenecks before they know you.  
+- **Unbiased Spectral Path Tracing**  
+  Physically-based spectral light transport with true multi-wavelength simulation, designed for brute-force correctness rather than heuristic approximation.  
+  Path tracing execution targets CUDA with OptiX acceleration as the default backend.
 
+- **StormSTL**  
+  A custom standard library replacement providing allocator-aware, SIMD-optimized containers and low-level primitives suitable for engine and HPC workloads.
+
+- **Kerbecs**  
+  Integrated memory and thread sanitation system with selective shadowing for detecting lifetime errors, data races, and memory corruption.
+
+- **Corium**  
+  NUMA-aware multithreading and task runtime supporting lock-free scheduling, deterministic execution paths, and explicit execution control.
+
+- **Modular Runtime Architecture**  
+  Componentized system design with runtime-loadable modules for rendering backends, pipeline stages, and platform integration.
+
+- **Stratum**  
+  Deterministic instrumentation and profiling infrastructure providing zero-overhead tracing and CPU/GPU diagnostics.
 ---
 
-## 📂 Project Structure  
+## Standalone Infrastructure Subsystems
 
-```bash
-Spectra/
-│── CMakeLists.txt
-│── src/
-│   │── SpectraEditor/            # Main Editor (Uses UI & Render Engine)
-│   │── SpectraLauncher/          # Main Executable Entry Point
-│   │── SpectraRenderEngine/      # Core Render Engine (PTGI, RTGI, Pipeline)
-│   │── SpectraRenderPipeline/    # DX12 API Layer & Command Abstractions
-│   │── SpectraMaterials/         # Material Graph, Shader Authoring & Compilation
-│   │── SpectraDX12Backend/       # DirectX 12 Backend (Low-level device layer)
-│   │── SpectraUI/                # ImGui-based UI Toolkit & Node Graph Editor
-│
-│── common/
-│   │── devswSTL/                 # STL Rewrite (SIMD containers, allocators, traits)
-│   │── Blaze/                    # Multithreading & Fiber Framework
-│   │── Kerbecs/                  # Memory & Thread Sanitizer
-│   │── Instrumenta/              # Profiling, Metrics & Debug Hooks
-│
-│── docs/                         # Design Papers, Diagrams, Planning Notes
-│── README.md
-│── .gitignore
-│── .github/                      # GitHub Actions & Issue Templates
-```
+Spectra is built atop a set of standalone, self-contained infrastructure libraries.
+Each subsystem is designed to function independently and can be reused outside of
+the Spectra engine without modification.
+
+~~~bash
+subsystems/
+│── StormSTL/     # Allocators, containers, and memory primitives for engine/HPC use
+│── Corium/       # Multithreading, task scheduling, and execution runtime
+│── Stratum/      # Deterministic instrumentation, tracing, and profiling
+│── Kerbecs/      # Memory and thread sanitation with selective shadowing
+│── Leibniz/      # SIMD-optimized mathematics and numerical computation
+│── Iota/         # Deep learning inference engine for deterministic execution
+~~~
+
 
 ---
 
 ## 🛠️ Setup & Build Instructions  
+### Requirements
+#### Hardware
 
-### 📌 Requirements  
-- C++20 Compiler (MSVC recommended, because we’re fancy like that)  
-- CMake 3.20+  
-- Visual Studio 2022  
-- Windows SDK  
+- An NVIDIA GPU with CUDA and OptiX support
 
-### 🔧 Build Steps  
-1. Clone the repository:  
-   ```bash
-   git clone https://github.com/devsw-prayas/Spectra.git
-   cd Spectra
-   ```  
-2. Generate project files:  
-   ```bash
-   mkdir build
-   cd build
-   cmake .. -G "Visual Studio 17 2022"
-   ```  
-3. Build the project:  
-   ```bash
-   cmake --build . --config Release
-   ```  
+#### Software
+
+- A C++20-compliant compiler (MSVC recommended)
+- CMake 3.20 or newer
+- Visual Studio 2022
+- Windows SDK
+- NVIDIA CUDA Toolkit (required for the default OptiX execution backend)
 
 ---
 
-## 📜 Contribution Guidelines  
-Want to join the rendering revolution? Here’s how:  
-- Fork the repository.  
-- Create a new feature branch.  
-- Commit and push your changes.  
-- Open a pull request and bask in the glory of open-source.  
+### Repository Setup and Build
+
+Spectra maintains multiple active branches.
+
+- `main` tracks the latest stable state and is recommended for most users.
+- `bleeding-edge-daily` is used for active development and experimentation.
+
+**Warning:**  
+The `bleeding-edge-daily` branch is not guaranteed to build, run correctly,
+or preserve API stability. It may contain incomplete features, breaking
+changes, or experimental code paths. Use this branch only if you are
+actively developing Spectra or intentionally testing unstable behavior.
+
+1. Clone the repository and all standalone subsystems:
+
+~~~bash
+git clone --recursive -b main https://github.com/devsw-prayas/Spectra.git
+cd Spectra
+~~~
+
+2. Install the CUDA Toolkit required by the default execution backend:
+
+~~~bash
+scripts/cuda.bat
+~~~
+
+This script installs and configures the NVIDIA CUDA Toolkit used by
+the OptiX-based path tracing backend. Additional backend setup scripts
+(e.g., Vulkan) may be introduced in the future.
+
+3. Generate project files:
+
+~~~bash
+mkdir build
+cd build
+cmake .. -G "Visual Studio 17 2022"
+~~~
+
+4. Build the project:
+
+~~~bash
+cmake --build . --config Release
+~~~
+---
+## Contribution Guidelines
+
+Contributions are welcome.
+
+- Fork the repository and create a feature branch.
+- Ensure changes are consistent with existing architectural and coding standards.
+- Commit and push your changes with clear, descriptive messages.
+- Open a pull request describing the motivation and technical details of the change.
+---
+
+## Research Focus Areas
+
+Current areas of active research and development include:
+
+- Brute-force spectral path tracing and wavelength-domain light transport
+- Hybrid BVH construction and traversal strategies for GPU execution
+- Deterministic execution and reproducibility across parallel GPU workloads
+- Runtime infrastructure for memory safety, profiling, and execution control
+- Neural-assisted acceleration of spectral transport (exploratory)
+
+## License
+
+This project is licensed under the MIT License. See the LICENSE file for details.
+
 
 ---
 
-## 🗺️ Roadmap  
-- ✅ Project Structure & GitHub Setup  
-- 🔄 Render Pipeline (DX12 API Layer) – In Progress  
-- ⏳ UI Toolkit & Node-Based Material Editor  
-- ⏳ Material System & Shader Compilation Stack  
-- ⏳ Final Optimization, Denoising, and Tooling Polish  
-
----
-
-## 📄 License  
-📜 MIT License – Use it, modify it, contribute to it freely! No strings attached, unless you’re into that sort of thing.
-
----
-
-## 🔥 Follow the Journey  
-Spectra started as a humble challenge and has grown into a full-blown mission to push rendering tech to the limit with clean, handcrafted systems. Follow my updates on [LinkedIn](https://www.linkedin.com/in/prayas-bharadwaj-053886323/) for the latest on this pixel-pushing adventure!
+## Project Updates
+Development updates, technical notes, and long-form progress discussions related to Spectra are occasionally shared on LinkedIn:
+https://www.linkedin.com/in/prayas-bharadwaj-053886323/
