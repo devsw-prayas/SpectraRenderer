@@ -4,12 +4,8 @@
 ## A Passion Project to Build a Bleeding-Edge, Industry-Grade Renderer from Scratch  
 Developed by: [Prayas Bharadwaj](https://www.linkedin.com/in/prayas-bharadwaj-053886323/)
 
----
-
 ## Overview  
-**Spectra** belongs to the class of next-generation, truly *unbiased* and fully *GPU-Accelerated* Spectral Path Tracers.
-It is built as a pure implementation: every system required above the sys-call and driver boundary is implemented in-house, with no reliance on external runtime frameworks. This architectural discipline exists for one reason — to support **brute-force spectral light transport** at scale, without compromises in physical correctness, determinism, or performance.
----
+*Spectra* belongs to the class of next-generation, truly *unbiased* and fully *GPU-Accelerated* Spectral Path Tracers. It is built as a pure implementation: every system required above the sys-call and driver boundary is implemented in-house, with no reliance on external runtime frameworks. This architectural discipline exists for one reason — to support **brute-force spectral light transport** at scale, without compromises in physical correctness, determinism, or performance.
 
 ## Core Features  
 
@@ -31,7 +27,6 @@ It is built as a pure implementation: every system required above the sys-call a
 
 - **Stratum**  
   Deterministic instrumentation and profiling infrastructure providing zero-overhead tracing and CPU/GPU diagnostics.
----
 
 ## Standalone Infrastructure Subsystems
 
@@ -50,7 +45,6 @@ subsystems/
 ~~~
 
 
----
 
 ## 🛠️ Setup & Build Instructions  
 ### Requirements
@@ -65,8 +59,6 @@ subsystems/
 - Visual Studio 2022
 - Windows SDK
 - NVIDIA CUDA Toolkit (required for the default OptiX execution backend)
-
----
 
 ### Repository Setup and Build
 
@@ -111,7 +103,7 @@ cmake .. -G "Visual Studio 17 2022"
 ~~~bash
 cmake --build . --config Release
 ~~~
----
+
 ## Contribution Guidelines
 
 Contributions are welcome.
@@ -120,7 +112,6 @@ Contributions are welcome.
 - Ensure changes are consistent with existing architectural and coding standards.
 - Commit and push your changes with clear, descriptive messages.
 - Open a pull request describing the motivation and technical details of the change.
----
 
 ## Research Focus Areas
 
@@ -136,8 +127,6 @@ Current areas of active research and development include:
 
 This project is licensed under the MIT License. See the LICENSE file for details.
 
-
----
 
 ## Project Updates
 Development updates, technical notes, and long-form progress discussions related to Spectra are occasionally shared on LinkedIn:
