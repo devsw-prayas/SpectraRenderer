@@ -15,5 +15,9 @@ target_precompile_headers(SpectraPlatformRuntime
 target_include_directories(SpectraPlatformRuntime PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src/Public)
 
 set(SPECTRA_MAX_THREADS 2048)
-target_compile_definitions(SpectraPlatformRuntime 
-    PRIVATE SPECTRA_PLATFORM_MAX_THREADS=${SPECTRA_MAX_THREADS})
+target_compile_definitions(SpectraPlatformRuntime PRIVATE 
+    SPECTRA_PLATFORM_MAX_THREADS=${SPECTRA_MAX_THREADS})
+
+target_compile_definitions(SpectraPlatformRuntime PRIVATE        
+        SPECTRA_SHARED,
+        SPECTRA_BUILDING_RUNTIME)

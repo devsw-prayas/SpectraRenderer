@@ -2,12 +2,9 @@
 #include "SpectraPlatformRuntime.h"
 #include "ThreadUtils.h"
 
-#include <cstdint>
-
 namespace Spectra::Platform::Runtime::Thread {
 
-	class RUNTIME PlatformThread final {
-		// Handle Ops
+	class SPECTRA_RUNTIME_API PlatformThread final {
 		static ThreadHandle createThread(
 			const ThreadLaunchDesc& ro_LaunchDesc, const ThreadLaunchExecDesc& ro_ExecDesc) noexcept;
 		static bool detachThread(ThreadHandle v_Handle) noexcept;
@@ -30,10 +27,5 @@ namespace Spectra::Platform::Runtime::Thread {
 		static void waitOnAddressFor(ParkHandle& ro_Handle, T&& u_Duration) noexcept {
 			
 		}
-
-
-		friend struct ThreadHandle;
-		friend struct ThreadLaunchDesc;
-		friend struct ThreadLaunchExecDesc;
 	};
 }

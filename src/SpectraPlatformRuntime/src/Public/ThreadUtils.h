@@ -1,8 +1,5 @@
 #pragma once
 #include "SpectraPlatformRuntime.h"
-#include <cstdint>
-#include <functional>
-
 #include "PlatformAtomics.h"
 
 namespace Spectra::Platform::Runtime::Thread {
@@ -18,7 +15,7 @@ namespace Spectra::Platform::Runtime::Thread {
 	using Name = const char*;
 	using ProcessorIdx = size_t;
 
-	enum class RUNTIME Priority : int8_t {
+	enum class SPECTRA_RUNTIME_API Priority : int8_t {
 		PRIORITY_IDLE = -15,
 		PRIORITY_LOWEST = -2,
 		PRIORITY_BELOW_NORMAL = -1,
@@ -28,52 +25,62 @@ namespace Spectra::Platform::Runtime::Thread {
 		PRIORITY_TIME_CRITICAL = 15,
 	};
 
-	enum class RUNTIME ThreadState : uint8_t {
+	enum class SPECTRA_RUNTIME_API ThreadState : uint8_t {
 		CREATED, RUNNING, SEALED, REAPED
 	};
 
 	// [Payload]: 25B [sizeof]: 32B
-	struct alignas(32) RUNTIME ThreadHandle final {
+	struct alignas(32) SPECTRA_RUNTIME_API ThreadHandle final {
+		friend struct PlatformThread;
 	private:
 		size_t m_ThreadID;
 		size_t m_Generation;
 
 		size_t m_AccessToken;
 		ThreadState m_State;
-		ThreadHandle(size_t v_ThreadID, size_t v_Generation, size_t v_AccessToken, ThreadState v_State) :
+		constexpr ThreadHandle(size_t v_ThreadID, size_t v_Generation, size_t v_AccessToken, ThreadState v_State) :
 			m_ThreadID(v_ThreadID), m_Generation(v_Generation), m_AccessToken(v_AccessToken), m_State(v_State) {
 		}
 	public:
 		ThreadState expectedState() const;
 		size_t getThreadID() const;
+
+		static SPECTRA_FORCEINLINE ThreadHandle getInavlidHandle() {
+			return {0,0,0, ThreadState::REAPED};
+		}
 	};
 
 	namespace this_platform_thread {
 	}
 
-	// [Payload]: 208B [sizeof]: 224B
-	struct alignas(32) RUNTIME ThreadLaunchDesc final {
+	// [Payload]: 52B [sizeof]: 64B
+	struct alignas(64) SPECTRA_RUNTIME_API ThreadLaunchDesc final {
+		friend struct PlatformThread;
 	private:
-		std::function<void()> m_StartLocation;
-		std::function<void()> m_StartupHook;
-		std::function<void()> m_ShutdownHook;
+		using Entry = void(*)(void*);
+
+		void* m_StartContext = nullptr;
+		Entry m_StartEntry = nullptr;
+
+		void* m_StartupContext = nullptr;
+		Entry m_StartupEntry = nullptr;
+
+		void* m_ShutdownContext = nullptr;
+		Entry m_ShutdownEntry = nullptr;
 
 		Flag m_StartsSuspended;
-
 	public:
-		ThreadLaunchDesc() : m_StartLocation(nullptr), m_StartupHook(nullptr), m_ShutdownHook(nullptr),
-			m_StartsSuspended(Disallow) {
-		}
+		ThreadLaunchDesc() : m_StartsSuspended(Disallow) {}
 
-		void launchFunction(auto&& u_StartLocation);
-		void startupHook(auto&& u_StartupHook = nullptr);
-		void shutdownHook(auto&& u_ShutdownHook = nullptr);
+		void launchFunction(Entry p_Launch, void* p_Ctx = nullptr);
+		void startupHook(Entry p_StartupHook = nullptr, void* p_Ctx = nullptr);
+		void shutdownHook(Entry p_ShutdownHook = nullptr, void* p_Ctx = nullptr);
 
 		Flag preSuspend(Flag v_SuspendState);
 	};
 
 	// [Payload]: 40B [sizeof]: 64B
-	struct RUNTIME alignas(32) ThreadLaunchExecDesc final {
+	struct SPECTRA_RUNTIME_API alignas(32) ThreadLaunchExecDesc final {
 		// TODO Missing Detachable behavior
 		ProcessorIdx m_AffinityMask;
 		Dword        m_GroupID;
@@ -90,41 +97,41 @@ namespace Spectra::Platform::Runtime::Thread {
 		Flag         m_SupportsThreadGroup;
 	};
 
-	void RUNTIME initLaunchExecDesc(ThreadLaunchExecDesc& ro_Desc);
-	void RUNTIME commitStackSize(ThreadLaunchExecDesc& ro_Desc, Bytes v_Size);
-	void RUNTIME reserveStackSize(ThreadLaunchExecDesc& ro_Desc, Bytes v_Size);
+	void SPECTRA_RUNTIME_API initLaunchExecDesc(ThreadLaunchExecDesc& ro_Desc);
+	void SPECTRA_RUNTIME_API commitStackSize(ThreadLaunchExecDesc& ro_Desc, Bytes v_Size);
+	void SPECTRA_RUNTIME_API reserveStackSize(ThreadLaunchExecDesc& ro_Desc, Bytes v_Size);
 
-	void RUNTIME enableGuardPage(ThreadLaunchExecDesc& ro_Desc, Flag v_Permission);
+	void SPECTRA_RUNTIME_API enableGuardPage(ThreadLaunchExecDesc& ro_Desc, Flag v_Permission);
 
-	void RUNTIME supportIdealProcessor(ThreadLaunchExecDesc& ro_Desc, Flag v_Permission);
-	void RUNTIME idealProcessor(ThreadLaunchExecDesc& ro_Desc, Dword v_Processor);
+	void SPECTRA_RUNTIME_API supportIdealProcessor(ThreadLaunchExecDesc& ro_Desc, Flag v_Permission);
+	void SPECTRA_RUNTIME_API idealProcessor(ThreadLaunchExecDesc& ro_Desc, Dword v_Processor);
 
-	void RUNTIME supportProcessorGroups(ThreadLaunchExecDesc& ro_Desc, Flag v_Permission);
-	void RUNTIME groupID(ThreadLaunchExecDesc& ro_Desc, Dword v_GroupID);
+	void SPECTRA_RUNTIME_API supportProcessorGroups(ThreadLaunchExecDesc& ro_Desc, Flag v_Permission);
+	void SPECTRA_RUNTIME_API groupID(ThreadLaunchExecDesc& ro_Desc, Dword v_GroupID);
 
-	void RUNTIME affinityMask(ThreadLaunchExecDesc& ro_Desc, ProcessorIdx v_Mask);
+	void SPECTRA_RUNTIME_API affinityMask(ThreadLaunchExecDesc& ro_Desc, ProcessorIdx v_Mask);
 
 	template<size_t N>
-	void RUNTIME affinityMaskFromFlags(ThreadLaunchExecDesc& ro_Desc, std::array<Flag, N> v_Cores [[maybe_unused]] ) {
+	void SPECTRA_RUNTIME_API affinityMaskFromFlags(ThreadLaunchExecDesc& ro_Desc, std::array<Flag, N> v_Cores [[maybe_unused]] ) {
 		ProcessorIdx mask = 0;
 		for (size_t i = 0; i < N; i++) if (v_Cores[i]) mask |= (static_cast<ProcessorIdx>(1) << i);
 		affinityMask(ro_Desc, mask);
 	}
 
 	template<size_t N>
-	void RUNTIME affinityMaskFromCores(ThreadLaunchExecDesc& ro_Desc, std::array<Dword, N> v_Cores [[maybe_unused]] ) {
+	void SPECTRA_RUNTIME_API affinityMaskFromCores(ThreadLaunchExecDesc& ro_Desc, std::array<Dword, N> v_Cores [[maybe_unused]] ) {
 		ProcessorIdx mask = 0;
 		for (auto core : v_Cores) mask |= (static_cast<ProcessorIdx>(1) << core);
 		affinityMask(ro_Desc, mask);
 	}
 
-	void RUNTIME priorityBoosting(ThreadLaunchExecDesc& ro_Desc, Flag v_Permission);
-	void RUNTIME basePriority(ThreadLaunchExecDesc& ro_Desc, Priority v_BasePriority);
+	void SPECTRA_RUNTIME_API priorityBoosting(ThreadLaunchExecDesc& ro_Desc, Flag v_Permission);
+	void SPECTRA_RUNTIME_API basePriority(ThreadLaunchExecDesc& ro_Desc, Priority v_BasePriority);
 
-	bool RUNTIME validateLaunchExecDesc(const ThreadLaunchExecDesc& ro_Desc);
+	bool SPECTRA_RUNTIME_API validateLaunchExecDesc(const ThreadLaunchExecDesc& ro_Desc);
 
 	// [Payload] : 32B [sizeof] : 32B
-	struct RUNTIME alignas(32) ParkHandle final {
+	struct SPECTRA_RUNTIME_API alignas(32) ParkHandle final {
 		Atomic::Atomic32 m_ParkingPermit;
 
 		explicit ParkHandle(Atomic::Integer32 v_Value) : m_ParkingPermit(v_Value) {}
