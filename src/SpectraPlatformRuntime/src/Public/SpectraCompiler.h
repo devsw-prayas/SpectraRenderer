@@ -1,12 +1,5 @@
 #pragma once
 
-// ================================================================
-// Compiler intent policy
-//
-// Files that need raw compiler intrinsics MUST opt in explicitly
-// by defining SPEC_ALLOW_COMPILER before including this header.
-// ================================================================
-
 // Just don't mess with this header, exposes low level shit,
 // Don't want system gettin' fucked when a supposedly impossible linux port occurs
 
