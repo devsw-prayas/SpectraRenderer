@@ -18,3 +18,7 @@
 	path = common/Leibniz
 	url = https://github.com/devsw-prayas/Leibniz.git
 	branch = bleeding-edge
+[submodule "common/Hades-Benchmark"]
+	path = common/Hades-Benchmark
+	url = https://github.com/devsw-prayas/Hades-Benchmark.git
+	branch = bleeding-edge

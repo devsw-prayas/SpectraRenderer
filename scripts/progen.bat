@@ -1,135 +1,277 @@
 @echo off
 setlocal EnableDelayedExpansion
 
-echo Welcome to the Grand CMake Project-O-Tron 5001: Now With Loops AND Debugging!
+echo ===================================
+echo  CMake Project Generator
+echo ===================================
+echo.
 
 :loop_start
-echo First, whats this masterpiece gonna be called?
-set /p PROJECT_NAME="Enter project name (No blank spaces): "
 
+:: --- Project Name ---
+:ask_name
+set "PROJECT_NAME="
+set /p PROJECT_NAME="Project name (no spaces): "
 if "!PROJECT_NAME!"=="" (
-    echo Brilliant, no name. Defaulting to "UnnamedDisaster".
-    set PROJECT_NAME=UnnamedDisaster
+    echo Name cannot be empty. Try again.
+    goto :ask_name
 )
 
-echo Now, where do you want this gem to live? (Full path, like C:\Code\Stuff)
-set /p PROJECT_PATH="Enter location (or hit Enter for right here): "
+:: --- Project Path ---
+set "PROJECT_PATH="
+set /p PROJECT_PATH="Project location (Enter for current dir): "
+if "!PROJECT_PATH!"=="" set "PROJECT_PATH=%CD%"
 
-if "!PROJECT_PATH!"=="" (
-    echo No path? Lazy much? Fine, dropping it in %CD%.
-    set PROJECT_PATH=%CD%
-)
-
-echo What kind of project are you feeling today, your highness?
-echo 1. EXE (Just a "Hello World" because you are basic)
-echo 2. DLL (No fancy stuff, per your stingy orders)
-echo 3. LIB (A class, because you are suddenly classy)
-set /p BUILD_TYPE="Pick a number (1-3): "
-
-if "!BUILD_TYPE!"=="1" set BUILD_TYPE_NAME=EXE
-if "!BUILD_TYPE!"=="2" set BUILD_TYPE_NAME=DLL
-if "!BUILD_TYPE!"=="3" set BUILD_TYPE_NAME=LIB
+:: --- Project Type ---
+echo.
+echo Select project type:
+echo   1. Executable
+echo   2. Shared Library (DLL)
+echo   3. Static Library (LIB)
+echo.
+:ask_type
+set "BUILD_TYPE="
+set /p BUILD_TYPE="Choice (1-3): "
+if "!BUILD_TYPE!"=="1" set "BUILD_TYPE_NAME=EXE"
+if "!BUILD_TYPE!"=="2" set "BUILD_TYPE_NAME=DLL"
+if "!BUILD_TYPE!"=="3" set "BUILD_TYPE_NAME=LIB"
 if not defined BUILD_TYPE_NAME (
-    echo Wow, cannot even pick a number? Defaulting to EXE, you indecisive slacker.
-    set BUILD_TYPE=1
-    set BUILD_TYPE_NAME=EXE
+    echo Invalid choice. Enter 1, 2, or 3.
+    goto :ask_type
 )
 
-echo Generating your !BUILD_TYPE_NAME! project !PROJECT_NAME! at !PROJECT_PATH!...
-echo Step 1: Creating directories...
-mkdir "!PROJECT_PATH!\!PROJECT_NAME!" 2>nul || (echo Failed to create root dir! & goto :error)
-cd "!PROJECT_PATH!\!PROJECT_NAME!" || (echo Failed to cd into project dir! & goto :error)
-mkdir src\Public 2>nul || (echo Failed to create src\Public! & goto :error)
-mkdir src\Private 2>nul || (echo Failed to create src\Private! & goto :error)
-mkdir build 2>nul || (echo Failed to create build! & goto :error)
-echo Directories created. If you’re seeing this, we’re not dead yet.
-
-:: DLL: Header and source from your original, no extras
-if "!BUILD_TYPE!"=="2" (
-    echo Step 2: Writing DLL files...
-    (
-        echo #pragma once
-        echo #ifndef !PROJECT_NAME!
-        echo #define !PROJECT_NAME! __declspec^(dllexport^)
-        echo #endif
-        echo void !PROJECT_NAME! Init^(^);
-    ) > "src\Public\!PROJECT_NAME!.h" || (echo Failed to write header! & goto :error)
-    (
-        echo #include "!PROJECT_NAME!.h"
-        echo void !PROJECT_NAME! Init^(^) {}
-    ) > "src\Private\!PROJECT_NAME!.cpp" || (echo Failed to write cpp! & goto :error)
+:: --- CXX Standard ---
+echo.
+echo Select C++ standard:
+echo   1. C++17
+echo   2. C++20  (default)
+echo   3. C++23
+echo.
+:ask_std
+set "CXX_STD="
+set /p CXX_STD="Choice (1-3, Enter for C++20): "
+if "!CXX_STD!"==""  set "CXX_STD=2"
+if "!CXX_STD!"=="1" set "CXX_STD_VAL=17"
+if "!CXX_STD!"=="2" set "CXX_STD_VAL=20"
+if "!CXX_STD!"=="3" set "CXX_STD_VAL=23"
+if not defined CXX_STD_VAL (
+    echo Invalid choice. Enter 1, 2, or 3.
+    goto :ask_std
 )
 
-:: LIB: Header with a class, source with implementation
-if "!BUILD_TYPE!"=="3" (
-    echo Step 2: Writing LIB files...
-    (
-        echo #pragma once
-        echo #include ^<iostream^>
-        echo class !PROJECT_NAME! {
-        echo public:
-        echo     void SayHello^(^);
-        echo };
-    ) > "src\Public\!PROJECT_NAME!.h" || (echo Failed to write header! & goto :error)
-    (
-        echo #include "!PROJECT_NAME!.h"
-        echo void !PROJECT_NAME!::SayHello^(^) {
-        echo     std::cout ^<^< "Hello from !PROJECT_NAME! LIB!" ^<^< std::endl;
-        echo }
-    ) > "src\Private\!PROJECT_NAME!.cpp" || (echo Failed to write cpp! & goto :error)
-)
+echo.
+echo Generating !BUILD_TYPE_NAME! project "!PROJECT_NAME!" at !PROJECT_PATH!...
+echo.
 
-:: EXE: Just a cpp with Hello World
+:: --- Directory Structure ---
+set "ROOT=!PROJECT_PATH!\!PROJECT_NAME!"
+mkdir "!ROOT!"      2>nul || (echo [ERROR] Cannot create project root. & goto :error)
+cd /d "!ROOT!"           || (echo [ERROR] Cannot enter project root.  & goto :error)
+mkdir "src\Public"  2>nul || (echo [ERROR] Cannot create src\Public.  & goto :error)
+mkdir "src\Private" 2>nul || (echo [ERROR] Cannot create src\Private. & goto :error)
+mkdir "build"       2>nul || (echo [ERROR] Cannot create build dir.   & goto :error)
+mkdir "bin"         2>nul || (echo [ERROR] Cannot create bin dir.     & goto :error)
+echo [OK] Directories created.
+
+:: --- Source Files ---
 if "!BUILD_TYPE!"=="1" (
-    echo Step 2: Writing EXE file...
-    (
-        echo #include ^<iostream^>
-        echo int main^(^) {
-        echo     std::cout ^<^< "Hello, World!" ^<^< std::endl;
-        echo     return 0;
-        echo }
-    ) > "src\Private\!PROJECT_NAME!.cpp" || (echo Failed to write cpp! & goto :error)
+    call :write_exe_source
+) else if "!BUILD_TYPE!"=="2" (
+    call :write_dll_source
+) else (
+    call :write_lib_source
 )
+if errorlevel 1 goto :error
+echo [OK] Source files written.
 
-:: Create the CMakeLists.txt
-echo Step 3: Writing CMakeLists.txt...
-(
-    echo cmake_minimum_required^(VERSION 3.20^)
-    echo project^(!PROJECT_NAME!^)
-    if "!BUILD_TYPE!"=="1" (
-        echo add_executable^(!PROJECT_NAME! src/Private/!PROJECT_NAME!.cpp^)
-    ) else if "!BUILD_TYPE!"=="2" (
-        echo target_include_directories^(!PROJECT_NAME! PUBLIC src/Public^)
-        echo add_library^(!PROJECT_NAME! SHARED src/Private/!PROJECT_NAME!.cpp src/Public/!PROJECT_NAME!.h^)
-    ) else (
-        echo target_include_directories^(!PROJECT_NAME! PUBLIC src/Public^)
-        echo add_library^(!PROJECT_NAME! STATIC src/Private/!PROJECT_NAME!.cpp src/Public/!PROJECT_NAME!.h^)
-    )
-) > CMakeLists.txt || (echo Failed to write CMakeLists.txt! & goto :error)
+:: --- CMakeLists.txt ---
+call :write_cmake
+if errorlevel 1 goto :error
+echo [OK] CMakeLists.txt written.
 
-echo Ta-da Your !BUILD_TYPE_NAME! project !PROJECT_NAME! is ready at !PROJECT_PATH!\!PROJECT_NAME!.
-echo To build, cd into !PROJECT_PATH!\!PROJECT_NAME!\build and run "cmake -B build . && cmake --build build"
+:: --- .gitignore ---
+call :write_gitignore
+echo [OK] .gitignore written.
+
+echo.
+echo Done! Project ready at: !ROOT!
+echo Build with:
+echo   cd "!ROOT!\build"
+echo   cmake ..
+echo   cmake --build . --config Release
+echo.
 
 :loop_prompt
-echo Want to make another one, you project-hoarding maniac? (y/n)
-set /p LOOP_CHOICE="Choice: "
+set "LOOP_CHOICE="
+set /p LOOP_CHOICE="Generate another project? (y/n): "
 if /i "!LOOP_CHOICE!"=="y" (
-    cd "!PROJECT_PATH!"
-    echo Back to the grind we go...
+    cd /d "!PROJECT_PATH!"
+    echo.
     goto :loop_start
 ) else if /i "!LOOP_CHOICE!"=="n" (
-    echo Finally done? Good riddance!
     goto :end
 ) else (
-    echo Y or N, not rocket science. Try again.
+    echo Enter y or n.
     goto :loop_prompt
 )
 
+:: ============================================================
+:: Subroutines
+:: ============================================================
+
+:write_exe_source
+(
+    echo #pragma once
+    echo #include ^<iostream^>
+    echo #include ^<string^>
+    echo #include ^<vector^>
+    echo #include ^<memory^>
+) > "src\Public\Core.h" || exit /b 1
+(
+    echo #include "Core.h"
+    echo.
+    echo int main^(^) {
+    echo     std::cout ^<^< "Hello from !PROJECT_NAME!^^n";
+    echo     return 0;
+    echo }
+) > "src\Private\main.cpp" || exit /b 1
+exit /b 0
+
+:write_dll_source
+(
+    echo #pragma once
+    echo #include ^<iostream^>
+    echo #include ^<string^>
+    echo #include ^<vector^>
+    echo #include ^<memory^>
+    echo.
+    echo #ifdef !PROJECT_NAME!_EXPORTS
+    echo #  define !PROJECT_NAME!_API __declspec^(dllexport^)
+    echo #else
+    echo #  define !PROJECT_NAME!_API __declspec^(dllimport^)
+    echo #endif
+) > "src\Public\Core.h" || exit /b 1
+(
+    echo #pragma once
+    echo #include "Core.h"
+    echo.
+    echo !PROJECT_NAME!_API void Init^(^);
+) > "src\Public\!PROJECT_NAME!.h" || exit /b 1
+(
+    echo #include "!PROJECT_NAME!.h"
+    echo.
+    echo void Init^(^) {
+    echo     std::cout ^<^< "!PROJECT_NAME! initialised^^n";
+    echo }
+) > "src\Private\!PROJECT_NAME!.cpp" || exit /b 1
+exit /b 0
+
+:write_lib_source
+(
+    echo #pragma once
+    echo #include ^<iostream^>
+    echo #include ^<string^>
+    echo #include ^<vector^>
+    echo #include ^<memory^>
+) > "src\Public\Core.h" || exit /b 1
+(
+    echo #pragma once
+    echo #include "Core.h"
+    echo.
+    echo class !PROJECT_NAME! {
+    echo public:
+    echo     void SayHello^(^) const;
+    echo };
+) > "src\Public\!PROJECT_NAME!.h" || exit /b 1
+(
+    echo #include "!PROJECT_NAME!.h"
+    echo.
+    echo void !PROJECT_NAME!::SayHello^(^) const {
+    echo     std::cout ^<^< "Hello from !PROJECT_NAME!^^n";
+    echo }
+) > "src\Private\!PROJECT_NAME!.cpp" || exit /b 1
+exit /b 0
+
+:write_cmake
+(
+    echo cmake_minimum_required^(VERSION 3.20^)
+    echo project^(!PROJECT_NAME! LANGUAGES CXX^)
+    echo.
+    echo set^(CMAKE_CXX_STANDARD !CXX_STD_VAL!^)
+    echo set^(CMAKE_CXX_STANDARD_REQUIRED ON^)
+    echo set^(CMAKE_CXX_EXTENSIONS OFF^)
+    echo set^(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin/$^<CONFIG^>^)
+    echo link_directories^(${CMAKE_SOURCE_DIR}/bin/$^<CONFIG^>^)
+    echo.
+    echo file^(GLOB_RECURSE !PROJECT_NAME!_HEADERS  CONFIGURE_DEPENDS "${CMAKE_SOURCE_DIR}/src/Public/*.h"^)
+    echo file^(GLOB_RECURSE !PROJECT_NAME!_SOURCE   CONFIGURE_DEPENDS "${CMAKE_SOURCE_DIR}/src/Private/*.cpp"^)
+    echo file^(GLOB_RECURSE !PROJECT_NAME!_INL      CONFIGURE_DEPENDS "${CMAKE_SOURCE_DIR}/src/Public/*.inl"^)
+    echo.
+    if "!BUILD_TYPE!"=="1" (
+        echo add_executable^(!PROJECT_NAME!
+        echo     ${!PROJECT_NAME!_HEADERS}
+        echo     ${!PROJECT_NAME!_SOURCE}
+        echo     ${!PROJECT_NAME!_INL}
+        echo ^)
+    ) else if "!BUILD_TYPE!"=="2" (
+        echo add_library^(!PROJECT_NAME! SHARED
+        echo     ${!PROJECT_NAME!_HEADERS}
+        echo     ${!PROJECT_NAME!_SOURCE}
+        echo     ${!PROJECT_NAME!_INL}
+        echo ^)
+        echo target_compile_definitions^(!PROJECT_NAME! PRIVATE !PROJECT_NAME!_EXPORTS^)
+    ) else (
+        echo add_library^(!PROJECT_NAME! STATIC
+        echo     ${!PROJECT_NAME!_HEADERS}
+        echo     ${!PROJECT_NAME!_SOURCE}
+        echo     ${!PROJECT_NAME!_INL}
+        echo ^)
+    )
+    echo.
+    echo target_include_directories^(!PROJECT_NAME! PRIVATE
+    echo     ${CMAKE_SOURCE_DIR}/src/Public
+    echo ^)
+    echo.
+    echo target_precompile_headers^(!PROJECT_NAME! PRIVATE ${CMAKE_SOURCE_DIR}/src/Public/Core.h^)
+    echo.
+    echo if ^(MSVC^)
+    echo     target_compile_options^(!PROJECT_NAME! PRIVATE
+    echo         /W4
+    echo         /permissive-
+    echo         /Zc:__cplusplus
+    echo         /arch:AVX2
+    echo     ^)
+    echo else^(^)
+    echo     target_compile_options^(!PROJECT_NAME! PRIVATE
+    echo         -Wall
+    echo         -Wextra
+    echo         -Wpedantic
+    echo         -mavx2
+    echo     ^)
+    echo endif^(^)
+) > CMakeLists.txt || exit /b 1
+exit /b 0
+
+:write_gitignore
+(
+    echo build/
+    echo bin/
+    echo .cache/
+    echo CMakeFiles/
+    echo CMakeCache.txt
+    echo cmake_install.cmake
+    echo *.pdb
+    echo *.ilk
+    echo *.exp
+) > .gitignore
+exit /b 0
+
 :error
-echo Something went wrong, you absolute disaster. Check the errors above and try again.
+echo.
+echo [ERROR] Project generation failed. See messages above.
 pause
 goto :end
 
 :end
-echo Exiting the Project-O-Tron. Don’t trip on your way out!
+echo Goodbye.
 pause

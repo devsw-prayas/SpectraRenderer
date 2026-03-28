@@ -65,33 +65,22 @@ namespace Spectra::Platform::Internal {
 
 #ifndef Spec_ATOMIC_LOAD
 #if defined(SPECTRA_COMPILER_MSVC)
-#define Spec_ATOMIC_LOAD(p_Ptr, memOrder)                                   \
-    (                                                                       \
-        ((memOrder) == SPECTRA_MEMORY_ORDER_SEQ_CST) ?                      \
-            ([&]() {                                                        \
-                auto _v = *reinterpret_cast<volatile                        \
-                    std::remove_pointer_t<decltype(p_Ptr)>*>(p_Ptr);        \
-                _mm_mfence();                                               \
-                return _v;                                                  \
-            }())                                                            \
-        :                                                                   \
-            (*reinterpret_cast<volatile                                     \
-                std::remove_pointer_t<decltype(p_Ptr)>*>(p_Ptr))            \
-    )
+#define Spec_ATOMIC_LOAD(T, p_Ptr, memOrder)                          \
+	(*reinterpret_cast<volatile T*>(p_Ptr));
 #endif
 #endif
 
-#define Spec_ATOMIC_LOAD_RELAXED(p_Ptr)   \
-    Spec_ATOMIC_LOAD((p_Ptr), SPECTRA_MEMORY_ORDER_RELAXED)
+#define Spec_ATOMIC_LOAD_RELAXED(ValidPointerType, p_Ptr)   \
+    Spec_ATOMIC_LOAD(ValidPointerType, p_Ptr, SPECTRA_MEMORY_ORDER_RELAXED)
 
-#define Spec_ATOMIC_LOAD_CONSUME(p_Ptr)   \
-    Spec_ATOMIC_LOAD((p_Ptr), SPECTRA_MEMORY_ORDER_CONSUME)
+#define Spec_ATOMIC_LOAD_CONSUME(ValidPointerType, p_Ptr)   \
+    Spec_ATOMIC_LOAD(ValidPointerType, p_Ptr, SPECTRA_MEMORY_ORDER_CONSUME)
 
-#define Spec_ATOMIC_LOAD_ACQUIRE(p_Ptr)   \
-    Spec_ATOMIC_LOAD((p_Ptr), SPECTRA_MEMORY_ORDER_ACQUIRE)
+#define Spec_ATOMIC_LOAD_ACQUIRE(ValidPointerType, p_Ptr)   \
+    Spec_ATOMIC_LOAD(ValidPointerType, p_Ptr, SPECTRA_MEMORY_ORDER_ACQUIRE)
 
-#define Spec_ATOMIC_LOAD_SEQ_CST(p_Ptr)   \
-    Spec_ATOMIC_LOAD((p_Ptr), SPECTRA_MEMORY_ORDER_SEQ_CST)
+#define Spec_ATOMIC_LOAD_SEQ_CST(ValidPointerType, p_Ptr)   \
+    Spec_ATOMIC_LOAD(ValidPointerType, p_Ptr, SPECTRA_MEMORY_ORDER_SEQ_CST)
 
 	// Atomic store primitives.
 	// Seq-cst uses explicit fences; weaker orders are currently best-effort.
@@ -99,36 +88,22 @@ namespace Spectra::Platform::Internal {
 #ifndef Spec_ATOMIC_STORE
 #if defined(SPECTRA_COMPILER_MSVC)
 
-#define Spec_ATOMIC_STORE(p_Ptr, value, memOrder)                            \
-    do                                                                       \
-    {                                                                        \
-        if ((memOrder) == SPECTRA_MEMORY_ORDER_SEQ_CST)                      \
-        {                                                                    \
-            *reinterpret_cast<volatile                                       \
-                std::remove_pointer_t<decltype(p_Ptr)>*>(p_Ptr) = (value);   \
-            _mm_mfence();                                                    \
-        }                                                                    \
-        else                                                                 \
-        {                                                                    \
-            *reinterpret_cast<volatile                                       \
-                std::remove_pointer_t<decltype(p_Ptr)>*>(p_Ptr) = (value);   \
-        }                                                                    \
-    } while (0)
-
+#define Spec_ATOMIC_STORE(ValidPointerType, p_Ptr, value, memOrder)                        \
+    (*reinterpret_cast<volatile ValidPointerType*>(p_Ptr) = (value))
 #endif
 #endif
 
-#define Spec_ATOMIC_STORE_RELAXED(p_Ptr, value)   \
-    Spec_ATOMIC_STORE((p_Ptr), (value), SPECTRA_MEMORY_ORDER_RELAXED)
+#define Spec_ATOMIC_STORE_RELAXED(ValidPointerType, p_Ptr, value)   \
+    Spec_ATOMIC_STORE(ValidPointerType, (p_Ptr), (value), SPECTRA_MEMORY_ORDER_RELAXED)
 
-#define Spec_ATOMIC_STORE_RELEASE(p_Ptr, value)   \
-    Spec_ATOMIC_STORE((p_Ptr), (value), SPECTRA_MEMORY_ORDER_RELEASE)
+#define Spec_ATOMIC_STORE_RELEASE(ValidPointerType, p_Ptr, value)   \
+    Spec_ATOMIC_STORE(ValidPointerType, (p_Ptr), (value), SPECTRA_MEMORY_ORDER_RELEASE)
 
-#define Spec_ATOMIC_STORE_ACQ_REL(p_Ptr, value)   \
-    Spec_ATOMIC_STORE((p_Ptr), (value), SPECTRA_MEMORY_ORDER_ACQ_REL)
+#define Spec_ATOMIC_STORE_ACQ_REL(ValidPointerType, p_Ptr, value)   \
+    Spec_ATOMIC_STORE(ValidPointerType, (p_Ptr), (value), SPECTRA_MEMORY_ORDER_ACQ_REL)
 
-#define Spec_ATOMIC_STORE_SEQ_CST(p_Ptr, value)   \
-    Spec_ATOMIC_STORE((p_Ptr), (value), SPECTRA_MEMORY_ORDER_SEQ_CST)
+#define Spec_ATOMIC_STORE_SEQ_CST(ValidPointerType, p_Ptr, value)   \
+    Spec_ATOMIC_STORE(ValidPointerType, (p_Ptr), (value), SPECTRA_MEMORY_ORDER_SEQ_CST)
 
 	// Compiler-only reordering barriers.
 	// Prevent instruction reordering without emitting CPU fences.
@@ -532,7 +507,6 @@ namespace Spectra::Platform::Internal {
 	// but are currently ignored on MSVC.
 
 #ifndef Spec_ATOMIC_COMPARE_EXCHANGE32
-#define Spec_ATOMIC_COMPARE_EXCHANGE32
 
 #define Spec_ATOMIC_COMPARE_EXCHANGE32(p_Ptr, expected, desired, weak, success_memOrder, failure_memOrder) \
     ([&]() {                                                                                                \
@@ -592,7 +566,6 @@ namespace Spectra::Platform::Internal {
     Spec_ATOMIC_COMPARE_EXCHANGE32((p),(e),(d),(w), SPECTRA_MEMORY_ORDER_SEQ_CST, SPECTRA_MEMORY_ORDER_SEQ_CST)
 
 #ifndef Spec_ATOMIC_COMPARE_EXCHANGE64
-#define Spec_ATOMIC_COMPARE_EXCHANGE64
 
 #define Spec_ATOMIC_COMPARE_EXCHANGE64(p_Ptr, expected, desired, weak, success_memOrder, failure_memOrder) \
     ([&]() {                                                                                                \
@@ -652,8 +625,6 @@ namespace Spectra::Platform::Internal {
     Spec_ATOMIC_COMPARE_EXCHANGE64((p),(e),(d),(w), SPECTRA_MEMORY_ORDER_SEQ_CST, SPECTRA_MEMORY_ORDER_SEQ_CST)
 
 #ifndef Spec_ATOMIC_COMPARE_EXCHANGE_PTR
-#define Spec_ATOMIC_COMPARE_EXCHANGE_PTR
-
 #define Spec_ATOMIC_COMPARE_EXCHANGE_PTR(p_Ptr, expected, desired, weak, success_memOrder, failure_memOrder) \
     ([&]() {                                                                                                  \
         void* _prev = _InterlockedCompareExchangePointer(                                                     \
@@ -715,7 +686,6 @@ namespace Spectra::Platform::Internal {
 	// Implemented using interlocked RMW instructions.
 
 #ifndef Spec_ATOMIC_AND32
-#define Spec_ATOMIC_AND32
 #if defined(SPECTRA_COMPILER_MSVC)
 
 #define Spec_ATOMIC_AND32(p_Ptr, value, memOrder) \
@@ -731,7 +701,6 @@ namespace Spectra::Platform::Internal {
 #define Spec_ATOMIC_AND32_SEQ_CST(p,v)  Spec_ATOMIC_AND32((p),(v), SPECTRA_MEMORY_ORDER_SEQ_CST)
 
 #ifndef Spec_ATOMIC_AND64
-#define Spec_ATOMIC_AND64
 #if defined(SPECTRA_COMPILER_MSVC)
 
 #define Spec_ATOMIC_AND64(p_Ptr, value, memOrder) \
@@ -747,7 +716,6 @@ namespace Spectra::Platform::Internal {
 #define Spec_ATOMIC_AND64_SEQ_CST(p,v)  Spec_ATOMIC_AND64((p),(v), SPECTRA_MEMORY_ORDER_SEQ_CST)
 
 #ifndef Spec_ATOMIC_OR32
-#define Spec_ATOMIC_OR32
 #if defined(SPECTRA_COMPILER_MSVC)
 
 #define Spec_ATOMIC_OR32(p_Ptr, value, memOrder) \
@@ -763,7 +731,6 @@ namespace Spectra::Platform::Internal {
 #define Spec_ATOMIC_OR32_SEQ_CST(p,v)  Spec_ATOMIC_OR32((p),(v), SPECTRA_MEMORY_ORDER_SEQ_CST)
 
 #ifndef Spec_ATOMIC_OR64
-#define Spec_ATOMIC_OR64
 #if defined(SPECTRA_COMPILER_MSVC)
 
 #define Spec_ATOMIC_OR64(p_Ptr, value, memOrder) \
@@ -779,7 +746,6 @@ namespace Spectra::Platform::Internal {
 #define Spec_ATOMIC_OR64_SEQ_CST(p,v)  Spec_ATOMIC_OR64((p),(v), SPECTRA_MEMORY_ORDER_SEQ_CST)
 
 #ifndef Spec_ATOMIC_XOR32
-#define Spec_ATOMIC_XOR32
 #if defined(SPECTRA_COMPILER_MSVC)
 
 #define Spec_ATOMIC_XOR32(p_Ptr, value, memOrder) \
@@ -795,7 +761,6 @@ namespace Spectra::Platform::Internal {
 #define Spec_ATOMIC_XOR32_SEQ_CST(p,v)  Spec_ATOMIC_XOR32((p),(v), SPECTRA_MEMORY_ORDER_SEQ_CST)
 
 #ifndef Spec_ATOMIC_XOR64
-#define Spec_ATOMIC_XOR64
 #if defined(SPECTRA_COMPILER_MSVC)
 
 #define Spec_ATOMIC_XOR64(p_Ptr, value, memOrder) \
@@ -811,7 +776,6 @@ namespace Spectra::Platform::Internal {
 #define Spec_ATOMIC_XOR64_SEQ_CST(p,v)  Spec_ATOMIC_XOR64((p),(v), SPECTRA_MEMORY_ORDER_SEQ_CST)
 
 #ifndef Spec_ATOMIC_NAND32
-#define Spec_ATOMIC_NAND32
 #if defined(SPECTRA_COMPILER_MSVC)
 
 #define Spec_ATOMIC_NAND32(p_Ptr, value, memOrder) \
@@ -827,7 +791,6 @@ namespace Spectra::Platform::Internal {
 #define Spec_ATOMIC_NAND32_SEQ_CST(p,v)  Spec_ATOMIC_NAND32((p),(v), SPECTRA_MEMORY_ORDER_SEQ_CST)
 
 #ifndef Spec_ATOMIC_NAND64
-#define Spec_ATOMIC_NAND64
 #if defined(SPECTRA_COMPILER_MSVC)
 
 #define Spec_ATOMIC_NAND64(p_Ptr, value, memOrder) \
@@ -846,7 +809,6 @@ namespace Spectra::Platform::Internal {
 	// These are non-standard extensions provided by MSVC.
 
 #ifndef Spec_ATOMIC_MIN32
-#define Spec_ATOMIC_MIN32
 #if defined(SPECTRA_COMPILER_MSVC)
 
 #define Spec_ATOMIC_MIN32(p_Ptr, value, memOrder) \
@@ -862,7 +824,6 @@ namespace Spectra::Platform::Internal {
 #define Spec_ATOMIC_MIN32_SEQ_CST(p,v)  Spec_ATOMIC_MIN32((p),(v), SPECTRA_MEMORY_ORDER_SEQ_CST)
 
 #ifndef Spec_ATOMIC_MIN64
-#define Spec_ATOMIC_MIN64
 #if defined(SPECTRA_COMPILER_MSVC)
 
 #define Spec_ATOMIC_MIN64(p_Ptr, value, memOrder) \
@@ -878,7 +839,6 @@ namespace Spectra::Platform::Internal {
 #define Spec_ATOMIC_MIN64_SEQ_CST(p,v)  Spec_ATOMIC_MIN64((p),(v), SPECTRA_MEMORY_ORDER_SEQ_CST)
 
 #ifndef Spec_ATOMIC_MAX32
-#define Spec_ATOMIC_MAX32
 #if defined(SPECTRA_COMPILER_MSVC)
 
 #define Spec_ATOMIC_MAX32(p_Ptr, value, memOrder) \
@@ -894,7 +854,6 @@ namespace Spectra::Platform::Internal {
 #define Spec_ATOMIC_MAX32_SEQ_CST(p,v)  Spec_ATOMIC_MAX32((p),(v), SPECTRA_MEMORY_ORDER_SEQ_CST)
 
 #ifndef Spec_ATOMIC_MAX64
-#define Spec_ATOMIC_MAX64
 #if defined(SPECTRA_COMPILER_MSVC)
 
 #define Spec_ATOMIC_MAX64(p_Ptr, value, memOrder) \
@@ -910,7 +869,6 @@ namespace Spectra::Platform::Internal {
 #define Spec_ATOMIC_MAX64_SEQ_CST(p,v)  Spec_ATOMIC_MAX64((p),(v), SPECTRA_MEMORY_ORDER_SEQ_CST)
 
 #ifndef Spec_ATOMIC_UMIN32
-#define Spec_ATOMIC_UMIN32
 #if defined(SPECTRA_COMPILER_MSVC)
 
 #define Spec_ATOMIC_UMIN32(p_Ptr, value, memOrder) \
@@ -926,7 +884,6 @@ namespace Spectra::Platform::Internal {
 #define Spec_ATOMIC_UMIN32_SEQ_CST(p,v)  Spec_ATOMIC_UMIN32((p),(v), SPECTRA_MEMORY_ORDER_SEQ_CST)
 
 #ifndef Spec_ATOMIC_UMIN64
-#define Spec_ATOMIC_UMIN64
 #if defined(SPECTRA_COMPILER_MSVC)
 
 #define Spec_ATOMIC_UMIN64(p_Ptr, value, memOrder) \
@@ -942,7 +899,6 @@ namespace Spectra::Platform::Internal {
 #define Spec_ATOMIC_UMIN64_SEQ_CST(p,v)  Spec_ATOMIC_UMIN64((p),(v), SPECTRA_MEMORY_ORDER_SEQ_CST)
 
 #ifndef Spec_ATOMIC_UMAX32
-#define Spec_ATOMIC_UMAX32
 #if defined(SPECTRA_COMPILER_MSVC)
 
 #define Spec_ATOMIC_UMAX32(p_Ptr, value, memOrder) \
@@ -958,7 +914,6 @@ namespace Spectra::Platform::Internal {
 #define Spec_ATOMIC_UMAX32_SEQ_CST(p,v)  Spec_ATOMIC_UMAX32((p),(v), SPECTRA_MEMORY_ORDER_SEQ_CST)
 
 #ifndef Spec_ATOMIC_UMAX64
-#define Spec_ATOMIC_UMAX64
 #if defined(SPECTRA_COMPILER_MSVC)
 
 #define Spec_ATOMIC_UMAX64(p_Ptr, value, memOrder) \
@@ -976,7 +931,6 @@ namespace Spectra::Platform::Internal {
 	// Non-atomic bit test helpers.
 
 #ifndef Spec_BITTEST32
-#define Spec_BITTEST32
 #if defined(SPECTRA_COMPILER_MSVC)
 
 #define Spec_BITTEST32(p_Ptr, bit) \
@@ -986,7 +940,6 @@ namespace Spectra::Platform::Internal {
 #endif
 
 #ifndef Spec_BITTEST64
-#define Spec_BITTEST64
 #if defined(SPECTRA_COMPILER_MSVC)
 
 #define Spec_BITTEST64(p_Ptr, bit) \
@@ -996,7 +949,6 @@ namespace Spectra::Platform::Internal {
 #endif
 
 #ifndef Spec_BITTEST_AND_SET32
-#define Spec_BITTEST_AND_SET32
 #if defined(SPECTRA_COMPILER_MSVC)
 
 #define Spec_BITTEST_AND_SET32(p_Ptr, bit) \
@@ -1006,9 +958,7 @@ namespace Spectra::Platform::Internal {
 #endif
 
 #ifndef Spec_BITTEST_AND_SET64
-#define Spec_BITTEST_AND_SET64
 #if defined(SPECTRA_COMPILER_MSVC)
-
 #define Spec_BITTEST_AND_SET64(p_Ptr, bit) \
     _bittestandset64(reinterpret_cast<long long*>(p_Ptr), (bit))
 
@@ -1016,9 +966,7 @@ namespace Spectra::Platform::Internal {
 #endif
 
 #ifndef Spec_BITTEST_AND_RESET32
-#define Spec_BITTEST_AND_RESET32
 #if defined(SPECTRA_COMPILER_MSVC)
-
 #define Spec_BITTEST_AND_RESET32(p_Ptr, bit) \
     _bittestandreset(reinterpret_cast<long*>(p_Ptr), (bit))
 
@@ -1026,7 +974,6 @@ namespace Spectra::Platform::Internal {
 #endif
 
 #ifndef Spec_BITTEST_AND_RESET64
-#define Spec_BITTEST_AND_RESET64
 #if defined(SPECTRA_COMPILER_MSVC)
 
 #define Spec_BITTEST_AND_RESET64(p_Ptr, bit) \
@@ -1036,7 +983,6 @@ namespace Spectra::Platform::Internal {
 #endif
 
 #ifndef Spec_BITTEST_AND_COMPLEMENT32
-#define Spec_BITTEST_AND_COMPLEMENT32
 #if defined(SPECTRA_COMPILER_MSVC)
 
 #define Spec_BITTEST_AND_COMPLEMENT32(p_Ptr, bit) \
@@ -1046,7 +992,6 @@ namespace Spectra::Platform::Internal {
 #endif
 
 #ifndef Spec_BITTEST_AND_COMPLEMENT64
-#define Spec_BITTEST_AND_COMPLEMENT64
 #if defined(SPECTRA_COMPILER_MSVC)
 
     // Atomic bit test and modify operations.
@@ -1058,7 +1003,6 @@ namespace Spectra::Platform::Internal {
 #endif
 
 #ifndef Spec_INTERLOCKED_BITTEST_AND_SET
-#define Spec_INTERLOCKED_BITTEST_AND_SET
 #if defined(SPECTRA_COMPILER_MSVC)
 
 #define Spec_INTERLOCKED_BITTEST_AND_SET(p_Ptr, bit) \
@@ -1068,7 +1012,6 @@ namespace Spectra::Platform::Internal {
 #endif
 
 #ifndef Spec_INTERLOCKED_BITTEST_AND_RESET
-#define Spec_INTERLOCKED_BITTEST_AND_RESET
 #if defined(SPECTRA_COMPILER_MSVC)
 
 #define Spec_INTERLOCKED_BITTEST_AND_RESET(p_Ptr, bit) \
@@ -1081,7 +1024,6 @@ namespace Spectra::Platform::Internal {
 	// Return index of least / most significant set bit.
 
 #ifndef Spec_BITSCAN_FORWARD32
-#define Spec_BITSCAN_FORWARD32
 #if defined(SPECTRA_COMPILER_MSVC)
 
 #define Spec_BITSCAN_FORWARD32(outIndex, value) \
@@ -1091,7 +1033,6 @@ namespace Spectra::Platform::Internal {
 #endif
 
 #ifndef Spec_BITSCAN_FORWARD64
-#define Spec_BITSCAN_FORWARD64
 #if defined(SPECTRA_COMPILER_MSVC)
 
 #define Spec_BITSCAN_FORWARD64(outIndex, value) \
@@ -1101,7 +1042,6 @@ namespace Spectra::Platform::Internal {
 #endif
 
 #ifndef Spec_BITSCAN_REVERSE32
-#define Spec_BITSCAN_REVERSE32
 #if defined(SPECTRA_COMPILER_MSVC)
 
 #define Spec_BITSCAN_REVERSE32(outIndex, value) \
@@ -1111,7 +1051,6 @@ namespace Spectra::Platform::Internal {
 #endif
 
 #ifndef Spec_BITSCAN_REVERSE64
-#define Spec_BITSCAN_REVERSE64
 #if defined(SPECTRA_COMPILER_MSVC)
 
 #define Spec_BITSCAN_REVERSE64(outIndex, value) \
@@ -1123,7 +1062,6 @@ namespace Spectra::Platform::Internal {
     // Bit population count.
 
 #ifndef Spec_POPCOUNT32
-#define Spec_POPCOUNT32
 #if defined(SPECTRA_COMPILER_MSVC)
 
 #define Spec_POPCOUNT32(value) \
@@ -1133,7 +1071,6 @@ namespace Spectra::Platform::Internal {
 #endif
 
 #ifndef Spec_POPCOUNT64
-#define Spec_POPCOUNT64
 #if defined(SPECTRA_COMPILER_MSVC)
 
 #define Spec_POPCOUNT64(value) \
@@ -1145,7 +1082,6 @@ namespace Spectra::Platform::Internal {
     // Bit rotation helpers.
 
 #ifndef Spec_ROTL32
-#define Spec_ROTL32
 #if defined(SPECTRA_COMPILER_MSVC)
 
 #define Spec_ROTL32(value, shift) \
@@ -1155,7 +1091,6 @@ namespace Spectra::Platform::Internal {
 #endif
 
 #ifndef Spec_ROTL64
-#define Spec_ROTL64
 #if defined(SPECTRA_COMPILER_MSVC)
 
 #define Spec_ROTL64(value, shift) \
@@ -1165,7 +1100,6 @@ namespace Spectra::Platform::Internal {
 #endif
 
 #ifndef Spec_ROTR32
-#define Spec_ROTR32
 #if defined(SPECTRA_COMPILER_MSVC)
 
 #define Spec_ROTR32(value, shift) \
@@ -1175,7 +1109,6 @@ namespace Spectra::Platform::Internal {
 #endif
 
 #ifndef Spec_ROTR64
-#define Spec_ROTR64
 #if defined(SPECTRA_COMPILER_MSVC)
 
 #define Spec_ROTR64(value, shift) \
@@ -1187,7 +1120,6 @@ namespace Spectra::Platform::Internal {
 	// Byte-order reversal helpers.
 
 #ifndef Spec_BYTESWAP16
-#define Spec_BYTESWAP16
 #if defined(SPECTRA_COMPILER_MSVC)
 
 #define Spec_BYTESWAP16(value) \
@@ -1197,7 +1129,6 @@ namespace Spectra::Platform::Internal {
 #endif
 
 #ifndef Spec_BYTESWAP32
-#define Spec_BYTESWAP32
 #if defined(SPECTRA_COMPILER_MSVC)
 
 #define Spec_BYTESWAP32(value) \
@@ -1207,7 +1138,6 @@ namespace Spectra::Platform::Internal {
 #endif
 
 #ifndef Spec_BYTESWAP64
-#define Spec_BYTESWAP64
 #if defined(SPECTRA_COMPILER_MSVC)
 
 #define Spec_BYTESWAP64(value) \
@@ -1219,7 +1149,6 @@ namespace Spectra::Platform::Internal {
     // CPU timestamp counter access.
 
 #ifndef Spec_RDTSC
-#define Spec_RDTSC
 #if defined(SPECTRA_COMPILER_MSVC)
 
 #define Spec_RDTSC() \
@@ -1231,7 +1160,6 @@ namespace Spectra::Platform::Internal {
     // Serialized timestamp counter access.
 
 #ifndef Spec_RDTSCP
-#define Spec_RDTSCP
 #if defined(SPECTRA_COMPILER_MSVC)
 
 #define Spec_RDTSCP(aux) \
@@ -1243,7 +1171,6 @@ namespace Spectra::Platform::Internal {
     // Performance monitoring counter access.
 
 #ifndef Spec_READPMC
-#define Spec_READPMC
 #if defined(SPECTRA_COMPILER_MSVC)
 
 #define Spec_READPMC(counter) \
@@ -1255,7 +1182,6 @@ namespace Spectra::Platform::Internal {
     // CPU pause hint for spin-wait loops
 
 #ifndef Spec_CPU_PAUSE
-#define Spec_CPU_PAUSE
 #if defined(SPECTRA_COMPILER_MSVC)
 
 #define Spec_CPU_PAUSE() \
@@ -1402,15 +1328,15 @@ namespace Spectra::Platform::Internal {
 
 #ifndef Spec_MUL_FULL_OVERFLOW_I8
 #if defined(SPECTRA_COMPILER_MSVC)
-#define Spec_MUL_FULL_OVERFLOW_I8(a, b, lo, hi) \
-            _mul_full_overflow_i8((a), (b), (lo), (hi))
+#define Spec_MUL_FULL_OVERFLOW_I8(a, b,  out) \
+            _mul_full_overflow_i8((a), (b), (out))
 #endif
 #endif
 
 #ifndef Spec_MUL_FULL_OVERFLOW_I16
 #if defined(SPECTRA_COMPILER_MSVC)
-#define Spec_MUL_FULL_OVERFLOW_I16(a, b, lo, hi) \
-            _mul_full_overflow_i16((a), (b), (lo), (hi))
+#define Spec_MUL_FULL_OVERFLOW_I16(a, b, hi, lo) \
+            _mul_full_overflow_i16((a), (b), (hi), (lo))
 #endif
 #endif
 
@@ -1430,8 +1356,8 @@ namespace Spectra::Platform::Internal {
 
 #ifndef Spec_MUL_FULL_OVERFLOW_U8
 #if defined(SPECTRA_COMPILER_MSVC)
-#define Spec_MUL_FULL_OVERFLOW_U8(a, b, lo, hi) \
-            _mul_full_overflow_u8((a), (b), (lo), (hi))
+#define Spec_MUL_FULL_OVERFLOW_U8(a, b, out) \
+            _mul_full_overflow_u8((a), (b), (out))
 #endif
 #endif
 

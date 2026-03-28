@@ -31,7 +31,7 @@ namespace Spectra::Platform::Runtime::Thread {
 
 	// [Payload]: 25B [sizeof]: 32B
 	struct alignas(32) SPECTRA_RUNTIME_API ThreadHandle final {
-		friend struct PlatformThread;
+		friend class PlatformThread;
 	private:
 		size_t m_ThreadID;
 		size_t m_Generation;
@@ -45,17 +45,14 @@ namespace Spectra::Platform::Runtime::Thread {
 		ThreadState expectedState() const;
 		size_t getThreadID() const;
 
-		static SPECTRA_FORCEINLINE ThreadHandle getInavlidHandle() {
+		static SPECTRA_FORCEINLINE ThreadHandle getInvalidHandle() {
 			return {0,0,0, ThreadState::REAPED};
 		}
 	};
 
-	namespace this_platform_thread {
-	}
-
 	// [Payload]: 52B [sizeof]: 64B
 	struct alignas(64) SPECTRA_RUNTIME_API ThreadLaunchDesc final {
-		friend struct PlatformThread;
+		friend class PlatformThread;
 	private:
 		using Entry = void(*)(void*);
 
@@ -95,6 +92,7 @@ namespace Spectra::Platform::Runtime::Thread {
 		Flag         m_PriorityBoost;
 		Flag         m_SupportsIdealProcessor;
 		Flag         m_SupportsThreadGroup;
+		Flag		 m_CanDetach;
 	};
 
 	void SPECTRA_RUNTIME_API initLaunchExecDesc(ThreadLaunchExecDesc& ro_Desc);
@@ -127,14 +125,15 @@ namespace Spectra::Platform::Runtime::Thread {
 
 	void SPECTRA_RUNTIME_API priorityBoosting(ThreadLaunchExecDesc& ro_Desc, Flag v_Permission);
 	void SPECTRA_RUNTIME_API basePriority(ThreadLaunchExecDesc& ro_Desc, Priority v_BasePriority);
+	void SPECTRA_RUNTIME_API allowDetachable(ThreadLaunchDesc& ro_Desc, Flag v_Permission);
 
 	bool SPECTRA_RUNTIME_API validateLaunchExecDesc(const ThreadLaunchExecDesc& ro_Desc);
 
 	// [Payload] : 32B [sizeof] : 32B
 	struct SPECTRA_RUNTIME_API alignas(32) ParkHandle final {
-		Atomic::Atomic32 m_ParkingPermit;
+		Atomic::AtomicValue32<uint32_t> m_ParkingPermit;
 
-		explicit ParkHandle(Atomic::Integer32 v_Value) : m_ParkingPermit(v_Value) {}
+		explicit ParkHandle(uint32_t v_Value) : m_ParkingPermit(v_Value) {}
 		~ParkHandle() = default;
 
 		ParkHandle(const ParkHandle&) = default;
@@ -143,4 +142,9 @@ namespace Spectra::Platform::Runtime::Thread {
 		ParkHandle(ParkHandle&&) noexcept = default;
 		ParkHandle& operator=(ParkHandle&&) noexcept = default;
 	};
+
+	namespace this_platform_thread {
+		static thread_local ThreadHandle t_MyHandle = ThreadHandle::getInvalidHandle();
+		static thread_local ParkHandle t_MyParkingPermit = ParkHandle{ 0 };
+	}
 }

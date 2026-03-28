@@ -6,5 +6,3 @@ add_library(SpectraRenderPipeline SHARED
 )
 
 target_include_directories(SpectraRenderPipeline PUBLIC src/Public)
-
-target_link_libraries(SpectraRenderPipeline SpectraDX12Backend SpectraVulkanBackend )

@@ -19,5 +19,5 @@ target_compile_definitions(SpectraPlatformRuntime PRIVATE
     SPECTRA_PLATFORM_MAX_THREADS=${SPECTRA_MAX_THREADS})
 
 target_compile_definitions(SpectraPlatformRuntime PRIVATE        
-        SPECTRA_SHARED,
+        SPECTRA_SHARED
         SPECTRA_BUILDING_RUNTIME)

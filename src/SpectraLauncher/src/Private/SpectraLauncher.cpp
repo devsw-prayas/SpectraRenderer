@@ -1,13 +1,21 @@
-#include "ThreadUtils.h"
 #include <iostream>
-#include <intrin.h>
+#include <ThreadUtils.h>
 
-using namespace Spectra::Platform;
+#include "CoriumMemoryHandler.h"
+#include "CoriumUtility.h"
+#include "EngineAllocators.h"
 
 int main() {
-	Runtime::Thread::ThreadLaunchExecDesc desc;
-	Runtime::Thread::initLaunchExecDesc(desc);
+	Corium::Memory::Internal::init();
+	Corium::Memory::Internal::AllocatorRegistry::initRegistry();
+	int y = 100;
 
-	std::cout << desc.m_CommitSize;
-	
+	const auto closure = Corium::Core::Utils::buildClosure<void(int)>(
+		[](const int x) {
+		for (int i = 0; i < x; i++) {
+			std::cout << "Hello" << "\n";
+		}
+	});
+
+	closure(y);
 }
