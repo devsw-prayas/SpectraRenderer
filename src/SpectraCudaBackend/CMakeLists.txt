@@ -1,28 +1,40 @@
 cmake_minimum_required(VERSION 3.20)
 project(SpectraCudaBackend LANGUAGES CXX)
 
+option(SPECTRA_ENABLE_CUDA "Enable CUDA GPU backend" ON)
+
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin/$<CONFIG>)
 link_directories(${CMAKE_SOURCE_DIR}/bin/$<CONFIG>)
 
-file(GLOB_RECURSE SpectraCudaBackend_HEADERS  CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/src/Public/*.h")
-file(GLOB_RECURSE SpectraCudaBackend_SOURCE   CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/src/Private/*.cpp")
-file(GLOB_RECURSE SpectraCudaBackend_INL      CONFIGURE_DEPENDS "${CMAKE_CURRENT_OURCE_DIR}/src/Public/*.inl")
+file(GLOB_RECURSE SpectraCudaBackend_HEADERS          CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/src/Public/*.h")
+file(GLOB_RECURSE SpectraCudaBackend_SOURCE            CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/src/Private/*.cpp")
+file(GLOB_RECURSE SpectraCudaBackend_INL               CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/src/Public/*.inl")
+file(GLOB_RECURSE SpectraCudaBackend_INTERNAL_HEADERS  CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/src/Internal/*.h")
 
 add_library(SpectraCudaBackend SHARED
     ${SpectraCudaBackend_HEADERS}
     ${SpectraCudaBackend_SOURCE}
     ${SpectraCudaBackend_INL}
-)
-target_compile_definitions(SpectraCudaBackend PRIVATE SpectraCudaBackend_EXPORTS)
-
-target_include_directories(SpectraCudaBackend PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/Public
+    ${SpectraCudaBackend_INTERNAL_HEADERS}
 )
 
-target_precompile_headers(SpectraCudaBackend PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src/Public/SpectraCudaBackend.h)
+target_include_directories(SpectraCudaBackend
+    PUBLIC
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/Public
+    PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/Internal
+)
+
+target_compile_definitions(SpectraCudaBackend PRIVATE
+    SPEC_CUDA_BK_SHARED
+)
+
+target_precompile_headers(SpectraCudaBackend PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/Public/SpectraCudaBackend.h
+)
 
 if (MSVC)
     target_compile_options(SpectraCudaBackend PRIVATE
@@ -37,5 +49,19 @@ else()
         -Wextra
         -Wpedantic
         -mavx2
+    )
+endif()
+
+if (SPECTRA_ENABLE_CUDA)
+    find_package(CUDAToolkit REQUIRED)
+    target_include_directories(SpectraCudaBackend PRIVATE
+        ${CUDAToolkit_INCLUDE_DIRS}
+    )
+    target_link_libraries(SpectraCudaBackend PRIVATE
+        CUDA::cuda_driver
+    )
+    target_compile_definitions(SpectraCudaBackend PRIVATE
+        SPECTRA_CUDA_AVAILABLE
+        CUDA_NO_RUNTIME_API
     )
 endif()

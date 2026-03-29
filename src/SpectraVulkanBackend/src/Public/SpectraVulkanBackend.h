@@ -1,7 +1,22 @@
 #pragma once
 
-#ifndef SPECRTA_VULKAN_BACKEND
-#define SPECRTA_VULKAN_BACKEND __declspec(dllexport)
+#ifndef SPEC_VK_BK_RUNTIME_API
+#if defined(_WIN32) || defined(__CYGWIN__)
+#if defined(SPEC_VK_BK_SHARED)
+#define SPEC_VK_BK_RUNTIME_API __declspec(dllexport)
+#else
+#define SPEC_VK_BK_RUNTIME_API __declspec(dllimport)
 #endif
 
-void SPECRTA_VULKAN_BACKEND SpectraVulkanBackend_Init();
+#elif defined(__GNUC__) || defined(__clang__ )
+#define SPEC_VK_BK_RUNTIME_API __attribute__((visibility("default")))
+#else
+#define SPEC_VK_BK_RUNTIME_API
+#endif
+#endif
+
+#include <cstdint>
+#include <type_traits>
+#include <initializer_list>
+#include <unordered_set>
+#include <array>
