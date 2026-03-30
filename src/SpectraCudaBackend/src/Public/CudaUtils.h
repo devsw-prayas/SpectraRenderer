@@ -81,7 +81,7 @@ namespace Spectra::Cuda::Utils {
 	enum class SPEC_CUDA_BK_RUNTIME_API	ContextSchedulingFlags final : uint8_t {
 		SCHEDULE_AUTO,
 		SCHEDULE_SPIN,
-		SCHEUDLE_YIELD,
+		SCHEDULE_YIELD,
 		SCHEDULE_BLOCKING_SYNC
 	};
 
@@ -89,5 +89,79 @@ namespace Spectra::Cuda::Utils {
 		NONE,
 		MAP_HOST,
 		LMEM_RESIZE_TO_MAX
+	};
+
+	struct SPEC_CUDA_BK_RUNTIME_API SPEC_CUDA_BK_ALIGNAS(8) PinnedAddress final {
+		void* m_GpuAddr = nullptr;
+
+		explicit PinnedAddress(void* addr) : m_GpuAddr(addr) {}
+		PinnedAddress() = default;
+		~PinnedAddress() = default;
+
+		PinnedAddress(const PinnedAddress&) = default;
+		PinnedAddress& operator=(const PinnedAddress&) = default;
+
+		PinnedAddress(PinnedAddress&&) noexcept = default;
+		PinnedAddress& operator=(PinnedAddress&&) noexcept = default;
+
+		SPEC_CUDA_BK_NODISCARD bool isValid() const {
+			return m_GpuAddr != nullptr;
+		}
+	};
+
+	SPEC_CUDA_BK_STATIC_ASSERT(std::is_standard_layout_v<PinnedAddress>, "GpuAddress must maintain standard layout");
+	SPEC_CUDA_BK_STATIC_ASSERT(std::is_trivially_copyable_v<PinnedAddress>, "GpuAddress must be trivially copyable");
+	SPEC_CUDA_BK_STATIC_ASSERT(std::is_trivially_move_assignable_v<PinnedAddress>, "GpuAddress must be trivially move assignable");
+	SPEC_CUDA_BK_STATIC_ASSERT(sizeof(PinnedAddress) == 8, "Invalid GpuAddress size, must be 64bit");
+
+	struct SPEC_CUDA_BK_RUNTIME_API SPEC_CUDA_BK_ALIGNAS(16) GpuMemory final {
+		size_t m_TotalMemory = 0;
+		size_t m_AvailableMemory = 0;
+
+		GpuMemory() = default;
+		~GpuMemory() = default;
+
+		GpuMemory(const GpuMemory&) = default;
+		GpuMemory& operator=(const GpuMemory&) = default;
+
+		GpuMemory(GpuMemory&&) noexcept = default;
+		GpuMemory& operator=(GpuMemory&&) noexcept = default;
+	};
+
+	struct SPEC_CUDA_BK_RUNTIME_API SPEC_CUDA_BK_ALIGNAS(8) GpuAddress final {
+		uint64_t m_GpuAddr = 0;
+
+		explicit GpuAddress(uint64_t addr) : m_GpuAddr(addr) {}
+		GpuAddress() = default;
+		~GpuAddress() = default;
+
+		GpuAddress(const GpuAddress&) = default;
+		GpuAddress& operator=(const GpuAddress&) = default;
+
+		GpuAddress(GpuAddress&&) noexcept = default;
+		GpuAddress& operator=(GpuAddress&&) noexcept = default;
+
+		SPEC_CUDA_BK_NODISCARD bool isValid() const {
+			return m_GpuAddr != 0;
+		}
+	};
+
+	enum class SPEC_CUDA_BK_RUNTIME_API HostAllocFlags final : uint8_t {
+		ALLOC_PORTABLE,
+		ALLOC_DEVICE_MAP,
+		ALLOC_WRITE_COMBINED
+	};
+
+	enum class SPEC_CUDA_BK_RUNTIME_API HostRegisterFlags final : uint8_t {
+		REG_PORTABLE,
+		REG_DEVICE_MAP,
+		REG_IO_MEMORY,
+		REG_READ_ONLY
+	};
+
+	class CudaHelpers final {
+	public:
+		static uint32_t computeAllocFlag(std::initializer_list<HostAllocFlags> flags);
+		static uint32_t computeRegFlag(std::initializer_list<HostRegisterFlags> flags);
 	};
 }

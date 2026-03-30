@@ -63,7 +63,7 @@ namespace Spectra::Cuda::Internal {
 		switch (flag) {
 		case Utils::ContextSchedulingFlags::SCHEDULE_AUTO: return CU_CTX_SCHED_AUTO;
 		case Utils::ContextSchedulingFlags::SCHEDULE_SPIN: return CU_CTX_SCHED_SPIN;
-		case Utils::ContextSchedulingFlags::SCHEUDLE_YIELD: return CU_CTX_SCHED_YIELD;
+		case Utils::ContextSchedulingFlags::SCHEDULE_YIELD: return CU_CTX_SCHED_YIELD;
 		case Utils::ContextSchedulingFlags::SCHEDULE_BLOCKING_SYNC: return CU_CTX_BLOCKING_SYNC;
 		}
 		SPEC_CUDA_BK_ASSERT(false && "Invalid CudaDeviceAttribute");
@@ -75,6 +75,30 @@ namespace Spectra::Cuda::Internal {
 		switch (flag) {
 		case Utils::ContextCreationFlags::MAP_HOST: return CU_CTX_MAP_HOST;
 		case Utils::ContextCreationFlags::LMEM_RESIZE_TO_MAX: return CU_CTX_LMEM_RESIZE_TO_MAX;
+		}
+		SPEC_CUDA_BK_ASSERT(false && "Invalid CudaDeviceAttribute");
+		SPEC_CUDA_BK_TRAP();
+		SPEC_CUDA_BK_UNREACHABLE();
+	}
+
+	uint32_t CUDA_InternalHelpers::toHostAllocationFlags(Utils::HostAllocFlags flag) {
+		switch (flag)
+		{
+		case Utils::HostAllocFlags::ALLOC_DEVICE_MAP: return CU_MEMHOSTALLOC_DEVICEMAP;
+		case Utils::HostAllocFlags::ALLOC_PORTABLE:	return CU_MEMHOSTALLOC_PORTABLE;
+		case Utils::HostAllocFlags::ALLOC_WRITE_COMBINED: return CU_MEMHOSTALLOC_WRITECOMBINED;
+		}
+		SPEC_CUDA_BK_ASSERT(false && "Invalid CudaDeviceAttribute");
+		SPEC_CUDA_BK_TRAP();
+		SPEC_CUDA_BK_UNREACHABLE();
+	}
+
+	uint32_t CUDA_InternalHelpers::toHostRegisterFlags(Utils::HostRegisterFlags flag) {
+		switch (flag) {
+		case Utils::HostRegisterFlags::REG_DEVICE_MAP: return CU_MEMHOSTREGISTER_DEVICEMAP;
+		case Utils::HostRegisterFlags::REG_IO_MEMORY: return CU_MEMHOSTREGISTER_IOMEMORY;
+		case Utils::HostRegisterFlags::REG_PORTABLE: return CU_MEMHOSTREGISTER_PORTABLE;
+		case Utils::HostRegisterFlags::REG_READ_ONLY: return CU_MEMHOSTREGISTER_READ_ONLY;
 		}
 		SPEC_CUDA_BK_ASSERT(false && "Invalid CudaDeviceAttribute");
 		SPEC_CUDA_BK_TRAP();

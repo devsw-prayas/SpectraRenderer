@@ -6,10 +6,11 @@
 #include "SpecVulkanSyscalls.h"
 
 namespace Spectra::Vulkan::Internal {
-    std::vector<Utils::VkExtension> VulkanExtensionRegistry::s_Extensions;
+    std::vector<Utils::VkExtension> VulkanRegistry::s_Extensions;
+    std::vector<Utils::VkLayer> VulkanRegistry::s_Layers;
 
-    void VulkanExtensionRegistry::initRegistry() {
-        s_Extensions.resize(27);
+    void VulkanRegistry::initRegistry() {
+        s_Extensions.resize(Utils::VK_SUPPORTED_EXT_COUNT);
 
         // Instance
         s_Extensions[0] = { VK_KHR_SURFACE_EXTENSION_NAME,                          Utils::VulkanExtensions::VK_SURFACE,                       Utils::ExtensionRequirement::REQUIRED };
@@ -45,5 +46,9 @@ namespace Spectra::Vulkan::Internal {
         s_Extensions[24] = { VK_KHR_SHADER_FLOAT16_INT8_EXTENSION_NAME,              Utils::VulkanExtensions::VK_SHADER_FLOAT16_INT8,            Utils::ExtensionRequirement::NON_ESSENTIAL };
         s_Extensions[25] = { VK_KHR_16BIT_STORAGE_EXTENSION_NAME,                    Utils::VulkanExtensions::VK_16BIT_STORAGE,                  Utils::ExtensionRequirement::NON_ESSENTIAL };
         s_Extensions[26] = { VK_NV_MESH_SHADER_EXTENSION_NAME,                       Utils::VulkanExtensions::VK_MESH_SHADER,                    Utils::ExtensionRequirement::NON_ESSENTIAL };
+
+        s_Layers.resize(Utils::VK_SUPPORTED_LAYERS_COUNT);
+
+        s_Layers[0] = {VK_LAYERS_KHRONOS_VALIDATION,                           Utils::VulkanLayers::VK_VALIDATION};
     }
 }

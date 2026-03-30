@@ -2,6 +2,15 @@
 #include "SpectraCudaBackend.h"
 #include "CudaUtils.h"
 
+#define CUDA_ERROR_TRAP(result)	 \
+	do{												 \
+		const char* errorStr = nullptr;				   \
+		cuGetErrorString(result, &errorStr);		   \
+		SPEC_CUDA_BK_ASSERT(false && errorStr);		   \
+		SPEC_CUDA_BK_TRAP();						   \
+	}while(0); 										   \
+
+
 #ifdef ALLOW_HELPERS
 #include <cuda.h>
 
@@ -24,7 +33,8 @@ namespace Spectra::Cuda::Internal {
 		static CUdevice_attribute toCudaAttr(Utils::CudaDeviceAttribute attr);
 		static CUctx_flags_enum toCudaContextScheduleFlags(Utils::ContextSchedulingFlags flag);
 		static CUctx_flags_enum toCudaContextCreationFlags(Utils::ContextCreationFlags flag);
-
+		static uint32_t toHostAllocationFlags(Utils::HostAllocFlags flag);
+		static uint32_t toHostRegisterFlags(Utils::HostRegisterFlags flag);
 	};
 }
 

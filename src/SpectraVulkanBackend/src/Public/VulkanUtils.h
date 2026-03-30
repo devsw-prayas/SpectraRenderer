@@ -4,6 +4,9 @@
 #include "SpecVulkanDiagnostics.h"
 
 namespace Spectra::Vulkan::Utils {
+	inline constexpr uint32_t VK_SUPPORTED_EXT_COUNT = 27;
+	inline constexpr uint32_t VK_SUPPORTED_LAYERS_COUNT = 1;
+
 	enum class SPEC_VK_BK_RUNTIME_API VulkanExtensions final : uint8_t {
 		// Instance Extensions
 		VK_SURFACE,
@@ -43,12 +46,17 @@ namespace Spectra::Vulkan::Utils {
 		NONE
 	};
 
+	enum class SPEC_VK_BK_RUNTIME_API VulkanLayers final : uint8_t {
+		VK_VALIDATION,
+		NONE
+	};
+
 	enum class SPEC_VK_BK_RUNTIME_API ExtensionRequirement final : uint8_t {
 		REQUIRED,
 		NON_ESSENTIAL
 	};
 
-	struct SPEC_VK_BK_ALIGNAS(8) VkExtension final {
+	struct SPEC_VK_BK_RUNTIME_API SPEC_VK_BK_ALIGNAS(8) VkExtension final {
 		const char* m_Extension;
 		VulkanExtensions       m_ExtensionName;
 		ExtensionRequirement   m_Requirement;
@@ -63,5 +71,37 @@ namespace Spectra::Vulkan::Utils {
 		VkExtension& operator=(const VkExtension&) = default;
 		VkExtension(VkExtension&&) noexcept = default;
 		VkExtension& operator=(VkExtension&&) noexcept = default;
+	};
+
+	struct SPEC_VK_BK_RUNTIME_API SPEC_VK_BK_ALIGNAS(8) VkLayer final {
+		const char* m_Layer;
+		VulkanLayers       m_LayerName;
+
+		VkLayer() = default;
+
+		VkLayer(const char* v_Ext, VulkanLayers v_Name)
+			: m_Layer(v_Ext), m_LayerName(v_Name) {
+		}
+
+		VkLayer(const VkLayer&) = default;
+		VkLayer& operator=(const VkLayer&) = default;
+		VkLayer(VkLayer&&) noexcept = default;
+		VkLayer& operator=(VkLayer&&) noexcept = default;
+	};
+
+	struct SPEC_VK_BK_RUNTIME_API SPEC_VK_BK_ALIGNAS(16) InitDesc final {
+		const char* m_ApplicationName = nullptr;
+		bool m_EnableValidation = false;
+
+		InitDesc(const char* v_Name, bool v_Enabled)
+			: m_ApplicationName(v_Name), m_EnableValidation(v_Enabled) {
+		}
+		~InitDesc() = default;
+
+		InitDesc(const InitDesc&) = default;
+		InitDesc& operator=(const InitDesc&) = default;
+
+		InitDesc(InitDesc&&) noexcept = default;
+		InitDesc& operator=(InitDesc&&) noexcept = default;
 	};
 }

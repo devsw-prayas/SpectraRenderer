@@ -30,11 +30,7 @@ namespace Spectra::Cuda::Context {
 			ctx.m_Handle = context;
 			return ctx;
 		}
-
-		const char* errorStr = nullptr;
-		cuGetErrorString(result, &errorStr);
-		SPEC_CUDA_BK_ASSERT(false && errorStr);
-		SPEC_CUDA_BK_TRAP();
+		CUDA_ERROR_TRAP(result)
 		return ctx;
 	}
 
@@ -43,10 +39,7 @@ namespace Spectra::Cuda::Context {
 		const CUresult result = cuCtxSetCurrent(static_cast<CUcontext>(ro_Context.m_Handle));
 		if (result == CUDA_SUCCESS) return;
 
-		const char* errorStr = nullptr;
-		cuGetErrorString(result, &errorStr);
-		SPEC_CUDA_BK_ASSERT(false && errorStr);
-		SPEC_CUDA_BK_TRAP();
+		CUDA_ERROR_TRAP(result)
 	}
 
 	Utils::CudaContext ContextManager::getCurrentCudaContext() {
@@ -58,11 +51,7 @@ namespace Spectra::Cuda::Context {
 			ctx.m_Handle = context;
 			return ctx;
 		}
-
-		const char* errorStr = nullptr;
-		cuGetErrorString(result, &errorStr);
-		SPEC_CUDA_BK_ASSERT(false && errorStr);
-		SPEC_CUDA_BK_TRAP();
+		CUDA_ERROR_TRAP(result)
 		return ctx;
 	}
 
@@ -70,11 +59,7 @@ namespace Spectra::Cuda::Context {
 		SPEC_CUDA_BK_ASSERT(ro_Context.m_Handle);
 		CUresult result = cuCtxPushCurrent_v2(static_cast<CUcontext>(ro_Context.m_Handle));
 		if (result == CUDA_SUCCESS) return;
-
-		const char* errorStr = nullptr;
-		cuGetErrorString(result, &errorStr);
-		SPEC_CUDA_BK_ASSERT(false && errorStr);
-		SPEC_CUDA_BK_TRAP();
+		CUDA_ERROR_TRAP(result)
 	}
 
 	Utils::CudaContext ContextManager::popCudaContext() {
@@ -87,20 +72,14 @@ namespace Spectra::Cuda::Context {
 			return ctx;
 		}
 
-		const char* errorStr = nullptr;
-		cuGetErrorString(result, &errorStr);
-		SPEC_CUDA_BK_ASSERT(false && errorStr);
-		SPEC_CUDA_BK_TRAP();
+		CUDA_ERROR_TRAP(result)
 		return ctx;
 	}
 
 	void ContextManager::cudaContextSynchronize() {
 		CUresult result = cuCtxSynchronize();
 		if (result == CUDA_SUCCESS) return;
-		const char* errorStr = nullptr;
-		cuGetErrorString(result, &errorStr);
-		SPEC_CUDA_BK_ASSERT(false && errorStr);
-		SPEC_CUDA_BK_TRAP();
+		CUDA_ERROR_TRAP(result)
 	}
 
 	void ContextManager::destroyCudaContext(Utils::CudaContext& ro_Context) {
@@ -110,10 +89,6 @@ namespace Spectra::Cuda::Context {
 			ro_Context.m_Handle = nullptr;
 			return;
 		}
-
-		const char* errorStr = nullptr;
-		cuGetErrorString(result, &errorStr);
-		SPEC_CUDA_BK_ASSERT(false && errorStr);
-		SPEC_CUDA_BK_TRAP();
+		CUDA_ERROR_TRAP(result)
 	}
 }
