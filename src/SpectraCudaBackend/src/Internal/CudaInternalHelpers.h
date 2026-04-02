@@ -10,7 +10,6 @@
 		SPEC_CUDA_BK_TRAP();						   \
 	}while(0); 										   \
 
-
 #ifdef ALLOW_HELPERS
 #include <cuda.h>
 
@@ -35,6 +34,11 @@ namespace Spectra::Cuda::Internal {
 		static CUctx_flags_enum toCudaContextCreationFlags(Utils::ContextCreationFlags flag);
 		static uint32_t toHostAllocationFlags(Utils::HostAllocFlags flag);
 		static uint32_t toHostRegisterFlags(Utils::HostRegisterFlags flag);
+		static CUmem_advise_enum toMemAdviseEnum(Utils::MemoryAdvise flag);
+		static CUmemLocationType toCUlocation(Utils::DeviceLocation flag);
+		static CUmemAllocationType toCuMemAllocationType(Utils::AllocationType flag);
+		static CUmemAllocationHandleType toCuMemAllocHandleType(Utils::AllocationHandleType flag);
+		static uint64_t toAccessFlags(Utils::AccessFlagBits flag);
 	};
 }
 

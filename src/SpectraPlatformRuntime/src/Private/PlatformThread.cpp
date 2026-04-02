@@ -71,7 +71,7 @@ namespace Spectra::Platform::Runtime::Thread {
 				uint64_t expected = mask;
 				uint64_t desired = mask | bit;
 
-				if (m_SlotMask.compareExchange(&expected, desired, Intrinsic::MemoryOrder::ACQUIRE, Intrinsic::MemoryOrder::ACQ_REL)) return slot;
+				if (m_SlotMask.compareExchange(&expected, desired, Intrinsic::MemoryOrder::ACQUIRE, Intrinsic::MemoryOrder::RELEASE)) return slot;
 			}
 #else
 			return static_cast<size_t>(-1);

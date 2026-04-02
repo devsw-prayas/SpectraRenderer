@@ -12,11 +12,11 @@ namespace Spectra::Platform::Runtime::File {
 	};
 
 	enum class FileOpenMode final : uint8_t {
-		CREATE_NEW, CREATE_ALWAYS, OPEN_EXISTING, OPEN_ALWAYS, TRUNCATE_EXISTING
+		CREATE_NEW_FILE, CREATE_ALWAYS_FILE, OPEN_EXISTING_FILE, OPEN_ALWAYS_FILE, TRUNCATE_EXISTING_FILE
 	};
 
 	enum class FileShareMode final : uint8_t {
-		NONE, READ, WRITE, DELETE
+		NONE, READ, WRITE, REMOVE
 	};
 
 	enum class FileSeekOrigin final : uint8_t {
@@ -103,5 +103,36 @@ namespace Spectra::Platform::Runtime::File {
 	public:
 		size_t    m_FileSize;
 		uint64_t  m_LastWriteTime;
+	};
+
+	struct alignas(16) SPECTRA_RUNTIME_API FileStreamDesc final {
+		const char* m_Path;
+		FileIOMode    m_Mode;
+		FileAccess    m_Access;
+		FileOpenMode  m_OpenMode;
+		FileShareMode m_ShareMode;
+
+		FileStreamDesc() = default;
+		~FileStreamDesc() = default;
+
+		FileStreamDesc(const FileStreamDesc&) = default;
+		FileStreamDesc& operator=(const FileStreamDesc&) = default;
+
+		FileStreamDesc(FileStreamDesc&&) noexcept = default;
+		FileStreamDesc& operator=(FileStreamDesc&&) noexcept = default;
+	};
+
+	struct alignas(16) SPECTRA_RUNTIME_API DirectoryEnumDesc final {
+		const char* m_Path;
+		const char* m_Filter; 
+
+		DirectoryEnumDesc() = default;
+		~DirectoryEnumDesc() = default;
+
+		DirectoryEnumDesc(const DirectoryEnumDesc&) = default;
+		DirectoryEnumDesc& operator=(const DirectoryEnumDesc&) = default;
+
+		DirectoryEnumDesc(DirectoryEnumDesc&&) noexcept = default;
+		DirectoryEnumDesc& operator=(DirectoryEnumDesc&&) noexcept = default;
 	};
 }

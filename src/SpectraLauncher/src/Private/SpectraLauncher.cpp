@@ -1,155 +1,532 @@
-#include <cstdint>
-
-#include "CudaBootstrap.h"
-#include "CudaContextManager.h"
+// SpectraPlatformTest.cpp
+// Quick smoke test for the Spectra Platform Runtime.
+// Covers: Environment, VirtualMemory, Chrono, Atomics, Files.
+// Excludes: Threads (tested separately).
+//
+// Build: add to your CMake target, link against SpectraPlatformRuntime.
+// Run:   no arguments required. Prints PASS / FAIL per section.
 
 #include <cstdio>
+#include <cstring>
+#include <cstdlib>
 
-using namespace Spectra::Cuda;
+#include "ProcessEnvironment.h"
+#include "PlatformMemory.h"
+#include "MemoryUtils.h"
+#include "PlatformChrono.h"
+#include "PlatformAtomics.h"
+#include "SpectraAtomics.h"
+#include "PlatformFileSystem.h"
+#include "FileUtils.h"
+#include "SpectraInternalDiagonostics.h"
 
-namespace {
-	void printUUID(const Utils::DeviceUUID& uuid) {
-		const uint8_t* bytes = reinterpret_cast<const uint8_t*>(&uuid);
-		for (int i = 0; i < 16; i++) {
-			printf("%02x", bytes[i]);
-			if (i == 3 || i == 5 || i == 7 || i == 9) printf("-");
-		}
-		printf("\n");
-	}
+// =========================================================
+// Minimal test harness
+// =========================================================
 
-	void testDeviceAttributes(Utils::DeviceHandle handle) {
-		int major = 0, minor = 0;
-		Bootstrap::CudaDeviceManager::getCudaDeviceAttribute(
-			&major, Utils::CudaDeviceAttribute::COMPUTE_CAPABILITY_MAJOR, handle);
-		Bootstrap::CudaDeviceManager::getCudaDeviceAttribute(
-			&minor, Utils::CudaDeviceAttribute::COMPUTE_CAPABILITY_MINOR, handle);
-		printf("  Compute Capability : SM %d.%d\n", major, minor);
+static int g_Passed = 0;
+static int g_Failed = 0;
 
-		int maxThreads = 0;
-		Bootstrap::CudaDeviceManager::getCudaDeviceAttribute(
-			&maxThreads, Utils::CudaDeviceAttribute::MAX_THREADS_PER_BLOCK, handle);
-		printf("  Max Threads/Block  : %d\n", maxThreads);
+#define TEST(name, expr)                                          \
+    do {                                                          \
+        if (expr) {                                               \
+            printf("  [PASS] %s\n", name);                       \
+            ++g_Passed;                                           \
+        } else {                                                  \
+            printf("  [FAIL] %s  (line %d)\n", name, __LINE__);  \
+            ++g_Failed;                                           \
+        }                                                         \
+    } while (0)
 
-		int warpSize = 0;
-		Bootstrap::CudaDeviceManager::getCudaDeviceAttribute(
-			&warpSize, Utils::CudaDeviceAttribute::WARP_SIZE, handle);
-		printf("  Warp Size          : %d\n", warpSize);
-
-		int l2 = 0;
-		Bootstrap::CudaDeviceManager::getCudaDeviceAttribute(
-			&l2, Utils::CudaDeviceAttribute::L2_CACHE_SIZE, handle);
-		printf("  L2 Cache           : %d KB\n", l2 / 1024);
-
-		int gdrSupported = 0;
-		Bootstrap::CudaDeviceManager::getCudaDeviceAttribute(
-			&gdrSupported, Utils::CudaDeviceAttribute::GPU_DIRECT_RDMA_SUPPORTED, handle);
-		printf("  GPUDirect RDMA     : %s\n", gdrSupported ? "yes" : "no");
-
-		int vmSupported = 0;
-		Bootstrap::CudaDeviceManager::getCudaDeviceAttribute(
-			&vmSupported, Utils::CudaDeviceAttribute::VIRTUAL_MEMORY_MANAGEMENT_SUPPORTED, handle);
-		printf("  Virtual Memory Mgmt: %s\n", vmSupported ? "yes" : "no");
-
-		int concurrentKernels = 0;
-		Bootstrap::CudaDeviceManager::getCudaDeviceAttribute(
-			&concurrentKernels, Utils::CudaDeviceAttribute::CONCURRENT_KERNELS, handle);
-		printf("  Concurrent Kernels : %s\n", concurrentKernels ? "yes" : "no");
-
-		size_t totalMem = Bootstrap::CudaDeviceManager::getCudaDeviceTotalMemory(handle);
-		printf("  Total VRAM         : %zu MB\n", totalMem / (1024 * 1024));
-	}
-
-	void testContextLifecycle(Utils::DeviceHandle handle) {
-		printf("\n[Context Lifecycle]\n");
-
-		// Create context
-		Utils::CudaContext ctx = Context::ContextManager::createCudaContext(
-			handle,
-			Utils::ContextSchedulingFlags::SCHEDULE_BLOCKING_SYNC,
-			Utils::ContextCreationFlags::NONE);
-		printf("  createCudaContext  : OK (handle = %p)\n", ctx.m_Handle);
-
-		// Get current - should match what we just created
-		Utils::CudaContext current = Context::ContextManager::getCurrentCudaContext();
-		printf("  getCurrentContext  : %p\n", current.m_Handle);
-		printf("  Matches created    : %s\n", current.m_Handle == ctx.m_Handle ? "YES" : "NO");
-
-		// Push / pop test
-		// Create a second context to push
-		Utils::CudaContext ctx2 = Context::ContextManager::createCudaContext(
-			handle,
-			Utils::ContextSchedulingFlags::SCHEDULE_BLOCKING_SYNC,
-			Utils::ContextCreationFlags::NONE);
-		printf("  createCudaContext2 : OK (handle = %p)\n", ctx2.m_Handle);
-
-		// Set first context current, then push second
-		Context::ContextManager::setCurrentCudaContext(ctx);
-		printf("  setCurrentContext  : OK\n");
-
-		Context::ContextManager::pushCudaContext(ctx2);
-		printf("  pushCudaContext    : OK\n");
-
-		Utils::CudaContext afterPush = Context::ContextManager::getCurrentCudaContext();
-		printf("  Current after push : %p\n", afterPush.m_Handle);
-		printf("  Is ctx2            : %s\n", afterPush.m_Handle == ctx2.m_Handle ? "YES" : "NO");
-
-		Utils::CudaContext popped = Context::ContextManager::popCudaContext();
-		printf("  popCudaContext     : OK (popped = %p)\n", popped.m_Handle);
-		printf("  Popped is ctx2     : %s\n", popped.m_Handle == ctx2.m_Handle ? "YES" : "NO");
-
-		Utils::CudaContext afterPop = Context::ContextManager::getCurrentCudaContext();
-		printf("  Current after pop  : %p\n", afterPop.m_Handle);
-		printf("  Restored to ctx    : %s\n", afterPop.m_Handle == ctx.m_Handle ? "YES" : "NO");
-
-		// Synchronize
-		Context::ContextManager::cudaContextSynchronize();
-		printf("  cudaContextSync    : OK\n");
-
-		// Teardown - destroy in reverse order
-		Context::ContextManager::destroyCudaContext(ctx2);
-		printf("  destroyContext2    : OK (handle nulled = %s)\n", ctx2.m_Handle == nullptr ? "YES" : "NO");
-
-		Context::ContextManager::destroyCudaContext(ctx);
-		printf("  destroyContext     : OK (handle nulled = %s)\n", ctx.m_Handle == nullptr ? "YES" : "NO");
-	}
+static void section(const char* name) {
+    printf("\n=== %s ===\n", name);
 }
 
+// =========================================================
+// 1. Environment
+// =========================================================
+
+static void testEnvironment() {
+    section("Environment");
+
+    using namespace Spectra::Platform::Runtime::Environment;
+
+    PlatformProbe::init();
+
+    const CpuInfo& cpu = PlatformProbe::getCpuInfo();
+    TEST("logical cores > 0", cpu.m_LogicalCoreCount > 0);
+    TEST("physical cores > 0", cpu.m_PhysicalCoreCount > 0);
+    TEST("logical >= physical", cpu.m_LogicalCoreCount >= cpu.m_PhysicalCoreCount);
+    TEST("cache line size is power2", cpu.m_CachedLineSize > 0 && (cpu.m_CachedLineSize & (cpu.m_CachedLineSize - 1)) == 0);
+    TEST("L1 cache size > 0", cpu.m_L1CacheSize > 0);
+
+    const VectorizeCapabilities& vec = PlatformProbe::getVectorizeCapablities();
+    TEST("SSE capability present", (vec.m_VectorCapabilities & (1 << 0)) != 0);
+
+    const OsInfo& os = PlatformProbe::getOsInfo();
+    TEST("OS major version > 0", os.m_MajorVersion > 0);
+    TEST("OS product name not null", os.m_ProductName != nullptr);
+
+    uint32_t pid = PlatformProcess::getCurrentProcessId();
+    TEST("process ID > 0", pid > 0);
+
+    const char* exe = PlatformProcess::getExecutablePath();
+    TEST("executable path not null", exe != nullptr && exe[0] != '\0');
+
+    const char* cwd = PlatformProcess::getWorkingDirectory();
+    TEST("working directory not null", cwd != nullptr && cwd[0] != '\0');
+}
+
+// =========================================================
+// 2. Virtual Memory
+// =========================================================
+
+static void testVirtualMemory() {
+    section("VirtualMemory");
+
+    using namespace Spectra::Platform::Runtime::Memory;
+
+    PlatformVirtualMemory::init();
+
+    const PlatformMemoryInfo& info = PlatformVirtualMemory::getMemoryInfo();
+    TEST("page size > 0", info.m_PageSize > 0);
+    TEST("page size is power of 2", (info.m_PageSize & (info.m_PageSize - 1)) == 0);
+    TEST("granularity >= page size", info.m_AllocationGranularity >= info.m_PageSize);
+    TEST("total physical memory > 0", info.m_TotalPhysicalMemory > 0);
+    TEST("available memory > 0", info.m_AvailableMemory > 0);
+
+    // Alignment helpers
+    size_t unaligned = info.m_PageSize + 1;
+    TEST("alignToPage rounds up", PlatformVirtualMemory::alignToPage(unaligned) == info.m_PageSize * 2);
+    TEST("isPageAligned: page size", PlatformVirtualMemory::isPageAligned(info.m_PageSize));
+    TEST("isPageAligned: unaligned", !PlatformVirtualMemory::isPageAligned(unaligned));
+
+    size_t gran = info.m_AllocationGranularity;
+    TEST("alignToGranularity rounds up", PlatformVirtualMemory::alignToGranularity(gran + 1) == gran * 2);
+
+    // Reserve -> commit -> write -> decommit -> release
+    VirtualMemoryDesc desc{};
+    initMemoryDesc(desc);
+    setSize(desc, gran);
+    setMemoryState(desc, MemoryState::RESERVE);
+    setProtection(desc, MemoryProtect::NO_ACCESS);
+
+    VirtualMemoryHandle handle = PlatformVirtualMemory::reserve(desc);
+    TEST("reserve returns valid handle", isValid(handle));
+    TEST("reserved size matches", handle.m_TotalSize == gran);
+
+    // Commit the first page
+    VirtualMemoryDesc commitDesc{};
+    initMemoryDesc(commitDesc);
+    setTargetAddress(commitDesc, handle.m_BaseAddress);
+    setSize(commitDesc, info.m_PageSize);
+    setMemoryState(commitDesc, MemoryState::COMMIT);
+    setProtection(commitDesc, MemoryProtect::READ_WRITE);
+
+    PlatformVirtualMemory::commit(handle, commitDesc);
+
+    // Write and read back
+    auto* ptr = static_cast<uint8_t*>(handle.m_BaseAddress);
+    ptr[0] = 0xAB;
+    ptr[info.m_PageSize - 1] = 0xCD;
+    TEST("write/read committed page (first byte)", ptr[0] == 0xAB);
+    TEST("write/read committed page (last byte)", ptr[info.m_PageSize - 1] == 0xCD);
+
+    // Decommit
+    VirtualMemoryDesc decommitDesc{};
+    initMemoryDesc(decommitDesc);
+    setTargetAddress(decommitDesc, handle.m_BaseAddress);
+    setSize(decommitDesc, info.m_PageSize);
+    setMemoryState(decommitDesc, MemoryState::DECOMMIT);
+
+    PlatformVirtualMemory::decommit(handle, decommitDesc);
+
+    // Release
+    VirtualMemoryDesc releaseDesc{};
+    initMemoryDesc(releaseDesc);
+    setTargetAddress(releaseDesc, handle.m_BaseAddress);
+    setMemoryState(releaseDesc, MemoryState::RELEASE);
+
+    PlatformVirtualMemory::release(handle, releaseDesc);
+    TEST("handle nulled after release", handle.m_BaseAddress == nullptr && handle.m_TotalSize == 0);
+
+    // queryAvailableMemory
+    size_t avail = PlatformVirtualMemory::queryAvailableMemory();
+    TEST("queryAvailableMemory > 0", avail > 0);
+}
+
+// =========================================================
+// 3. Chrono
+// =========================================================
+
+static void testChrono() {
+    section("Chrono");
+
+    using namespace Spectra::Platform::Runtime::Chrono;
+
+    // Duration arithmetic
+    Duration a(1'000'000'000LL); // 1s
+    Duration b(500'000'000LL);   // 0.5s
+
+    TEST("Duration add", (a + b).m_Nanoseconds == 1'500'000'000LL);
+    TEST("Duration subtract", (a - b).m_Nanoseconds == 500'000'000LL);
+    TEST("Duration multiply", (b * 2).m_Nanoseconds == 1'000'000'000LL);
+    TEST("Duration divide", (a / 2).m_Nanoseconds == 500'000'000LL);
+    TEST("toSeconds", a.toSeconds() > 0.999 && a.toSeconds() < 1.001);
+    TEST("toMilliseconds", a.toMilliseconds() > 999.0 && a.toMilliseconds() < 1001.0);
+
+    // MonotonicClock: two samples, delta must be >= 0
+    Timestamp t0 = MonotonicClock::now();
+    Timestamp t1 = MonotonicClock::now();
+    Duration  dt = t1 - t0;
+    TEST("monotonic clock non-negative delta", dt.m_Nanoseconds >= 0);
+    TEST("monotonic clock domain", t0.m_Domain == ClockDomain::MONOTONIC);
+
+    ClockInfo mInfo = MonotonicClock::getInfo();
+    TEST("monotonic clock is monotonic", mInfo.m_IsMonotonic);
+    TEST("monotonic clock frequency > 0", mInfo.m_Frequency > 0);
+
+    // WallClock
+    Timestamp w0 = WallClock::now();
+    Timestamp w1 = WallClock::now();
+    Duration  wd = w1 - w0;
+    TEST("wall clock non-negative delta", wd.m_Nanoseconds >= 0);
+    TEST("wall clock domain", w0.m_Domain == ClockDomain::WALL);
+
+    // CycleClock
+    CycleCount c0 = CycleClock::now();
+    CycleCount c1 = CycleClock::now();
+    TEST("cycle counter advances", c1.value() >= c0.value());
+}
+
+// =========================================================
+// 4. Atomics
+// =========================================================
+
+static void testAtomics() {
+    section("Atomics");
+
+    using namespace Spectra::Platform::Runtime::Atomic;
+    using namespace Spectra::Platform::Runtime::Intrinsic;
+
+    // AtomicValue32
+    {
+        AtomicValue32<uint32_t> a(0u);
+
+        a.store(42u);
+        TEST("AtomicValue32 store/load", a.load() == 42u);
+
+        uint32_t prev = a.exchange(100u);
+        TEST("AtomicValue32 exchange returns old", prev == 42u);
+        TEST("AtomicValue32 exchange sets new", a.load() == 100u);
+
+        uint32_t expected = 100u;
+        a.compareExchange(&expected, 200u, MemoryOrder::SEQ_CST, MemoryOrder::RELAXED);
+        TEST("AtomicValue32 CAS success", a.load() == 200u);
+
+        expected = 999u; // wrong expected
+        a.compareExchange(&expected, 300u, MemoryOrder::SEQ_CST, MemoryOrder::RELAXED);
+        TEST("AtomicValue32 CAS fail no-change", a.load() == 200u);
+
+        a.store(0u);
+        a.increment();
+        TEST("AtomicValue32 increment", a.load() == 1u);
+        a.decrement();
+        TEST("AtomicValue32 decrement", a.load() == 0u);
+
+        a.store(0xFFu);
+        a.fetchAnd(0x0Fu);
+        TEST("AtomicValue32 fetchAnd", a.load() == 0x0Fu);
+
+        a.store(0x00u);
+        a.fetchOr(0xF0u);
+        TEST("AtomicValue32 fetchOr", a.load() == 0xF0u);
+
+        a.store(0xFFu);
+        a.fetchXor(0x0Fu);
+        TEST("AtomicValue32 fetchXor", a.load() == 0xF0u);
+    }
+
+    // AtomicValue64
+    {
+        AtomicValue64<uint64_t> b(0ull);
+
+        b.store(0xDEADBEEFCAFEull);
+        TEST("AtomicValue64 store/load", b.load() == 0xDEADBEEFCAFEull);
+
+        uint64_t prev = b.exchange(1ull);
+        TEST("AtomicValue64 exchange returns old", prev == 0xDEADBEEFCAFEull);
+        TEST("AtomicValue64 exchange sets new", b.load() == 1ull);
+
+        b.store(0ull);
+        b.fetchAdd(10ull);
+        TEST("AtomicValue64 fetchAdd", b.load() == 10ull);
+
+        b.increment(1ull);
+        TEST("AtomicValue64 increment", b.load() == 11ull);
+        b.decrement(1ull);
+        TEST("AtomicValue64 decrement", b.load() == 10ull);
+    }
+
+    // Intrinsic bit helpers
+    {
+        using namespace Spectra::Platform::Runtime::Intrinsic;
+
+        uint32_t val32 = 0b1010u;
+        TEST("testBit32 bit1 set", testBit(&val32, 1));
+        TEST("testBit32 bit0 clear", !testBit(&val32, 0));
+
+        uint64_t val64 = 1ull << 40;
+        TEST("testBit64 bit40 set", testBit(&val64, 40));
+        TEST("testBit64 bit0 clear", !testBit(&val64, 0));
+
+        uint32_t idx32 = 0;
+        TEST("BSF32 finds LSB", scanLeastSignificantSetBit(0b1000u, &idx32) && idx32 == 3);
+
+        uint32_t idx64 = 0;
+        TEST("BSF64 finds LSB", scanLeastSignificantSetBit(1ull << 33, &idx64) && idx64 == 33);
+
+        TEST("popcount32", countSetBits(0b10101010u) == 4);
+        TEST("popcount64", countSetBits(0xFFFFFFFFFFFFFFFFull) == 64);
+
+        TEST("rotl32", rotateBitsLeft(1u, 1) == 2u);
+        TEST("rotr32", rotateBitsRight(2u, 1) == 1u);
+
+        TEST("byteswap16", byteSwapEndianness(uint16_t(0x0102u)) == 0x0201u);
+        TEST("byteswap32", byteSwapEndianness(uint32_t(0x01020304u)) == 0x04030201u);
+        TEST("byteswap64", byteSwapEndianness(uint64_t(0x0102030405060708ull)) == 0x0807060504030201ull);
+
+        uint64_t tsc0 = readTimeStampCounter();
+        uint64_t tsc1 = readTimeStampCounter();
+        TEST("RDTSC advances", tsc1 >= tsc0);
+    }
+}
+
+// =========================================================
+// 5. Files
+// =========================================================
+
+static void testFiles() {
+    section("Files");
+
+    using namespace Spectra::Platform::Runtime::File;
+
+    Files::init();
+
+    const PlatformFileSystemInfo& fsInfo = Files::getInfo();
+    TEST("fs allocation granularity > 0", fsInfo.m_AllocationGranularity > 0);
+    TEST("fs max path length > 0", fsInfo.m_MaxPathLength > 0);
+
+    const char* testPath = "spectra_platform_test_tmp.bin";
+
+    // --- open / write / seek / read / close (SEQUENTIAL) ---
+    {
+        FileStreamDesc desc{};
+        desc.m_Path = testPath;
+        desc.m_Mode = FileIOMode::SEQUENTIAL;
+        desc.m_Access = FileAccess::READ_WRITE;
+        desc.m_OpenMode = FileOpenMode::CREATE_ALWAYS_FILE;
+        desc.m_ShareMode = FileShareMode::NONE;
+
+        FileHandle handle = Files::open(desc);
+        TEST("open CREATE_ALWAYS succeeds", handle.m_NativeHandle != nullptr);
+
+        uint8_t writeData[64];
+        for (int i = 0; i < 64; ++i) writeData[i] = static_cast<uint8_t>(i);
+
+        size_t written = Files::write(handle, writeData, 64);
+        TEST("write 64 bytes", written == 64);
+
+        size_t fileSize = Files::getFileSize(handle);
+        TEST("getFileSize == 64", fileSize == 64);
+
+        Files::seek(handle, 0, FileSeekOrigin::BEGIN);
+
+        uint8_t readData[64]{};
+        size_t bytesRead = Files::read(handle, readData, 64);
+        TEST("read 64 bytes", bytesRead == 64);
+
+        bool match = memcmp(writeData, readData, 64) == 0;
+        TEST("read data matches written data", match);
+
+        // Seek from end
+        Files::seek(handle, -1, FileSeekOrigin::END);
+        uint8_t lastByte = 0;
+        Files::read(handle, &lastByte, 1);
+        TEST("seek END reads last byte", lastByte == 63);
+
+        Files::flush(handle);
+        TEST("flush does not crash", true);
+
+        Files::close(handle);
+        TEST("handle nulled after close", handle.m_NativeHandle == nullptr);
+    }
+
+    // --- open OPEN_EXISTING and verify contents persist ---
+    {
+        FileStreamDesc desc{};
+        desc.m_Path = testPath;
+        desc.m_Mode = FileIOMode::SEQUENTIAL;
+        desc.m_Access = FileAccess::READ;
+        desc.m_OpenMode = FileOpenMode::OPEN_EXISTING_FILE;
+        desc.m_ShareMode = FileShareMode::READ;
+
+        FileHandle handle = Files::open(desc);
+        TEST("open OPEN_EXISTING succeeds", handle.m_NativeHandle != nullptr);
+
+        uint8_t buf[64]{};
+        Files::read(handle, buf, 64);
+        TEST("persisted data byte 0", buf[0] == 0);
+        TEST("persisted data byte 63", buf[63] == 63);
+
+        Files::close(handle);
+    }
+
+    // --- async handler init/destroy (no actual I/O, just lifetime) ---
+    {
+        AsyncFileHandler handler{};
+        initializeAsyncHandler(handler);
+        TEST("async handler event not null", handler.m_EventHandle != nullptr);
+        destroyAsyncHandler(handler);
+        TEST("async handler event null after destroy", handler.m_EventHandle == nullptr);
+    }
+
+    // --- memory mapping ---
+    {
+        FileStreamDesc desc{};
+        desc.m_Path = testPath;
+        desc.m_Mode = FileIOMode::SEQUENTIAL;
+        desc.m_Access = FileAccess::READ_WRITE;
+        desc.m_OpenMode = FileOpenMode::OPEN_EXISTING_FILE;
+        desc.m_ShareMode = FileShareMode::NONE;
+
+        FileHandle handle = Files::open(desc);
+
+        FileMappingHandle mapping = Files::createMapping(handle, FileAccess::READ_WRITE, 64);
+        TEST("createMapping succeeds", mapping.m_NativeHandle != nullptr);
+
+        // mapView offset must be granularity-aligned; use 0
+        void* view = Files::mapView(mapping, 0, 64, FileAccess::READ_WRITE);
+        TEST("mapView returns non-null", view != nullptr);
+
+        auto* bytes = static_cast<uint8_t*>(view);
+        TEST("mapped view byte 0 == 0", bytes[0] == 0);
+        TEST("mapped view byte 63 == 63", bytes[63] == 63);
+
+        // Write through the mapping
+        bytes[0] = 0xFF;
+
+        Files::unmapView(view);
+        TEST("unmapView does not crash", true);
+
+        // Can close mapping while file handle still open
+        Files::closeMapping(mapping);
+        TEST("mapping nulled after close", mapping.m_NativeHandle == nullptr);
+
+        Files::close(handle);
+
+        // Verify the write-through persisted
+        FileStreamDesc verifyDesc{};
+        verifyDesc.m_Path = testPath;
+        verifyDesc.m_Mode = FileIOMode::SEQUENTIAL;
+        verifyDesc.m_Access = FileAccess::READ;
+        verifyDesc.m_OpenMode = FileOpenMode::OPEN_EXISTING_FILE;
+        verifyDesc.m_ShareMode = FileShareMode::READ;
+
+        FileHandle verifyHandle = Files::open(verifyDesc);
+        uint8_t verifyBuf[1]{};
+        Files::read(verifyHandle, verifyBuf, 1);
+        TEST("mapped write persisted", verifyBuf[0] == 0xFF);
+        Files::close(verifyHandle);
+    }
+
+    // --- isMappingAligned ---
+    {
+        const PlatformFileSystemInfo& info = Files::getInfo();
+        TEST("isMappingAligned: 0", isMappingAligned(0));
+        TEST("isMappingAligned: granularity", isMappingAligned(info.m_AllocationGranularity));
+        TEST("isMappingAligned: not aligned", !isMappingAligned(info.m_AllocationGranularity + 1));
+    }
+
+    // --- directory enumeration ---
+    {
+        // Create a couple of temp files to enumerate
+        const char* tmpA = "spectra_enum_test_a.tmp";
+        const char* tmpB = "spectra_enum_test_b.tmp";
+
+        for (const char* p : { tmpA, tmpB }) {
+            FileStreamDesc d{};
+            d.m_Path = p;
+            d.m_Mode = FileIOMode::SEQUENTIAL;
+            d.m_Access = FileAccess::WRITE;
+            d.m_OpenMode = FileOpenMode::CREATE_ALWAYS_FILE;
+            d.m_ShareMode = FileShareMode::NONE;
+            FileHandle h = Files::open(d);
+            Files::close(h);
+        }
+
+        DirectoryEnumDesc enumDesc{};
+        enumDesc.m_Path = ".";
+        enumDesc.m_Filter = "spectra_enum_test_*.tmp";
+
+        DirectoryEnumHandle enumHandle = Files::beginEnumeration(enumDesc);
+        TEST("beginEnumeration succeeds", enumHandle.m_IsValid);
+
+        int count = 0;
+        FileInfo fi{};
+        while (Files::next(enumHandle, fi)) {
+            TEST("enumerated filename not empty", fi.m_FileName[0] != '\0');
+            ++count;
+        }
+        TEST("enumerated expected file count", count == 2);
+
+        Files::closeEnumeration(enumHandle);
+        TEST("enum handle invalidated after close", !enumHandle.m_IsValid);
+
+        // Cleanup temp enum files
+        Files::deleteFile(tmpA);
+        Files::deleteFile(tmpB);
+    }
+
+    // --- rename ---
+    {
+        const char* renamed = "spectra_platform_test_renamed.bin";
+        Files::renameFile(testPath, renamed);
+
+        // Verify old path gone, new path accessible
+        FileStreamDesc d{};
+        d.m_Path = renamed;
+        d.m_Mode = FileIOMode::SEQUENTIAL;
+        d.m_Access = FileAccess::READ;
+        d.m_OpenMode = FileOpenMode::OPEN_EXISTING_FILE;
+        d.m_ShareMode = FileShareMode::READ;
+        FileHandle h = Files::open(d);
+        TEST("renamed file accessible", h.m_NativeHandle != nullptr);
+        Files::close(h);
+
+        // Cleanup
+        Files::deleteFile(renamed);
+    }
+
+    TEST("all file cleanup done", true);
+}
+
+// =========================================================
+// Entry Point
+// =========================================================
+
 int main() {
-	printf("=== Spectra CUDA Backend - Section 1 Test ===\n\n");
+    printf("Spectra Platform Runtime — Component Test\n");
+    printf("==========================================\n");
 
-	// Driver init
-	printf("[Driver Init]\n");
-	bool initOk = Bootstrap::CudaDriver::initCuda();
-	if (!initOk) {
-		printf("  No CUDA devices found. Exiting.\n");
-		return 0;
-	}
-	printf("  cuInit             : OK\n");
+    testEnvironment();
+    testVirtualMemory();
+    testChrono();
+    testAtomics();
+    testFiles();
 
-	uint32_t version = Bootstrap::CudaDriver::getCudaDriverVersion();
-	printf("  Driver Version     : %u.%u\n", version / 1000, (version % 1000) / 10);
+    printf("\n==========================================\n");
+    printf("Results: %d passed, %d failed\n", g_Passed, g_Failed);
 
-	// Device enumeration
-	int deviceCount = Bootstrap::CudaDeviceManager::getCudaDeviceCount();
-	printf("  Device Count       : %d\n\n", deviceCount);
-
-	for (int i = 0; i < deviceCount; i++) {
-		Utils::DeviceHandle handle = Bootstrap::CudaDeviceManager::getCudaDevice(i);
-
-		char name[256] = {};
-		Bootstrap::CudaDeviceManager::getCudaDeviceName(name, sizeof(name), handle);
-		printf("[Device %d] %s\n", i, name);
-
-		Utils::DeviceUUID uuid = Bootstrap::CudaDeviceManager::getCudaDeviceUUID(handle);
-		printf("  UUID               : ");
-		printUUID(uuid);
-
-		testDeviceAttributes(handle);
-		testContextLifecycle(handle);
-
-		printf("\n");
-	}
-
-	printf("=== Section 1 Complete ===\n");
-	return 0;
+    return (g_Failed == 0) ? 0 : 1;
 }

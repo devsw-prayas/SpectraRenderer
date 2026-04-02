@@ -89,12 +89,12 @@ namespace Spectra::Platform::Runtime::Thread {
 		ro_Desc.m_BasePriority = v_BasePriority;
 	}
 
-	void SPECTRA_RUNTIME_API allowDetachable(ThreadLaunchExecDesc& ro_Desc, Flag v_Permission) {
+	void SPECTRA_RUNTIME_API	allowDetachable(ThreadLaunchExecDesc& ro_Desc, Flag v_Permission) {
 		ro_Desc.m_CanDetach = v_Permission;
 	}
 
 	bool SPECTRA_RUNTIME_API validateLaunchExecDesc(const ThreadLaunchExecDesc& ro_Desc) {
-		if ((ro_Desc.m_CommitSize == 0) == (ro_Desc.m_ReserveSize == 0)) return false;
+		if (ro_Desc.m_CommitSize != 0 && ro_Desc.m_ReserveSize != 0) return false;
 		if (ro_Desc.m_IdealProcessor && !ro_Desc.m_SupportsIdealProcessor) return  false;
 		if (ro_Desc.m_GroupID && !ro_Desc.m_SupportsThreadGroup) return false;
 		if (ro_Desc.m_BasePriority == Priority::PRIORITY_TIME_CRITICAL 

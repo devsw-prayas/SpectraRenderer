@@ -57,14 +57,14 @@ namespace Spectra::Platform::Runtime::Atomic {
 		}
 
 		SPECTRA_FORCEINLINE
-			Valid increment(Valid v_Value = 1, Intrinsic::MemoryOrder v_Ordering = Intrinsic::MemoryOrder::SEQ_CST) noexcept {
-			return Intrinsic::atomicIncrement32<Valid>(&m_Value, v_Value, v_Ordering
+			Valid increment(Intrinsic::MemoryOrder v_Ordering = Intrinsic::MemoryOrder::SEQ_CST) noexcept {
+			return Intrinsic::atomicIncrement32<Valid>(&m_Value, v_Ordering
 			);
 		}
 
 		SPECTRA_FORCEINLINE
-			Valid decrement(Valid v_Value = 1, Intrinsic::MemoryOrder v_Ordering = Intrinsic::MemoryOrder::SEQ_CST) noexcept {
-			return Intrinsic::atomicDecrement32<Valid>(&m_Value, v_Value, v_Ordering);
+			Valid decrement(Intrinsic::MemoryOrder v_Ordering = Intrinsic::MemoryOrder::SEQ_CST) noexcept {
+			return Intrinsic::atomicDecrement32<Valid>(&m_Value, v_Ordering);
 		}
 
 		SPECTRA_FORCEINLINE
@@ -107,7 +107,7 @@ namespace Spectra::Platform::Runtime::Atomic {
 	};
 
 	template<typename T>
-	struct  AtomicValue64 {
+	struct AtomicValue64 {
 	private:
 		using Valid = Intrinsic::ValidAtomicParameter<T>::Type;
 
@@ -159,23 +159,23 @@ namespace Spectra::Platform::Runtime::Atomic {
 
 		SPECTRA_FORCEINLINE
 			Valid increment(Valid v_Value = 1, Intrinsic::MemoryOrder v_Ordering = Intrinsic::MemoryOrder::SEQ_CST) noexcept {
-			return Intrinsic::atomicIncrement64<Valid>(&m_Value, v_Value, v_Ordering
+			return Intrinsic::atomicIncrement64<Valid>(&m_Value, v_Ordering
 			);
 		}
 
 		SPECTRA_FORCEINLINE
 			Valid decrement(Valid v_Value = 1, Intrinsic::MemoryOrder v_Ordering = Intrinsic::MemoryOrder::SEQ_CST) noexcept {
-			return Intrinsic::atomicDecrement64<Valid>(&m_Value, v_Value, v_Ordering);
+			return Intrinsic::atomicDecrement64<Valid>(&m_Value, v_Ordering);
 		}
 
 		SPECTRA_FORCEINLINE
-			Valid fetchAnd(Valid v_Value, Intrinsic::MemoryOrder v_Ordering = Intrinsic::MemoryOrder::SEQ_CST) noexcept {
-			return Intrinsic::atomicFetchAnd64<Valid>(&m_Value, v_Value, v_Ordering);
+			Valid fetchAnd(Intrinsic::MemoryOrder v_Ordering = Intrinsic::MemoryOrder::SEQ_CST) noexcept {
+			return Intrinsic::atomicFetchAnd64<Valid>(&m_Value, v_Ordering);
 		}
 
 		SPECTRA_FORCEINLINE
-			Valid fetchOr(Valid v_Value, Intrinsic::MemoryOrder v_Ordering = Intrinsic::MemoryOrder::SEQ_CST) noexcept {
-			return Intrinsic::atomicFetchOr64<Valid>(&m_Value, v_Value, v_Ordering);
+			Valid fetchOr(Intrinsic::MemoryOrder v_Ordering = Intrinsic::MemoryOrder::SEQ_CST) noexcept {
+			return Intrinsic::atomicFetchOr64<Valid>(&m_Value, v_Ordering);
 		}
 
 		SPECTRA_FORCEINLINE

@@ -1,7 +1,7 @@
 #include "SpectraPlatformRuntime.h"
 #define ALLOW_SYSCALL
 #include "SpectraSyscalls.h"
-#include "SpectraPlatformMemory.h"
+#include "PlatformMemory.h"
 
 #include "SpectraInternalDiagonostics.h"
 
@@ -194,7 +194,7 @@ namespace Spectra::Platform::Runtime::Memory {
 
 	bool PlatformVirtualMemory::isValidNumaNode(uint32_t v_Node) {
 		SPECTRA_ASSERT(g_IsVmInitialized);
-		return g_MemoryCapabilities.m_SupportsNumaNodes;
+		return g_MemoryCapabilities.m_SupportsNumaNodes && v_Node < g_MemoryCapabilities.m_MaxNumaNodes;
 	}
 
 	void PlatformVirtualMemory::validateAlignment(const VirtualMemoryDesc& ro_Desc) {
@@ -440,7 +440,6 @@ namespace Spectra::Platform::Runtime::Memory {
 		uintptr_t target = reinterpret_cast<uintptr_t>(ro_Desc.m_TargetAddress);
 
 		if (target < base || target + ro_Desc.m_Size > base + ro_Handle.m_TotalSize) {
-
 		}
 
 		DWORD protect = 0;
@@ -503,7 +502,7 @@ namespace Spectra::Platform::Runtime::Memory {
 
 		switch (mbi.State) {
 		case MEM_FREE:
-			info.m_State = MemoryState::UNINITIALIZED; 
+			info.m_State = MemoryState::UNINITIALIZED;
 			break;
 
 		case MEM_RESERVE:

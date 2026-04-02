@@ -66,7 +66,7 @@ namespace Spectra::Cuda::Internal {
 		case Utils::ContextSchedulingFlags::SCHEDULE_YIELD: return CU_CTX_SCHED_YIELD;
 		case Utils::ContextSchedulingFlags::SCHEDULE_BLOCKING_SYNC: return CU_CTX_BLOCKING_SYNC;
 		}
-		SPEC_CUDA_BK_ASSERT(false && "Invalid CudaDeviceAttribute");
+		SPEC_CUDA_BK_ASSERT(false && "Invalild Context Scheduling Flags");
 		SPEC_CUDA_BK_TRAP();
 		SPEC_CUDA_BK_UNREACHABLE();
 	}
@@ -76,19 +76,18 @@ namespace Spectra::Cuda::Internal {
 		case Utils::ContextCreationFlags::MAP_HOST: return CU_CTX_MAP_HOST;
 		case Utils::ContextCreationFlags::LMEM_RESIZE_TO_MAX: return CU_CTX_LMEM_RESIZE_TO_MAX;
 		}
-		SPEC_CUDA_BK_ASSERT(false && "Invalid CudaDeviceAttribute");
+		SPEC_CUDA_BK_ASSERT(false && "Invalid Context Creation Flag");
 		SPEC_CUDA_BK_TRAP();
 		SPEC_CUDA_BK_UNREACHABLE();
 	}
 
 	uint32_t CUDA_InternalHelpers::toHostAllocationFlags(Utils::HostAllocFlags flag) {
-		switch (flag)
-		{
+		switch (flag) {
 		case Utils::HostAllocFlags::ALLOC_DEVICE_MAP: return CU_MEMHOSTALLOC_DEVICEMAP;
 		case Utils::HostAllocFlags::ALLOC_PORTABLE:	return CU_MEMHOSTALLOC_PORTABLE;
 		case Utils::HostAllocFlags::ALLOC_WRITE_COMBINED: return CU_MEMHOSTALLOC_WRITECOMBINED;
 		}
-		SPEC_CUDA_BK_ASSERT(false && "Invalid CudaDeviceAttribute");
+		SPEC_CUDA_BK_ASSERT(false && "Invalid Host Alloc Flags");
 		SPEC_CUDA_BK_TRAP();
 		SPEC_CUDA_BK_UNREACHABLE();
 	}
@@ -100,7 +99,70 @@ namespace Spectra::Cuda::Internal {
 		case Utils::HostRegisterFlags::REG_PORTABLE: return CU_MEMHOSTREGISTER_PORTABLE;
 		case Utils::HostRegisterFlags::REG_READ_ONLY: return CU_MEMHOSTREGISTER_READ_ONLY;
 		}
-		SPEC_CUDA_BK_ASSERT(false && "Invalid CudaDeviceAttribute");
+		SPEC_CUDA_BK_ASSERT(false && "Invalid Host Register Flags");
+		SPEC_CUDA_BK_TRAP();
+		SPEC_CUDA_BK_UNREACHABLE();
+	}
+
+	CUmem_advise_enum CUDA_InternalHelpers::toMemAdviseEnum(Utils::MemoryAdvise flag) {
+		switch (flag) {
+		case Utils::MemoryAdvise::SET_ACCESSED_BY: return CU_MEM_ADVISE_SET_ACCESSED_BY;
+		case Utils::MemoryAdvise::UNSET_ACCESSED_BY: return CU_MEM_ADVISE_UNSET_ACCESSED_BY;
+		case Utils::MemoryAdvise::SET_READ_MOSTLY: return CU_MEM_ADVISE_SET_READ_MOSTLY;
+		case Utils::MemoryAdvise::UNSET_READ_MOSTLY: return CU_MEM_ADVISE_UNSET_READ_MOSTLY;
+		case Utils::MemoryAdvise::SET_PREFERRED_LOCATION: return CU_MEM_ADVISE_SET_PREFERRED_LOCATION;
+		case Utils::MemoryAdvise::UNSET_PREFERRED_LOCATION: return CU_MEM_ADVISE_UNSET_PREFERRED_LOCATION;
+		}
+		SPEC_CUDA_BK_ASSERT(false && "Invalid Memory Advise flags");
+		SPEC_CUDA_BK_TRAP();
+		SPEC_CUDA_BK_UNREACHABLE();
+	}
+
+	CUmemLocationType CUDA_InternalHelpers::toCUlocation(Utils::DeviceLocation flag) {
+		switch (flag) {
+		case Utils::DeviceLocation::CPU: return CU_MEM_LOCATION_TYPE_HOST;
+		case Utils::DeviceLocation::GPU: return CU_MEM_LOCATION_TYPE_DEVICE;
+		}
+		SPEC_CUDA_BK_ASSERT(false && "Invalid Device location");
+		SPEC_CUDA_BK_TRAP();
+		SPEC_CUDA_BK_UNREACHABLE();
+	}
+
+	CUmemAllocationType CUDA_InternalHelpers::toCuMemAllocationType(Utils::AllocationType flag) {
+		switch (flag) {
+		case Utils::AllocationType::INVALID: return CU_MEM_ALLOCATION_TYPE_INVALID;
+		case Utils::AllocationType::PINNED: return CU_MEM_ALLOCATION_TYPE_PINNED;
+		}
+		SPEC_CUDA_BK_ASSERT(false && "Invalid Allocation Type");
+		SPEC_CUDA_BK_TRAP();
+		SPEC_CUDA_BK_UNREACHABLE();
+	}
+
+	CUmemAllocationHandleType CUDA_InternalHelpers::toCuMemAllocHandleType(Utils::AllocationHandleType flag) {
+		switch (flag) {
+		case Utils::AllocationHandleType::NONE: return CU_MEM_HANDLE_TYPE_NONE;
+		case Utils::AllocationHandleType::WIN32_HANDLE: return CU_MEM_HANDLE_TYPE_WIN32;
+		case Utils::AllocationHandleType::FABRIC_HANDLE: return CU_MEM_HANDLE_TYPE_FABRIC;
+		}
+
+		SPEC_CUDA_BK_ASSERT(false && "Invalid Handle type");
+		SPEC_CUDA_BK_TRAP();
+		SPEC_CUDA_BK_UNREACHABLE();
+	}
+
+	uint64_t CUDA_InternalHelpers::toAccessFlags(Utils::AccessFlagBits flag) {
+		switch (flag) {
+		case Utils::AccessFlagBits::READ:
+			return CU_MEM_ACCESS_FLAGS_PROT_READ;
+
+		case Utils::AccessFlagBits::READWRITE:
+			return CU_MEM_ACCESS_FLAGS_PROT_READWRITE;
+
+		case Utils::AccessFlagBits::NONE:
+			return 0;
+		}
+
+		SPEC_CUDA_BK_ASSERT(false && "Invalid Access Flag");
 		SPEC_CUDA_BK_TRAP();
 		SPEC_CUDA_BK_UNREACHABLE();
 	}
