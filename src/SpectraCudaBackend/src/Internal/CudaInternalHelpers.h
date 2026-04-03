@@ -32,13 +32,35 @@ namespace Spectra::Cuda::Internal {
 		static CUdevice_attribute toCudaAttr(Utils::CudaDeviceAttribute attr);
 		static CUctx_flags_enum toCudaContextScheduleFlags(Utils::ContextSchedulingFlags flag);
 		static CUctx_flags_enum toCudaContextCreationFlags(Utils::ContextCreationFlags flag);
+
 		static uint32_t toHostAllocationFlags(Utils::HostAllocFlags flag);
 		static uint32_t toHostRegisterFlags(Utils::HostRegisterFlags flag);
 		static CUmem_advise_enum toMemAdviseEnum(Utils::MemoryAdvise flag);
+
 		static CUmemLocationType toCUlocation(Utils::DeviceLocation flag);
 		static CUmemAllocationType toCuMemAllocationType(Utils::AllocationType flag);
 		static CUmemAllocationHandleType toCuMemAllocHandleType(Utils::AllocationHandleType flag);
-		static uint64_t toAccessFlags(Utils::AccessFlagBits flag);
+
+		static CUmemAccess_flags toAccessFlags(Utils::AccessFlagBits flag);
+		static CUmemAllocationGranularity_flags toCuMemAllocGranularity(Utils::AllocationGranularityOption v_Option);
+		static CUarray_format toArrayFormat(Utils::ArrayFormat v_Format);
+
+		static uint32_t toArrayFlags(Utils::ArrayFlags v_Flags);
+		static CUresourcetype toResourceType(Utils::ResourceType v_Type);
+		static CUaddress_mode toTexAddressMode(Utils::TexAddressMode v_Mode);
+
+		static CUfilter_mode toTexFilterMode(Utils::TexFilterMode v_Mode);
+		static CUresourceViewFormat toResourceViewFormat(Utils::ResourceViewFormat v_Format);
+		static CUmemorytype toCopyMemoryType(Utils::CopyMemoryType v_Type);
+	};
+
+	class CUDA_PackingFunctions final {
+	public:
+		static CUDA_ARRAY3D_DESCRIPTOR packArray3dDesc(const Utils::Array3dDesc& ro_Desc);    // → cuArray3DCreate
+		static CUDA_MEMCPY3D           pack3dMemcpyDesc(const Utils::MemCpy3DDesc& ro_Desc);  // → cuMemcpy3DAsync
+		static CUDA_RESOURCE_DESC      packResourceDesc(const Utils::ResourceDesc& ro_Desc);  // → cuTexObjectCreate, cuSurfObjectCreate
+		static CUDA_TEXTURE_DESC       packTextureDesc(const Utils::TextureDesc& ro_Desc);    // → cuTexObjectCreate
+		static CUDA_RESOURCE_VIEW_DESC packResourceViewDesc(const Utils::ResourceViewDesc& ro_Desc); // → cuTexObjectCreate
 	};
 }
 

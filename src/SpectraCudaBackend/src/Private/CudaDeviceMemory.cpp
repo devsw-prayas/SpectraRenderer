@@ -20,7 +20,7 @@ namespace Spectra::Cuda::Memory {
 			return addr;
 	}
 
-	PitchedAllocation DeviceMemory::deviceAllocPitch(size_t v_WidthInBytes, size_t v_Height, size_t v_ElemsInBytes) {
+	PitchedAllocation DeviceMemory::deviceAllocPitch(size_t v_WidthInBytes, size_t v_Height, uint32_t v_ElemsInBytes) {
 		PitchedAllocation alloc{};
 		CUdeviceptr ptr{};
 		size_t pitch = 0;

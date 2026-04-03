@@ -174,7 +174,7 @@ namespace Spectra::Cuda::Memory {
                 p_Desc[i].m_Loc.m_Handle.m_HandleValue;
 
             descs[i].flags =
-                Internal::CUDA_InternalHelpers::toAccessFlags(p_Desc[i].flags);
+                Internal::CUDA_InternalHelpers::toAccessFlags(static_cast<Utils::AccessFlagBits>(p_Desc[i].flags));
         }
 
         const CUresult result = cuMemSetAccess(
@@ -215,7 +215,7 @@ namespace Spectra::Cuda::Memory {
         const CUresult result = cuMemGetAllocationGranularity(
             &granularity,
             &prop,
-            Internal::CUDA_InternalHelpers::toCuGranularityOption(v_Option)
+            Internal::CUDA_InternalHelpers::toCuMemAllocGranularity(v_Option)
         );
 
         if (result == CUDA_SUCCESS) return granularity;
@@ -223,10 +223,6 @@ namespace Spectra::Cuda::Memory {
         CUDA_ERROR_TRAP(result)
             return 0;
     }
-
-    // ------------------------------------------------------------
-    // INTEROP (EXPORT)
-    // ------------------------------------------------------------
 
     void VirtualMemory::exportAllocation(
         void* p_Handle,

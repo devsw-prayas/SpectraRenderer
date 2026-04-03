@@ -7,7 +7,7 @@
 
 namespace Spectra::Cuda::Memory {
 	using namespace Utils;
-	class ManagedMemory final {
+	class SPEC_CUDA_BK_RUNTIME_API ManagedMemory final {
 	public:
 		static GpuAddress allocManaged(size_t v_Bytes, uint32_t v_Flags);
 		static void adviseMemory(

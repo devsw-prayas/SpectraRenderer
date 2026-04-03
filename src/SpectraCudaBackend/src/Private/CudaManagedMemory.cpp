@@ -1,5 +1,6 @@
 #include "SpectraCudaBackend.h"
 #include "CudaManagedMemory.h"
+#include "CudaBootstrap.h"
 
 #define ALLOW_SYSCALL
 #include "SpecCudaSyscall.h"
@@ -26,9 +27,17 @@ namespace Spectra::Cuda::Memory {
 		const DeviceHandle& ro_Handle) {
 		SPEC_CUDA_BK_ASSERT(ro_Addr.isValid());
 		SPEC_CUDA_BK_ASSERT(v_Count > 0);
+		const CUdevice cudaDev = ro_Handle.isValid()
+			? Internal::CUDA_DeviceRegistry::s_Devices[ro_Handle.m_HandleValue]
+			: CU_DEVICE_CPU;									 
+		if (ro_Handle.isValid()) {
+			int concurrentAccess = 0;
+			Bootstrap::CudaDeviceManager::getCudaDeviceAttribute(&concurrentAccess, Utils::CudaDeviceAttribute::CONCURRENT_MANAGED_ACCESS, ro_Handle);
+			if (!concurrentAccess) return;
+		}
 		const CUresult result = cuMemAdvise(
 			ro_Addr.m_GpuAddr, v_Count,
-			Internal::CUDA_InternalHelpers::toMemAdviseEnum(v_Advise), ro_Handle.m_HandleValue);
+			Internal::CUDA_InternalHelpers::toMemAdviseEnum(v_Advise), cudaDev);
 		if (result == CUDA_SUCCESS) return;
 		CUDA_ERROR_TRAP(result)
 	}
@@ -38,9 +47,17 @@ namespace Spectra::Cuda::Memory {
 		const DeviceHandle& ro_Handle, const Streams::GpuStream& ro_Stream) {
 		SPEC_CUDA_BK_ASSERT(ro_Addr.isValid());
 		SPEC_CUDA_BK_ASSERT(v_Count > 0);
+		if (ro_Handle.isValid()) {
+			int concurrentAccess = 0;
+			Bootstrap::CudaDeviceManager::getCudaDeviceAttribute(&concurrentAccess, Utils::CudaDeviceAttribute::CONCURRENT_MANAGED_ACCESS, ro_Handle);
+			if (!concurrentAccess) return;
+		}
+		const CUdevice cudaDev = ro_Handle.isValid()
+			? Internal::CUDA_DeviceRegistry::s_Devices[ro_Handle.m_HandleValue]
+			: CU_DEVICE_CPU;
 		const CUresult result = cuMemPrefetchAsync(
 			ro_Addr.m_GpuAddr, v_Count,
-			ro_Handle.m_HandleValue, static_cast<CUstream>(ro_Stream.m_StreamHandle));
+			cudaDev, static_cast<CUstream>(ro_Stream.m_StreamHandle));
 		if (result == CUDA_SUCCESS) return;
 		CUDA_ERROR_TRAP(result)
 	}

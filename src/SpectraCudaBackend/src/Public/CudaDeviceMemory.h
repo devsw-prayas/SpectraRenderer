@@ -23,7 +23,7 @@ namespace Spectra::Cuda::Memory {
 	class SPEC_CUDA_BK_RUNTIME_API DeviceMemory final {
 	public:
 		static GpuAddress deviceAlloc(size_t v_Bytes);
-		static PitchedAllocation deviceAllocPitch(size_t v_WidthInBytes, size_t v_Height, size_t v_ElemsInBytes);
+		static PitchedAllocation deviceAllocPitch(size_t v_WidthInBytes, size_t v_Height, uint32_t v_ElemsInBytes);
 		static void deviceFree(GpuAddress& ro_Address);
 		static GpuMemory query();
 
