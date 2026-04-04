@@ -9,6 +9,7 @@
 #include <cstdio>
 #include <cstring>
 #include <cstdlib>
+#include <iostream>
 
 #include "ProcessEnvironment.h"
 #include "PlatformMemory.h"
@@ -29,6 +30,8 @@
 #include "CudaUtils.h"
 #include "CudaStream.h"
 
+#include "CoriumRuntime.h"
+#include "CoriumUtility.h"
 // =========================================================
 // Minimal test harness
 // =========================================================
@@ -704,6 +707,477 @@ static void testCudaVirtualMemory() {
 }
 
 // =========================================================
+// Stratum includes
+// =========================================================
+
+#include "Stratum.h"
+#include "Records.h"
+#include "Filter.h"
+#include "ProfilerTrace.h"
+#include "Logger.h"
+#include "Orchestrator.h"
+#include "Sinks.h"
+#include "StackTrace.h"
+#include "Scopes.h"
+
+// =========================================================
+// Stratum test helpers
+// =========================================================
+
+struct CapturingSinkRouter final : Stratum::Logging::ISinkRouter {
+	int       logCount = 0;
+	int       exceptionCount = 0;
+	int       tracerCount = 0;
+	char      lastMessage[Stratum::MESSAGE_MAX]{};
+	char      lastException[Stratum::MESSAGE_MAX]{};
+	char      lastLabel[Stratum::LABEL_MAX]{};
+
+	void write(const Stratum::Records::LogEntry& ro_Entry) override {
+		++logCount;
+		std::strncpy(lastMessage, ro_Entry.getMessage(), Stratum::MESSAGE_MAX - 1);
+	}
+	void write(const Stratum::Records::ExceptionEntry& ro_Entry) override {
+		++exceptionCount;
+		std::strncpy(lastException, ro_Entry.getErrorMessage(), Stratum::MESSAGE_MAX - 1);
+	}
+	void write(const Stratum::Records::TracerEntry& ro_Entry) override {
+		++tracerCount;
+		std::strncpy(lastLabel, ro_Entry.getLabel(), Stratum::LABEL_MAX - 1);
+	}
+};
+
+// =========================================================
+// Stratum 1 — Records
+// =========================================================
+
+static void testStratumRecords() {
+	section("Stratum 1 -- Records");
+
+	using namespace Stratum::Records;
+
+	// LogEntry
+	{
+		LogEntry entry{ LogLevel::Warning, "TestComp", "hello world" };
+		TEST("LogEntry level", entry.getLevel() == LogLevel::Warning);
+		TEST("LogEntry component", std::strncmp(entry.getComponent(), "TestComp", 8) == 0);
+		TEST("LogEntry message", std::strncmp(entry.getMessage(), "hello world", 11) == 0);
+		TEST("LogEntry timestamp > 0", entry.getTimestamp() > 0);
+	}
+
+	// ExceptionEntry
+	{
+		ExceptionEntry entry{ "ErrComp", "something failed" };
+		TEST("ExceptionEntry component", std::strncmp(entry.getComponent(), "ErrComp", 7) == 0);
+		TEST("ExceptionEntry message", std::strncmp(entry.getErrorMessage(), "something failed", 16) == 0);
+		TEST("ExceptionEntry timestamp > 0", entry.getTimestamp() > 0);
+	}
+
+	// TracerEntry lifecycle
+	{
+		TracerEntry entry{ "PerfComp", "mySection" };
+		TEST("TracerEntry label", std::strncmp(entry.getLabel(), "mySection", 9) == 0);
+		TEST("TracerEntry not started", !entry.isStarted());
+		TEST("TracerEntry not complete", !entry.isComplete());
+
+		entry.start();
+		TEST("TracerEntry started", entry.isStarted());
+		TEST("TracerEntry not complete after start", !entry.isComplete());
+
+		entry.end();
+		TEST("TracerEntry complete", entry.isComplete());
+		TEST("TracerEntry ns duration >= 0", entry.getDuration(TracerPrecision::Nanoseconds) >= 0.0);
+	}
+
+	// LoggerProfile
+	{
+		uint8_t buf[256]{};
+		LoggerProfile profile{ "myProfile", buf, sizeof(buf) };
+		TEST("LoggerProfile name", std::strncmp(profile.getName(), "myProfile", 9) == 0);
+		TEST("LoggerProfile buffer", profile.getBuffer() == buf);
+		TEST("LoggerProfile bufferSize", profile.getBufferSize() == 256);
+		TEST("LoggerProfile enabled by default", profile.isEnabled());
+
+		profile.disable();
+		TEST("LoggerProfile disabled after disable()", !profile.isEnabled());
+		profile.enable();
+		TEST("LoggerProfile enabled after enable()", profile.isEnabled());
+
+		profile.setPolicy(TracePolicy::AutoFlushOnError);
+		TEST("LoggerProfile policy set", profile.getPolicy() == TracePolicy::AutoFlushOnError);
+	}
+}
+
+// =========================================================
+// Stratum 2 — FilterChain
+// =========================================================
+
+static void testStratumFilter() {
+	section("Stratum 2 -- FilterChain");
+
+	using namespace Stratum::Filtering;
+	using namespace Stratum::Records;
+
+	FilterChain fc{};
+
+	// Level gate
+	fc.setMinLevel(LogLevel::Warning);
+	TEST("filter rejects Info below Warning", !fc.accepts(LogLevel::Info, "C", "t"));
+	TEST("filter accepts Warning", fc.accepts(LogLevel::Warning, "C", "t"));
+	TEST("filter accepts Error", fc.accepts(LogLevel::Error, "C", "t"));
+	TEST("filter accepts Crash", fc.accepts(LogLevel::Crash, "C", "t"));
+	fc.setMinLevel(LogLevel::Info);
+
+	// Component allowlist
+	fc.setComponentMode(FilterMode::Allowlist);
+	fc.addComponentFilter("Render");
+	TEST("allowlist blocks unlisted component", !fc.accepts(LogLevel::Info, "Audio", "t"));
+	TEST("allowlist passes listed component", fc.accepts(LogLevel::Info, "Render", "t"));
+	fc.clearComponentFilters();
+	TEST("accepts all after clear", fc.accepts(LogLevel::Info, "Audio", "t"));
+
+	// Component denylist
+	fc.setComponentMode(FilterMode::Denylist);
+	fc.addComponentFilter("Blocked");
+	TEST("denylist blocks listed component", !fc.accepts(LogLevel::Info, "Blocked", "t"));
+	TEST("denylist passes unlisted component", fc.accepts(LogLevel::Info, "Safe", "t"));
+	fc.clearComponentFilters();
+
+	// Tag filter
+	fc.addTagFilter("console");
+	TEST("tag filter passes matching tag", fc.accepts(LogLevel::Info, "C", "console"));
+	TEST("tag filter blocks non-matching", !fc.accepts(LogLevel::Info, "C", "file"));
+	fc.clearTagFilters();
+	TEST("all tags pass after tag clear", fc.accepts(LogLevel::Info, "C", "file"));
+}
+
+// =========================================================
+// Stratum 3 — ProfilerTrace
+// =========================================================
+
+static void testStratumProfilerTrace() {
+	section("Stratum 3 -- ProfilerTrace");
+
+	using namespace Stratum::Profiler;
+	using namespace Stratum::Records;
+
+	// Default constructed
+	{
+		ProfilerTrace trace{};
+		TEST("default kind is None", trace.kind() == EntryKind::None);
+		TEST("default not active", !trace.active());
+		TEST("get<LogEntry> on None", trace.get<LogEntry>() == nullptr);
+	}
+
+	// Emplace LogEntry
+	{
+		ProfilerTrace trace{};
+		LogEntry entry{ LogLevel::Debug, "Comp", "msg" };
+		trace.emplace(entry);
+		TEST("emplace Log: kind", trace.kind() == EntryKind::Log);
+		TEST("emplace Log: active", trace.active());
+		TEST("emplace Log: get != null", trace.get<LogEntry>() != nullptr);
+		TEST("emplace Log: get<Exc> null", trace.get<ExceptionEntry>() == nullptr);
+		trace.destroy();
+		TEST("destroy: not active", !trace.active());
+		TEST("destroy: kind None", trace.kind() == EntryKind::None);
+	}
+
+	// Emplace ExceptionEntry
+	{
+		ProfilerTrace trace{};
+		ExceptionEntry exc{ "Comp", "boom" };
+		trace.emplace(exc);
+		TEST("emplace Exc: kind", trace.kind() == EntryKind::Exception);
+		TEST("emplace Exc: get != null", trace.get<ExceptionEntry>() != nullptr);
+		trace.destroy();
+	}
+
+	// Emplace TracerEntry
+	{
+		ProfilerTrace trace{};
+		TracerEntry tracer{ "Comp", "scope" };
+		trace.emplace(tracer);
+		TEST("emplace Tracer: kind", trace.kind() == EntryKind::Tracer);
+		TEST("emplace Tracer: get != null", trace.get<TracerEntry>() != nullptr);
+		trace.destroy();
+	}
+
+	// Copy
+	{
+		ProfilerTrace a{};
+		LogEntry entry{ LogLevel::Info, "C", "copy test" };
+		a.emplace(entry);
+		ProfilerTrace b{ a };
+		TEST("copy: same kind", b.kind() == EntryKind::Log);
+		TEST("copy: both active", a.active() && b.active());
+		a.destroy();
+		b.destroy();
+	}
+
+	// Move
+	{
+		ProfilerTrace a{};
+		ExceptionEntry exc{ "C", "move test" };
+		a.emplace(exc);
+		ProfilerTrace b{ std::move(a) };
+		TEST("move: b active", b.active());
+		TEST("move: b kind Exc", b.kind() == EntryKind::Exception);
+		TEST("move: a inactive", !a.active());
+		b.destroy();
+	}
+}
+
+// =========================================================
+// Stratum 4 — DefaultLogger (ring buffer + flush)
+// =========================================================
+
+static void testStratumDefaultLogger() {
+	section("Stratum 4 -- DefaultLogger");
+
+	using namespace Stratum::Logging;
+	using namespace Stratum::Records;
+
+	CapturingSinkRouter router{};
+
+	// Basic log → flush route
+	{
+		DefaultLogger<4> logger{};
+		logger.addRoute("console", &router);
+
+		LogEntry entry{ LogLevel::Info, "Comp", "first" };
+		logger.onLog("console", entry);
+
+		LogEntry entry2{ LogLevel::Error, "Comp", "second" };
+		logger.onLog("console", entry2);
+
+		TEST("ring count pre-flush: capture empty", router.logCount == 0);
+		logger.flush();
+		TEST("flush dispatched 2 log entries", router.logCount == 2);
+		TEST("last message matches", std::strncmp(router.lastMessage, "second", 6) == 0);
+	}
+
+	// Exception + tracer routes
+	{
+		CapturingSinkRouter r2{};
+		DefaultLogger<4> logger{};
+		logger.addRoute("console", &r2);
+
+		ExceptionEntry exc{ "Comp", "oops" };
+		logger.onLog("console", exc);
+
+		TracerEntry tracer{ "Comp", "zone" };
+		tracer.start();
+		tracer.end();
+		logger.onLog("console", tracer);
+
+		logger.flush();
+		TEST("flush dispatched exception", r2.exceptionCount == 1);
+		TEST("flush dispatched tracer", r2.tracerCount == 1);
+		TEST("tracer label flushed", std::strncmp(r2.lastLabel, "zone", 4) == 0);
+	}
+
+	// DropOldest overflow
+	{
+		CapturingSinkRouter r3{};
+		DefaultLogger<2> logger{ OverflowPolicy::DropOldest };
+		logger.addRoute("console", &r3);
+
+		for (int i = 0; i < 4; ++i) {
+			char msg[8]{};
+			msg[0] = static_cast<char>('0' + i);
+			LogEntry e{ LogLevel::Info, "C", msg };
+			logger.onLog("console", e);
+		}
+		logger.flush();
+		TEST("DropOldest: only 2 entries survive", r3.logCount == 2);
+		TEST("DropOldest: last entry is '3'", r3.lastMessage[0] == '3');
+	}
+
+	// DropNewest overflow
+	{
+		CapturingSinkRouter r4{};
+		DefaultLogger<2> logger{ OverflowPolicy::DropNewest };
+		logger.addRoute("console", &r4);
+
+		for (int i = 0; i < 4; ++i) {
+			char msg[8]{};
+			msg[0] = static_cast<char>('0' + i);
+			LogEntry e{ LogLevel::Info, "C", msg };
+			logger.onLog("console", e);
+		}
+		logger.flush();
+		TEST("DropNewest: only 2 entries survive", r4.logCount == 2);
+		TEST("DropNewest: last entry is '1'", r4.lastMessage[0] == '1');
+	}
+
+	// Filter gate
+	{
+		CapturingSinkRouter r5{};
+		DefaultLogger<8> logger{};
+		logger.addRoute("console", &r5);
+		logger.filter().setMinLevel(LogLevel::Error);
+
+		LogEntry info{ LogLevel::Info,  "C", "should be dropped" };
+		LogEntry err{ LogLevel::Error, "C", "should pass" };
+		logger.onLog("console", info);
+		logger.onLog("console", err);
+		logger.flush();
+		TEST("filter gates log: only 1 survives", r5.logCount == 1);
+		TEST("filter gates log: correct message",
+			 std::strncmp(r5.lastMessage, "should pass", 11) == 0);
+	}
+}
+
+// =========================================================
+// Stratum 5 — Orchestrator
+// =========================================================
+
+static void testStratumOrchestrator() {
+	section("Stratum 5 -- Orchestrator");
+
+	using namespace Stratum::Logging;
+	using namespace Stratum::Records;
+
+	// Use a fresh DefaultLogger for this section; Orchestrator is a singleton
+	// so we give it a unique name to avoid collisions with any prior state.
+	DefaultLogger<32> logger{};
+	CapturingSinkRouter router{};
+	logger.addRoute("console", &router);
+
+	auto& orc = Orchestrator::getInstance();
+	bool registered = orc.registerLogger("testLogger", &logger);
+	TEST("registerLogger succeeds", registered);
+
+	orc.log(LogLevel::Info, "testLogger", "OrcComp", "console", "orc log");
+	orc.flush();
+	TEST("Orchestrator log dispatched", router.logCount == 1);
+	TEST("Orchestrator log message",
+		 std::strncmp(router.lastMessage, "orc log", 7) == 0);
+
+	TracerEntry tracer{ "OrcComp", "orc_scope" };
+	tracer.start();
+	tracer.end();
+	orc.trace("testLogger", "console", tracer);
+	orc.flush();
+	TEST("Orchestrator trace dispatched", router.tracerCount == 1);
+
+	ExceptionEntry exc{ "OrcComp", "orc_error" };
+	orc.exception("testLogger", "console", exc);
+	orc.flush();
+	TEST("Orchestrator exception dispatched", router.exceptionCount == 1);
+
+	// Lookup miss — should silently no-op
+	orc.log(LogLevel::Error, "noSuchLogger", "C", "t", "ghost");
+	orc.flush();
+	TEST("Orchestrator: unknown logger is a no-op", router.logCount == 1);
+}
+
+// =========================================================
+// Stratum 6 — StackTrace
+// =========================================================
+
+static void testStratumStackTrace() {
+	section("Stratum 6 -- StackTrace");
+
+	using namespace Stratum::Tracing;
+	using namespace Stratum::Profiler;
+	using namespace Stratum::Records;
+
+	StackTrace<> st{};
+	TEST("empty on construction", st.empty());
+	TEST("peekFrame None when empty", st.peekFrame() == EntryKind::None);
+
+	// Push a LogEntry
+	LogEntry log{ LogLevel::Debug, "C", "stack msg" };
+	bool pushed = st.pushFrame(log);
+	TEST("pushFrame LogEntry succeeds", pushed);
+	TEST("not empty after push", !st.empty());
+	TEST("peekFrame is Log", st.peekFrame() == EntryKind::Log);
+
+	LogEntry popped = st.popFrame<LogEntry>();
+	TEST("popFrame LogEntry message",
+		 std::strncmp(popped.getMessage(), "stack msg", 9) == 0);
+	TEST("empty after pop", st.empty());
+
+	// Push ExceptionEntry
+	ExceptionEntry exc{ "C", "stack exc" };
+	st.pushFrame(exc);
+	TEST("peekFrame is Exception", st.peekFrame() == EntryKind::Exception);
+	ExceptionEntry poppedExc = st.popFrame<ExceptionEntry>();
+	TEST("popFrame ExceptionEntry message",
+		 std::strncmp(poppedExc.getErrorMessage(), "stack exc", 9) == 0);
+
+	// Push TracerEntry
+	TracerEntry tracer{ "C", "stack_scope" };
+	st.pushFrame(tracer);
+	TEST("peekFrame is Tracer", st.peekFrame() == EntryKind::Tracer);
+	TracerEntry poppedTracer = st.popFrame<TracerEntry>();
+	TEST("popFrame TracerEntry label",
+		 std::strncmp(poppedTracer.getLabel(), "stack_scope", 11) == 0);
+
+	// Multiple frames — FIFO order (sentinel-based linked list pops from front)
+	LogEntry a{ LogLevel::Info,    "C", "first" };
+	LogEntry b{ LogLevel::Warning, "C", "second" };
+	st.pushFrame(a);
+	st.pushFrame(b);
+	LogEntry first = st.popFrame<LogEntry>();
+	LogEntry second = st.popFrame<LogEntry>();
+	TEST("StackTrace FIFO order first", std::strncmp(first.getMessage(), "first", 5) == 0);
+	TEST("StackTrace FIFO order second", std::strncmp(second.getMessage(), "second", 6) == 0);
+
+	// Pop from empty returns s_invalid
+	LogEntry invalid = st.popFrame<LogEntry>();
+	TEST("popFrame on empty returns s_invalid message",
+		 std::strncmp(invalid.getMessage(),
+					  Stratum::Records::InvalidEntries::s_log.getMessage(),
+					  Stratum::MESSAGE_MAX) == 0);
+}
+
+// =========================================================
+// Stratum 7 — STRATUM_TRACE / STRATUM_TRY macros
+// =========================================================
+
+static void testStratumMacros() {
+	section("Stratum 7 -- Macros");
+
+	using namespace Stratum::Records;
+
+	// STRATUM_TRACE: tracer must be started and ended by the macro
+	STRATUM_TRACE(myTrace, "MacroComp", "macroSection")
+		// body — nothing needed
+		STRATUM_TRACE_END
+
+		TEST("STRATUM_TRACE: is complete", myTrace.isComplete());
+	TEST("STRATUM_TRACE: label matches",
+		 std::strncmp(myTrace.getLabel(), "macroSection", 12) == 0);
+	TEST("STRATUM_TRACE: duration >= 0",
+		 myTrace.getDuration(TracerPrecision::Nanoseconds) >= 0.0);
+
+	// STRATUM_TRY / STRATUM_CATCH: normal path returns empty exception
+	STRATUM_TRY("MacroComp") {
+		STRATUM_THROW("deliberate error");
+	}
+	STRATUM_CATCH(exc1)
+
+		TEST("STRATUM_TRY/CATCH: component",
+			 std::strncmp(exc1.getComponent(), "MacroComp", 9) == 0);
+	TEST("STRATUM_TRY/CATCH: message",
+		 std::strncmp(exc1.getErrorMessage(), "deliberate error", 16) == 0);
+
+	// STRATUM_TRY / STRATUM_CATCH: std::exception propagation
+	STRATUM_TRY("MacroComp") {
+		throw std::runtime_error("runtime boom");
+		return ExceptionEntry{ p_Comp, "" };
+	}
+	STRATUM_CATCH(exc2)
+
+		TEST("STRATUM_TRY/CATCH std::exception caught",
+			 std::strncmp(exc2.getErrorMessage(), "runtime boom", 12) == 0);
+}
+}
+}
+
+// =========================================================
 // Entry Point
 // =========================================================
 
@@ -724,8 +1198,23 @@ int main() {
 	testCudaVirtualMemory();
 	teardownCuda();
 
+	testStratumRecords();
+	testStratumFilter();
+	testStratumProfilerTrace();
+	testStratumDefaultLogger();
+	testStratumOrchestrator();
+	testStratumStackTrace();
+	testStratumMacros();
+
 	printf("\n==========================================\n");
 	printf("Results: %d passed, %d failed\n", g_Passed, g_Failed);
+
+	Corium::CoriumRuntime::initRuntime();
+	int a = 3;
+	int b = 300;
+	auto closure = Corium::Core::Utils::buildClosure<void(int)>([b](int x) {
+		std::cout << "Hello" << x * b;	}, 0);
+	closure(a);
 
 	return (g_Failed == 0) ? 0 : 1;
 }

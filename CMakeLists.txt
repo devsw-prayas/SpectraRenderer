@@ -113,6 +113,9 @@ add_subdirectory(src/SpectraRenderEngine)
 add_subdirectory(src/SpectraRenderPipeline)
 add_subdirectory(src/SpectraPlatformRuntime)
 add_subdirectory(src/SpectraUI)
+add_subdirectory(src/SpectraMemory)
+add_subdirectory(src/SpectraFileSystem)
+add_subdirectory(src/SpectraProfiler)
 
 foreach(target Corium StormSTL Stratum Leibniz)
     set_target_properties(${target} PROPERTIES FOLDER "Common")
@@ -127,9 +130,14 @@ foreach(target SpectraVulkanBackend SpectraCudaBackend)
         set_target_properties(${target} PROPERTIES FOLDER "Backend")
 endforeach()
 
-foreach(target Kerbecs Hades)
+foreach(target Kerbecs Hades SpectraProfiler)
     set_target_properties(${target} PROPERTIES FOLDER "Tools")
 endforeach()
+
+foreach(target SpectraMemory SpectraFileSystem)
+    set_target_properties(${target} PROPERTIES FOLDER "Engine")
+endforeach()
+
 
 set_target_properties(SpectraEditor          PROPERTIES FOLDER "Editor")
 set_target_properties(SpectraLauncher        PROPERTIES FOLDER "Launcher")

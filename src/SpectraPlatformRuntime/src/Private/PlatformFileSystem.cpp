@@ -379,16 +379,40 @@ namespace Spectra::Platform::Runtime::File {
 		return ro_Handler.m_BytesTransferred;
 	}
 
+	// Opaque enumeration state: two void* (find handle + heap-allocated WIN32_FIND_DATAW)
+	// and a bool. No Win32 types in the struct itself.
+	struct DirEnumState {
+		void* m_FindHandle  = nullptr;
+		void* m_PendingData = nullptr;   // heap-allocated WIN32_FIND_DATAW, null once consumed
+		bool  m_HasPending  = false;
+	};
+
+	static void populateFileInfo(const void* p_Data, FileInfo& ro_OutInfo) {
+		const WIN32_FIND_DATAW* data = static_cast<const WIN32_FIND_DATAW*>(p_Data);
+		WideCharToMultiByte(CP_UTF8, 0, data->cFileName, -1,
+							ro_OutInfo.m_FileName, sizeof(ro_OutInfo.m_FileName), nullptr, nullptr);
+		ro_OutInfo.m_IsDirectory = (data->dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0;
+		ro_OutInfo.m_IsReadOnly  = (data->dwFileAttributes & FILE_ATTRIBUTE_READONLY)  != 0;
+
+		ULARGE_INTEGER size;
+		size.LowPart  = data->nFileSizeLow;
+		size.HighPart = data->nFileSizeHigh;
+		ro_OutInfo.m_FileSize = static_cast<size_t>(size.QuadPart);
+
+		ULARGE_INTEGER writeTime;
+		writeTime.LowPart  = data->ftLastWriteTime.dwLowDateTime;
+		writeTime.HighPart = data->ftLastWriteTime.dwHighDateTime;
+		ro_OutInfo.m_LastWriteTime = writeTime.QuadPart;
+	}
+
 	DirectoryEnumHandle Files::beginEnumeration(const DirectoryEnumDesc& ro_Desc) {
 		SPECTRA_ASSERT(g_IsFileSystemInitialized);
 		SPECTRA_ASSERT(ro_Desc.m_Path != nullptr);
 
-		// Build search path: "path\filter"
 		const char* filter = (ro_Desc.m_Filter != nullptr) ? ro_Desc.m_Filter : "*";
 
-		// Compose "path\filter" in UTF-8 first
 		char composed[MAX_PATH * 2];
-		int pathLen = static_cast<int>(strlen(ro_Desc.m_Path));
+		int pathLen   = static_cast<int>(strlen(ro_Desc.m_Path));
 		int filterLen = static_cast<int>(strlen(filter));
 
 		if (pathLen + 1 + filterLen + 1 > MAX_PATH * 2)
@@ -402,18 +426,34 @@ namespace Spectra::Platform::Runtime::File {
 		int len = 0;
 		wchar_t* wide = toWide(composed, stackBuf, MAX_PATH * 2, len);
 
-		WIN32_FIND_DATAW findData{};
-		HANDLE h = FindFirstFileExW(wide, FindExInfoBasic, &findData,
-									FindExSearchNameMatch, nullptr, FIND_FIRST_EX_LARGE_FETCH);
+		WIN32_FIND_DATAW* pending = static_cast<WIN32_FIND_DATAW*>(std::malloc(sizeof(WIN32_FIND_DATAW)));
+		if (!pending)
+			Environment::PlatformTermination::terminate("beginEnumeration: out of memory", __FILE__, __LINE__);
+		*pending = {};
 
+		HANDLE h = FindFirstFileExW(wide, FindExInfoBasic, pending,
+									FindExSearchNameMatch, nullptr, FIND_FIRST_EX_LARGE_FETCH);
 		freeWide(wide, stackBuf);
 
-		if (h == INVALID_HANDLE_VALUE)
+		if (h == INVALID_HANDLE_VALUE) {
+			std::free(pending);
 			Environment::PlatformTermination::terminate("Files::beginEnumeration: FindFirstFileExW failed", __FILE__, __LINE__);
+		}
+
+		DirEnumState* state = static_cast<DirEnumState*>(std::malloc(sizeof(DirEnumState)));
+		if (!state) {
+			FindClose(h);
+			std::free(pending);
+			Environment::PlatformTermination::terminate("beginEnumeration: out of memory", __FILE__, __LINE__);
+		}
+
+		state->m_FindHandle  = h;
+		state->m_PendingData = pending;
+		state->m_HasPending  = true;
 
 		DirectoryEnumHandle handle;
-		handle.m_NativeHandle = h;
-		handle.m_IsValid = true;
+		handle.m_NativeHandle = state;
+		handle.m_IsValid      = true;
 		return handle;
 	}
 
@@ -421,52 +461,53 @@ namespace Spectra::Platform::Runtime::File {
 		if (!isValidEnumHandle(ro_Handle))
 			Environment::PlatformTermination::terminate("Files::next: invalid enum handle", __FILE__, __LINE__);
 
-		WIN32_FIND_DATAW findData{};
+		DirEnumState* state = static_cast<DirEnumState*>(ro_Handle.m_NativeHandle);
 
 		for (;;) {
-			BOOL ok = FindNextFileW(static_cast<HANDLE>(ro_Handle.m_NativeHandle), &findData);
+			if (state->m_HasPending) {
+				populateFileInfo(state->m_PendingData, ro_OutInfo);
+				std::free(state->m_PendingData);
+				state->m_PendingData = nullptr;
+				state->m_HasPending  = false;
+
+				// Still need to skip . and .. if somehow present as first result
+				if (ro_OutInfo.m_FileName[0] == '.' &&
+					(ro_OutInfo.m_FileName[1] == '\0' ||
+					(ro_OutInfo.m_FileName[1] == '.' && ro_OutInfo.m_FileName[2] == '\0')))
+					continue;
+
+				return true;
+			}
+
+			WIN32_FIND_DATAW findData{};
+			BOOL ok = FindNextFileW(static_cast<HANDLE>(state->m_FindHandle), &findData);
 			if (!ok) {
 				if (GetLastError() == ERROR_NO_MORE_FILES)
 					return false;
 				Environment::PlatformTermination::terminate("Files::next: FindNextFileW failed", __FILE__, __LINE__);
 			}
 
-			// Filter out . and ..
 			if (findData.cFileName[0] == L'.' &&
 				(findData.cFileName[1] == L'\0' ||
-				 (findData.cFileName[1] == L'.' && findData.cFileName[2] == L'\0')))
+				(findData.cFileName[1] == L'.' && findData.cFileName[2] == L'\0')))
 				continue;
 
-			break;
+			populateFileInfo(&findData, ro_OutInfo);
+			return true;
 		}
-
-		// Populate FileInfo
-		WideCharToMultiByte(CP_UTF8, 0, findData.cFileName, -1,
-							ro_OutInfo.m_FileName, sizeof(ro_OutInfo.m_FileName), nullptr, nullptr);
-
-		ro_OutInfo.m_IsDirectory = (findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0;
-		ro_OutInfo.m_IsReadOnly = (findData.dwFileAttributes & FILE_ATTRIBUTE_READONLY) != 0;
-
-		ULARGE_INTEGER size;
-		size.LowPart = findData.nFileSizeLow;
-		size.HighPart = findData.nFileSizeHigh;
-		ro_OutInfo.m_FileSize = static_cast<size_t>(size.QuadPart);
-
-		ULARGE_INTEGER writeTime;
-		writeTime.LowPart = findData.ftLastWriteTime.dwLowDateTime;
-		writeTime.HighPart = findData.ftLastWriteTime.dwHighDateTime;
-		ro_OutInfo.m_LastWriteTime = writeTime.QuadPart;
-
-		return true;
 	}
 
 	void Files::closeEnumeration(DirectoryEnumHandle& ro_Handle) {
 		if (!isValidEnumHandle(ro_Handle))
 			Environment::PlatformTermination::terminate("Files::closeEnumeration: invalid handle", __FILE__, __LINE__);
 
-		FindClose(static_cast<HANDLE>(ro_Handle.m_NativeHandle));
+		DirEnumState* state = static_cast<DirEnumState*>(ro_Handle.m_NativeHandle);
+		FindClose(static_cast<HANDLE>(state->m_FindHandle));
+		if (state->m_PendingData) std::free(state->m_PendingData);
+		std::free(state);
+
 		ro_Handle.m_NativeHandle = nullptr;
-		ro_Handle.m_IsValid = false;
+		ro_Handle.m_IsValid      = false;
 	}
 
 	FileMappingHandle Files::createMapping(FileHandle& ro_Handle, FileAccess v_Access, size_t v_MaxSize) {
