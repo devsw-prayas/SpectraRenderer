@@ -109,11 +109,24 @@ namespace Spectra::Cuda::Utils {
 		SURFACE_WRITE
 	};
 
+	enum class SPEC_CUDA_BK_RUNTIME_API StreamFlags final : uint8_t {
+		DEFAULT,
+		NON_BLOCKING
+	};
+
+	enum class SPEC_CUDA_BK_RUNTIME_API EventFlags final : uint8_t {
+		DEFAULT = 0,
+		BLOCKING_SYNC = 1 << 0,
+		DISABLE_TIMING = 1 << 1,
+		INTERPROCESS = 1 << 2
+	};
+
 	class SPEC_CUDA_BK_RUNTIME_API CudaHelpers final {
 	public:
 		static uint32_t computeAllocFlag(std::initializer_list<HostAllocFlags> flags);
 		static uint32_t computeRegFlag(std::initializer_list<HostRegisterFlags> flags);
 		static uint64_t computeAccessFlags(std::initializer_list<AccessFlagBits> flags);
+		static uint32_t computeEventFlags(std::initializer_list<EventFlags> flags);
 	};
 
 	struct SPEC_CUDA_BK_RUNTIME_API SPEC_CUDA_BK_ALIGNAS(4) DeviceHandle final {
@@ -608,4 +621,173 @@ namespace Spectra::Cuda::Utils {
 	SPEC_CUDA_BK_NODISCARD SPEC_CUDA_BK_RUNTIME_API bool validateResourceDesc(const ResourceDesc& ro_Desc);
 	SPEC_CUDA_BK_NODISCARD SPEC_CUDA_BK_RUNTIME_API bool validateTextureDesc(const TextureDesc& ro_Desc);
 	SPEC_CUDA_BK_NODISCARD SPEC_CUDA_BK_RUNTIME_API bool validateResourceViewDesc(const ResourceViewDesc& ro_Desc);
+
+	// -------------------------------------------------------------------------
+	// GPU Streams and Stuff
+	// -------------------------------------------------------------------------
+
+	enum class SPEC_CUDA_BK_RUNTIME_API StreamCaptureMode : uint8_t {
+		GLOBAL,
+		THREAD_LOCAL,
+		RELAXED
+	};
+
+	enum class SPEC_CUDA_BK_RUNTIME_API StreamCaptureStatus : uint8_t {
+		NONE,
+		ACTIVE,
+		INVALIDATED
+	};
+
+	struct SPEC_CUDA_BK_RUNTIME_API SPEC_CUDA_BK_ALIGNAS(8) GpuStream final {
+		void* m_StreamHandle = nullptr;
+
+		GpuStream() = default;
+		~GpuStream() = default;
+
+		GpuStream(const GpuStream&) = default;
+		GpuStream& operator=(const GpuStream&) = default;
+
+		GpuStream(GpuStream&&) noexcept = default;
+		GpuStream& operator=(GpuStream&&) noexcept = default;
+
+		SPEC_CUDA_BK_NODISCARD bool isValid() const {
+			return m_StreamHandle != nullptr;
+		}
+	};
+
+	SPEC_CUDA_BK_STATIC_ASSERT(sizeof(GpuStream) == 8, "Invalid GpuStream size, must be 64bit");
+	SPEC_CUDA_BK_STATIC_ASSERT(std::is_standard_layout_v<GpuStream>, "GpuStream must maintain standard layout");
+	SPEC_CUDA_BK_STATIC_ASSERT(std::is_trivially_copyable_v<GpuStream>, "GpuStream must be trivially copyable");
+	SPEC_CUDA_BK_STATIC_ASSERT(std::is_trivially_move_assignable_v<GpuStream>, "GpuStream must be trivially move assignable");
+
+	struct SPEC_CUDA_BK_RUNTIME_API SPEC_CUDA_BK_ALIGNAS(8) GpuEvent final {
+		void* m_EventHandle = nullptr;
+
+		GpuEvent() = default;
+		~GpuEvent() = default;
+
+		GpuEvent(const GpuEvent&) = default;
+		GpuEvent& operator=(const GpuEvent&) = default;
+
+		GpuEvent(GpuEvent&&) noexcept = default;
+		GpuEvent& operator=(GpuEvent&&) noexcept = default;
+
+		SPEC_CUDA_BK_NODISCARD bool isValid() const {
+			return m_EventHandle != nullptr;
+		}
+	};
+
+	SPEC_CUDA_BK_STATIC_ASSERT(sizeof(GpuEvent) == 8, "Invalid GpuEvent size, must be 64bit");
+	SPEC_CUDA_BK_STATIC_ASSERT(std::is_standard_layout_v<GpuEvent>, "GpuEvent must maintain standard layout");
+	SPEC_CUDA_BK_STATIC_ASSERT(std::is_trivially_copyable_v<GpuEvent>, "GpuEvent must be trivially copyable");
+	SPEC_CUDA_BK_STATIC_ASSERT(std::is_trivially_move_assignable_v<GpuEvent>, "GpuEvent must be trivially move assignable");
+
+	struct SPEC_CUDA_BK_RUNTIME_API SPEC_CUDA_BK_ALIGNAS(8) GpuGraph final {
+		void* m_GraphHandle = nullptr;
+
+		GpuGraph() = default;
+		~GpuGraph() = default;
+
+		GpuGraph(const GpuGraph&) = default;
+		GpuGraph& operator=(const GpuGraph&) = default;
+
+		GpuGraph(GpuGraph&&) noexcept = default;
+		GpuGraph& operator=(GpuGraph&&) noexcept = default;
+
+		SPEC_CUDA_BK_NODISCARD bool isValid() const {
+			return m_GraphHandle != nullptr;
+		}
+	};
+
+	SPEC_CUDA_BK_STATIC_ASSERT(sizeof(GpuGraph) == 8, "Invalid GpuGraph size, must be 64bit");
+	SPEC_CUDA_BK_STATIC_ASSERT(std::is_standard_layout_v<GpuGraph>, "GpuGraph must maintain standard layout");
+	SPEC_CUDA_BK_STATIC_ASSERT(std::is_trivially_copyable_v<GpuGraph>, "GpuGraph must be trivially copyable");
+	SPEC_CUDA_BK_STATIC_ASSERT(std::is_trivially_move_assignable_v<GpuGraph>, "GpuGraph must be trivially move assignable");
+
+	struct SPEC_CUDA_BK_RUNTIME_API SPEC_CUDA_BK_ALIGNAS(8) GpuIpcEventHandle final {
+		char m_Reserved[64];
+
+		GpuIpcEventHandle() = default;
+		~GpuIpcEventHandle() = default;
+
+		GpuIpcEventHandle(const GpuIpcEventHandle&) = default;
+		GpuIpcEventHandle& operator=(const GpuIpcEventHandle&) = default;
+
+		GpuIpcEventHandle(GpuIpcEventHandle&&) noexcept = default;
+		GpuIpcEventHandle& operator=(GpuIpcEventHandle&&) noexcept = default;
+	};
+
+	SPEC_CUDA_BK_STATIC_ASSERT(sizeof(GpuIpcEventHandle) == 64, "Invalid GpuIpcEventHandle size, must be 64 bytes");
+	SPEC_CUDA_BK_STATIC_ASSERT(std::is_standard_layout_v<GpuIpcEventHandle>, "GpuIpcEventHandle must maintain standard layout");
+	SPEC_CUDA_BK_STATIC_ASSERT(std::is_trivially_copyable_v<GpuIpcEventHandle>, "GpuIpcEventHandle must be trivially copyable");
+	SPEC_CUDA_BK_STATIC_ASSERT(std::is_trivially_move_assignable_v<GpuIpcEventHandle>, "GpuIpcEventHandle must be trivially move assignable");
+
+	struct SPEC_CUDA_BK_RUNTIME_API SPEC_CUDA_BK_ALIGNAS(8) GpuGraphExec final {
+		void* m_ExecHandle = nullptr;
+
+		GpuGraphExec() = default;
+		~GpuGraphExec() = default;
+
+		GpuGraphExec(const GpuGraphExec&) = default;
+		GpuGraphExec& operator=(const GpuGraphExec&) = default;
+
+		GpuGraphExec(GpuGraphExec&&) noexcept = default;
+		GpuGraphExec& operator=(GpuGraphExec&&) noexcept = default;
+
+		SPEC_CUDA_BK_NODISCARD bool isValid() const {
+			return m_ExecHandle != nullptr;
+		}
+	};
+
+	SPEC_CUDA_BK_STATIC_ASSERT(sizeof(GpuGraphExec) == 8, "Invalid GpuGraphExec size, must be 64bit");
+	SPEC_CUDA_BK_STATIC_ASSERT(std::is_standard_layout_v<GpuGraphExec>, "GpuGraphExec must maintain standard layout");
+	SPEC_CUDA_BK_STATIC_ASSERT(std::is_trivially_copyable_v<GpuGraphExec>, "GpuGraphExec must be trivially copyable");
+	SPEC_CUDA_BK_STATIC_ASSERT(std::is_trivially_move_assignable_v<GpuGraphExec>, "GpuGraphExec must be trivially move assignable");
+
+	struct SPEC_CUDA_BK_RUNTIME_API SPEC_CUDA_BK_ALIGNAS(8) GpuGraphNode final {
+		void* m_NodeHandle = nullptr;
+
+		GpuGraphNode() = default;
+		~GpuGraphNode() = default;
+
+		GpuGraphNode(const GpuGraphNode&) = default;
+		GpuGraphNode& operator=(const GpuGraphNode&) = default;
+
+		GpuGraphNode(GpuGraphNode&&) noexcept = default;
+		GpuGraphNode& operator=(GpuGraphNode&&) noexcept = default;
+
+		SPEC_CUDA_BK_NODISCARD bool isValid() const {
+			return m_NodeHandle != nullptr;
+		}
+	};
+
+	SPEC_CUDA_BK_STATIC_ASSERT(sizeof(GpuGraphNode) == 8, "Invalid GpuGraphNode size, must be 64bit");
+	SPEC_CUDA_BK_STATIC_ASSERT(std::is_standard_layout_v<GpuGraphNode>, "GpuGraphNode must maintain standard layout");
+	SPEC_CUDA_BK_STATIC_ASSERT(std::is_trivially_copyable_v<GpuGraphNode>, "GpuGraphNode must be trivially copyable");
+	SPEC_CUDA_BK_STATIC_ASSERT(std::is_trivially_move_assignable_v<GpuGraphNode>, "GpuGraphNode must be trivially move assignable");
+
+	// Params for cuGraphAddKernelNode. m_Function must be a valid CUfunction handle obtained from a loaded module.
+	struct SPEC_CUDA_BK_RUNTIME_API KernelNodeParams final {
+		void*    m_Function      = nullptr; // CUfunction
+		uint32_t m_GridDimX      = 1;
+		uint32_t m_GridDimY      = 1;
+		uint32_t m_GridDimZ      = 1;
+		uint32_t m_BlockDimX     = 1;
+		uint32_t m_BlockDimY     = 1;
+		uint32_t m_BlockDimZ     = 1;
+		uint32_t m_SharedMemBytes = 0;
+		void**   m_KernelParams  = nullptr; // void*[] of kernel arguments
+		void**   m_Extra         = nullptr; // null in standard usage
+	};
+
+	// Params for cuGraphAddMemsetNode. m_ElementSize must be 1, 2, or 4.
+	struct SPEC_CUDA_BK_RUNTIME_API MemsetNodeParams final {
+		uint64_t m_Dst         = 0; // CUdeviceptr
+		size_t   m_Pitch       = 0;
+		uint32_t m_Value       = 0;
+		uint32_t m_ElementSize = 1; // bytes: 1, 2, or 4
+		size_t   m_Width       = 0;
+		size_t   m_Height      = 1;
+	};
+
 }

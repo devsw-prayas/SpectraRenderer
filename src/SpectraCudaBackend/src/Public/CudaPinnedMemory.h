@@ -1,9 +1,6 @@
 #pragma once
 #include "SpectraCudaBackend.h"
-#include "SpecCudaCompiler.h"
-#include "SpecCudaDiagnostics.h"
 #include "CudaUtils.h"
-#include "CudaStream.h"
 
 namespace Spectra::Cuda::Memory {	  
 	using namespace Utils;
@@ -18,11 +15,11 @@ namespace Spectra::Cuda::Memory {
 
 		static void copyHostToDevAsync(
 			const GpuAddress& ro_Dst, const PinnedAddress& ro_Src, 
-			size_t v_Bytes, const Streams::GpuStream& ro_Stream);
+			size_t v_Bytes, const GpuStream& ro_Stream);
 
 		static void copyDevToHostAsync(
 			const PinnedAddress& ro_Dst, const GpuAddress& ro_Src,
-			size_t v_Bytes, const Streams::GpuStream& ro_Stream
+			size_t v_Bytes, const GpuStream& ro_Stream
 		);
 	};									
 }

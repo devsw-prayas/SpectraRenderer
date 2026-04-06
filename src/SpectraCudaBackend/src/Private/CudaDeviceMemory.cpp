@@ -78,7 +78,7 @@ namespace Spectra::Cuda::Memory {
 		CUDA_ERROR_TRAP(result)
 	}
 
-	void DeviceMemory::memsetD8Async(const GpuAddress& ro_Address, uint8_t v_Val, size_t v_Count, const Streams::GpuStream& ro_Stream) {
+	void DeviceMemory::memsetD8Async(const GpuAddress& ro_Address, uint8_t v_Val, size_t v_Count, const GpuStream& ro_Stream) {
 		SPEC_CUDA_BK_ASSERT(v_Count > 0);
 		SPEC_CUDA_BK_ASSERT(ro_Address.isValid());
 		SPEC_CUDA_BK_ASSERT(ro_Stream.isValid());
@@ -87,7 +87,7 @@ namespace Spectra::Cuda::Memory {
 		CUDA_ERROR_TRAP(result)
 	}
 
-	void DeviceMemory::memsetD16Async(const GpuAddress& ro_Address, uint16_t v_Val, size_t v_Count, const Streams::GpuStream& ro_Stream) {
+	void DeviceMemory::memsetD16Async(const GpuAddress& ro_Address, uint16_t v_Val, size_t v_Count, const GpuStream& ro_Stream) {
 		SPEC_CUDA_BK_ASSERT(v_Count > 0);
 		SPEC_CUDA_BK_ASSERT(ro_Address.isValid());
 		SPEC_CUDA_BK_ASSERT(ro_Stream.isValid());
@@ -96,7 +96,7 @@ namespace Spectra::Cuda::Memory {
 		CUDA_ERROR_TRAP(result)
 	}
 
-	void DeviceMemory::memsetD32Async(const GpuAddress& ro_Address, uint32_t v_Val, size_t v_Count, const Streams::GpuStream& ro_Stream) {
+	void DeviceMemory::memsetD32Async(const GpuAddress& ro_Address, uint32_t v_Val, size_t v_Count, const GpuStream& ro_Stream) {
 		SPEC_CUDA_BK_ASSERT(v_Count > 0);
 		SPEC_CUDA_BK_ASSERT(ro_Address.isValid());
 		SPEC_CUDA_BK_ASSERT(ro_Stream.isValid());
@@ -115,7 +115,7 @@ namespace Spectra::Cuda::Memory {
 		CUDA_ERROR_TRAP(result)
 	}
 
-	void DeviceMemory::copyDeviceToDeviceAsync(const GpuAddress& ro_Dst, const GpuAddress& ro_Src, size_t v_Bytes, const Streams::GpuStream& ro_Stream) {
+	void DeviceMemory::copyDeviceToDeviceAsync(const GpuAddress& ro_Dst, const GpuAddress& ro_Src, size_t v_Bytes, const GpuStream& ro_Stream) {
 		SPEC_CUDA_BK_ASSERT(v_Bytes > 0);
 		SPEC_CUDA_BK_ASSERT(ro_Src.isValid());
 		SPEC_CUDA_BK_ASSERT(ro_Dst.isValid());

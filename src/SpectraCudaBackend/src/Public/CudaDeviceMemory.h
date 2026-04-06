@@ -1,7 +1,6 @@
 #pragma once
 #include "SpectraCudaBackend.h"
 #include "SpecCudaCompiler.h"
-#include "CudaStream.h"
 #include "CudaUtils.h"
 
 namespace Spectra::Cuda::Memory {
@@ -33,19 +32,19 @@ namespace Spectra::Cuda::Memory {
 
 		static void memsetD8Async(
 			const GpuAddress& ro_Address, uint8_t v_Val,
-			size_t v_Count, const Streams::GpuStream& ro_Stream);
+			size_t v_Count, const GpuStream& ro_Stream);
 
 		static void memsetD16Async(
 			const GpuAddress& ro_Address, uint16_t v_Val,
-			size_t v_Count, const Streams::GpuStream& ro_Stream);
+			size_t v_Count, const GpuStream& ro_Stream);
 
 		static void memsetD32Async(
 			const GpuAddress& ro_Address, uint32_t v_Val,
-			size_t v_Count, const Streams::GpuStream& ro_Stream);
+			size_t v_Count, const GpuStream& ro_Stream);
 
 		static void copyDeviceToDevice(const GpuAddress& ro_Dst, const GpuAddress& ro_Src, size_t v_Bytes);
 		static void copyDeviceToDeviceAsync(
 			const GpuAddress& ro_Dst, const GpuAddress& ro_Src,
-			size_t v_Bytes, const Streams::GpuStream& ro_Stream);
+			size_t v_Bytes, const GpuStream& ro_Stream);
 	};
 }

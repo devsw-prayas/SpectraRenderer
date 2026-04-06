@@ -25,6 +25,13 @@ namespace Spectra::Cuda::Utils {
 		return mask;
 	}
 
+	uint32_t CudaHelpers::computeEventFlags(std::initializer_list<EventFlags> flags) {
+		uint32_t mask = 0;
+		for (const auto& each : flags)
+			mask |= Internal::CUDA_InternalHelpers::toEventFlags(each);
+		return mask;
+	}
+
 	SPEC_CUDA_BK_RUNTIME_API void initAllocDesc(AllocDesc& ro_Desc) {
 		// Zero + explicit defaults (no memset, keep semantic clarity)
 		ro_Desc.m_Type = AllocationType::INVALID;

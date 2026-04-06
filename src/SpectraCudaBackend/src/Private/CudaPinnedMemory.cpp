@@ -64,7 +64,7 @@ namespace Spectra::Cuda::Memory {
         CUDA_ERROR_TRAP(result)
     }
 
-    void PinnedMemory::copyHostToDevAsync(const GpuAddress& ro_Dst, const PinnedAddress& ro_Src, size_t v_Bytes, const Streams::GpuStream& ro_Stream) {
+    void PinnedMemory::copyHostToDevAsync(const GpuAddress& ro_Dst, const PinnedAddress& ro_Src, size_t v_Bytes, const GpuStream& ro_Stream) {
         SPEC_CUDA_BK_ASSERT(v_Bytes > 0);
         SPEC_CUDA_BK_ASSERT(ro_Dst.isValid());
         SPEC_CUDA_BK_ASSERT(ro_Src.isValid());
@@ -74,7 +74,7 @@ namespace Spectra::Cuda::Memory {
         CUDA_ERROR_TRAP(result)
     }
 
-    void PinnedMemory::copyDevToHostAsync(const PinnedAddress& ro_Dst, const GpuAddress& ro_Src, size_t v_Bytes, const Streams::GpuStream& ro_Stream) {
+    void PinnedMemory::copyDevToHostAsync(const PinnedAddress& ro_Dst, const GpuAddress& ro_Src, size_t v_Bytes, const GpuStream& ro_Stream) {
         SPEC_CUDA_BK_ASSERT(v_Bytes > 0);
         SPEC_CUDA_BK_ASSERT(ro_Dst.isValid());
         SPEC_CUDA_BK_ASSERT(ro_Src.isValid());

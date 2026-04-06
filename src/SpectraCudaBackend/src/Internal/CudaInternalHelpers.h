@@ -52,15 +52,21 @@ namespace Spectra::Cuda::Internal {
 		static CUfilter_mode toTexFilterMode(Utils::TexFilterMode v_Mode);
 		static CUresourceViewFormat toResourceViewFormat(Utils::ResourceViewFormat v_Format);
 		static CUmemorytype toCopyMemoryType(Utils::CopyMemoryType v_Type);
+		static CUstreamCaptureMode toCudaStreamCaptureMode(Utils::StreamCaptureMode v_Mode);
+		static CUstreamCaptureStatus toCudaStreamCaptureStatus(Utils::StreamCaptureStatus v_Status);
+		static uint32_t toStreamFlags(Utils::StreamFlags v_Flags);
+		static uint32_t toEventFlags(Utils::EventFlags v_Flags);
 	};
 
 	class CUDA_PackingFunctions final {
 	public:
-		static CUDA_ARRAY3D_DESCRIPTOR packArray3dDesc(const Utils::Array3dDesc& ro_Desc);    // → cuArray3DCreate
-		static CUDA_MEMCPY3D           pack3dMemcpyDesc(const Utils::MemCpy3DDesc& ro_Desc);  // → cuMemcpy3DAsync
-		static CUDA_RESOURCE_DESC      packResourceDesc(const Utils::ResourceDesc& ro_Desc);  // → cuTexObjectCreate, cuSurfObjectCreate
-		static CUDA_TEXTURE_DESC       packTextureDesc(const Utils::TextureDesc& ro_Desc);    // → cuTexObjectCreate
-		static CUDA_RESOURCE_VIEW_DESC packResourceViewDesc(const Utils::ResourceViewDesc& ro_Desc); // → cuTexObjectCreate
+		static CUDA_ARRAY3D_DESCRIPTOR    packArray3dDesc(const Utils::Array3dDesc& ro_Desc);       // → cuArray3DCreate
+		static CUDA_MEMCPY3D              pack3dMemcpyDesc(const Utils::MemCpy3DDesc& ro_Desc);    // → cuMemcpy3DAsync, cuGraphAddMemcpyNode
+		static CUDA_RESOURCE_DESC         packResourceDesc(const Utils::ResourceDesc& ro_Desc);    // → cuTexObjectCreate, cuSurfObjectCreate
+		static CUDA_TEXTURE_DESC          packTextureDesc(const Utils::TextureDesc& ro_Desc);      // → cuTexObjectCreate
+		static CUDA_RESOURCE_VIEW_DESC    packResourceViewDesc(const Utils::ResourceViewDesc& ro_Desc); // → cuTexObjectCreate
+		static CUDA_KERNEL_NODE_PARAMS    packKernelNodeParams(const Utils::KernelNodeParams& ro_Params); // → cuGraphAddKernelNode
+		static CUDA_MEMSET_NODE_PARAMS    packMemsetNodeParams(const Utils::MemsetNodeParams& ro_Params); // → cuGraphAddMemsetNode
 	};
 }
 

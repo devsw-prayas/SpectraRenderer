@@ -285,6 +285,50 @@ namespace Spectra::Cuda::Internal {
 		SPEC_CUDA_BK_UNREACHABLE();
 	}
 
+	CUstreamCaptureMode CUDA_InternalHelpers::toCudaStreamCaptureMode(Utils::StreamCaptureMode v_Mode) {
+		switch (v_Mode) {
+		case Utils::StreamCaptureMode::GLOBAL:       return CU_STREAM_CAPTURE_MODE_GLOBAL;
+		case Utils::StreamCaptureMode::THREAD_LOCAL: return CU_STREAM_CAPTURE_MODE_THREAD_LOCAL;
+		case Utils::StreamCaptureMode::RELAXED:      return CU_STREAM_CAPTURE_MODE_RELAXED;
+		}
+		SPEC_CUDA_BK_ASSERT(false && "Invalid StreamCaptureMode");
+		SPEC_CUDA_BK_TRAP();
+		SPEC_CUDA_BK_UNREACHABLE();
+	}
+
+	CUstreamCaptureStatus CUDA_InternalHelpers::toCudaStreamCaptureStatus(Utils::StreamCaptureStatus v_Status) {
+		switch (v_Status) {
+		case Utils::StreamCaptureStatus::NONE:        return CU_STREAM_CAPTURE_STATUS_NONE;
+		case Utils::StreamCaptureStatus::ACTIVE:      return CU_STREAM_CAPTURE_STATUS_ACTIVE;
+		case Utils::StreamCaptureStatus::INVALIDATED: return CU_STREAM_CAPTURE_STATUS_INVALIDATED;
+		}
+		SPEC_CUDA_BK_ASSERT(false && "Invalid StreamCaptureStatus");
+		SPEC_CUDA_BK_TRAP();
+		SPEC_CUDA_BK_UNREACHABLE();
+	}
+
+	uint32_t CUDA_InternalHelpers::toStreamFlags(Utils::StreamFlags v_Flags) {
+		switch (v_Flags) {
+		case Utils::StreamFlags::DEFAULT:      return 0;
+		case Utils::StreamFlags::NON_BLOCKING: return CU_STREAM_NON_BLOCKING;
+		}
+		SPEC_CUDA_BK_ASSERT(false && "Invalid StreamFlags");
+		SPEC_CUDA_BK_TRAP();
+		SPEC_CUDA_BK_UNREACHABLE();
+	}
+
+	uint32_t CUDA_InternalHelpers::toEventFlags(Utils::EventFlags v_Flags) {
+		switch (v_Flags) {
+		case Utils::EventFlags::DEFAULT:        return CU_EVENT_DEFAULT;
+		case Utils::EventFlags::BLOCKING_SYNC:  return CU_EVENT_BLOCKING_SYNC;
+		case Utils::EventFlags::DISABLE_TIMING: return CU_EVENT_DISABLE_TIMING;
+		case Utils::EventFlags::INTERPROCESS:   return CU_EVENT_INTERPROCESS;
+		}
+		SPEC_CUDA_BK_ASSERT(false && "Invalid EventFlags");
+		SPEC_CUDA_BK_TRAP();
+		SPEC_CUDA_BK_UNREACHABLE();
+	}
+
 	CUDA_MEMCPY3D CUDA_PackingFunctions::pack3dMemcpyDesc(const Utils::MemCpy3DDesc& ro_Desc) {
 		CUDA_MEMCPY3D desc{};
 
@@ -393,6 +437,32 @@ namespace Spectra::Cuda::Internal {
 		desc.borderColor[3]       = ro_Desc.m_BorderColor[3];
 
 		return desc;
+	}
+
+	CUDA_KERNEL_NODE_PARAMS CUDA_PackingFunctions::packKernelNodeParams(const Utils::KernelNodeParams& ro_Params) {
+		CUDA_KERNEL_NODE_PARAMS params{};
+		params.func           = static_cast<CUfunction>(ro_Params.m_Function);
+		params.gridDimX       = ro_Params.m_GridDimX;
+		params.gridDimY       = ro_Params.m_GridDimY;
+		params.gridDimZ       = ro_Params.m_GridDimZ;
+		params.blockDimX      = ro_Params.m_BlockDimX;
+		params.blockDimY      = ro_Params.m_BlockDimY;
+		params.blockDimZ      = ro_Params.m_BlockDimZ;
+		params.sharedMemBytes = ro_Params.m_SharedMemBytes;
+		params.kernelParams   = ro_Params.m_KernelParams;
+		params.extra          = ro_Params.m_Extra;
+		return params;
+	}
+
+	CUDA_MEMSET_NODE_PARAMS CUDA_PackingFunctions::packMemsetNodeParams(const Utils::MemsetNodeParams& ro_Params) {
+		CUDA_MEMSET_NODE_PARAMS params{};
+		params.dst         = static_cast<CUdeviceptr>(ro_Params.m_Dst);
+		params.pitch       = ro_Params.m_Pitch;
+		params.value       = ro_Params.m_Value;
+		params.elementSize = ro_Params.m_ElementSize;
+		params.width       = ro_Params.m_Width;
+		params.height      = ro_Params.m_Height;
+		return params;
 	}
 }
 #endif

@@ -1,8 +1,5 @@
 #pragma once
-#include "CudaStream.h"
 #include "SpectraCudaBackend.h"
-#include "SpecCudaCompiler.h"
-#include "SpecCudaDiagnostics.h"
 #include "CudaUtils.h"
 
 namespace Spectra::Cuda::Memory {

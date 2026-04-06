@@ -44,7 +44,7 @@ namespace Spectra::Cuda::Memory {
 
 	void ManagedMemory::prefetchAsync(
 		const GpuAddress& ro_Addr, size_t v_Count,
-		const DeviceHandle& ro_Handle, const Streams::GpuStream& ro_Stream) {
+		const DeviceHandle& ro_Handle, const GpuStream& ro_Stream) {
 		SPEC_CUDA_BK_ASSERT(ro_Addr.isValid());
 		SPEC_CUDA_BK_ASSERT(v_Count > 0);
 		if (ro_Handle.isValid()) {
