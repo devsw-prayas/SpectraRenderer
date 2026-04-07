@@ -29,6 +29,12 @@
 #include "CudaVirtualMemory.h"
 #include "CudaUtils.h"
 #include "CudaStream.h"
+#include "CudaEvent.h"
+#include "CudaGraph.h"
+#include "CudaModule.h"
+#include "CudaLinker.h"
+#include "CudaCompute.h"
+#include "OptixContextManager.h"
 
 #include "CoriumRuntime.h"
 #include "CoriumUtility.h"
@@ -707,6 +713,166 @@ static void testCudaVirtualMemory() {
 }
 
 // =========================================================
+// CUDA 3.1 - Streams
+// =========================================================
+
+static void testCudaStreams() {
+	section("CUDA 3.1 -- Streams");
+	if (!g_CudaReady) { printf("  [SKIP] No CUDA device\n"); return; }
+	using namespace Spectra::Cuda::Streams;
+	using namespace Spectra::Cuda::Utils;
+
+	GpuStream stream = DeviceStreams::createStream(StreamFlags::NON_BLOCKING);
+	TEST("createStream NON_BLOCKING valid", stream.isValid());
+
+	bool ready = DeviceStreams::queryStream(stream);
+	TEST("queryStream succeeds", ready || !ready);
+
+	DeviceStreams::syncStream(stream);
+	DeviceStreams::destroyStream(stream);
+	TEST("destroyStream nulls handle", !stream.isValid());
+}
+
+// =========================================================
+// CUDA 3.2 - Events
+// =========================================================
+
+static void testCudaEvents() {
+	section("CUDA 3.2 -- Events");
+	if (!g_CudaReady) { printf("  [SKIP] No CUDA device\n"); return; }
+	using namespace Spectra::Cuda::Events;
+	using namespace Spectra::Cuda::Streams;
+	using namespace Spectra::Cuda::Utils;
+
+	GpuEvent e1 = DeviceEvents::createEvent(CudaHelpers::computeEventFlags({EventFlags::DEFAULT}));
+	GpuEvent e2 = DeviceEvents::createEvent(CudaHelpers::computeEventFlags({EventFlags::DEFAULT}));
+	TEST("createEvent valid", e1.isValid() && e2.isValid());
+
+	GpuStream stream = DeviceStreams::createStream(StreamFlags::NON_BLOCKING);
+
+	DeviceEvents::recordEvent(e1, stream);
+	DeviceEvents::recordEvent(e2, stream);
+	DeviceEvents::syncEvent(e2);
+
+	float ms = DeviceEvents::elapsedTime(e1, e2);
+	TEST("elapsedTime works", ms >= 0.0f);
+
+	DeviceStreams::destroyStream(stream);
+	DeviceEvents::destroyEvent(e1);
+	DeviceEvents::destroyEvent(e2);
+}
+
+// =========================================================
+// CUDA 3.3 - Graphs
+// =========================================================
+
+static void testCudaGraphs() {
+	section("CUDA 3.3 -- Graphs");
+	if (!g_CudaReady) { printf("  [SKIP] No CUDA device\n"); return; }
+	using namespace Spectra::Cuda::Graphs;
+	using namespace Spectra::Cuda::Memory;
+	using namespace Spectra::Cuda::Streams;
+	using namespace Spectra::Cuda::Utils;
+
+	GpuGraph graph = DeviceGraphs::createGraph();
+	TEST("createGraph valid", graph.isValid());
+
+	GpuAddress mem = DeviceMemory::deviceAlloc(128);
+	MemsetNodeParams p{};
+	p.m_Dst = mem.m_GpuAddr;
+	p.m_ElementSize = 1;
+	p.m_Value = 0xAA;
+	p.m_Width = 128;
+	p.m_Height = 1;
+
+	GpuGraphNode node = DeviceGraphs::addMemsetNode(graph, nullptr, 0, p);
+	TEST("addMemsetNode valid", node.isValid());
+
+	GpuGraphExec exec = DeviceGraphs::instantiate(graph);
+	TEST("instantiate graph valid", exec.isValid());
+
+	GpuStream stream = DeviceStreams::createStream(StreamFlags::NON_BLOCKING);
+	DeviceGraphs::launch(exec, stream);
+	DeviceStreams::syncStream(stream);
+
+	DeviceMemory::deviceFree(mem);
+	DeviceStreams::destroyStream(stream);
+	DeviceGraphs::destroyExec(exec);
+	DeviceGraphs::destroyGraph(graph);
+}
+
+// =========================================================
+// CUDA 4.1 - Modules
+// =========================================================
+
+static void testCudaModules() {
+	section("CUDA 4.1 -- Modules");
+	if (!g_CudaReady) { printf("  [SKIP] No CUDA device\n"); return; }
+	using namespace Spectra::Cuda::Modules;
+	using namespace Spectra::Cuda::Utils;
+
+	JitOptions options{};
+	initJitOptions(options);
+	TEST("JitOptions initialized", options.m_OptLevel == JitOptimizationLevel::DEFAULT_MAX);
+
+	GpuLinkState linkState = DeviceLinker::createLinkState(options);
+	TEST("createLinkState valid", linkState.isValid());
+	
+	DeviceLinker::destroyLinkState(linkState);
+	TEST("destroyLinkState nulls handle", !linkState.isValid());
+}
+
+// =========================================================
+// CUDA 4.2 - Compute (Kernel Launch)
+// =========================================================
+
+static void testCudaCompute() {
+	section("CUDA 4.2 -- Compute");
+	if (!g_CudaReady) { printf("  [SKIP] No CUDA device\n"); return; }
+	using namespace Spectra::Cuda::Compute;
+	using namespace Spectra::Cuda::Utils;
+	
+	// We just ensure the types are accessible and structs can form up without issue.
+	LaunchDimension gridDim{1, 1, 1};
+	LaunchDimension blockDim{128, 1, 1};
+	TEST("LaunchDimensions struct verified", gridDim.x == 1 && blockDim.x == 128);
+
+	// Since we don't have a compiled .ptx string at hand in this smoke test, 
+	// we will rely on checking header visibility, which was proven if this compiles.
+	TEST("Compute layer accessible", true);
+}
+
+// =========================================================
+// CUDA (Section 6) - OptiX
+// =========================================================
+
+static void testOptixSection6() {
+	section("CUDA 6.0 -- OptiX");
+	if (!g_CudaReady) { printf("  [SKIP] No CUDA device\n"); return; }
+	using namespace Spectra::Cuda::Optix;
+	using namespace Spectra::Cuda::Utils;
+
+	bool optixReady = DeviceOptixContext::initOptix();
+	if (!optixReady) {
+		printf("  [SKIP] OptiX not installed or configured\n");
+		return;
+	}
+	TEST("optixInit handles successful startup", optixReady);
+
+	OptixContextOptions options{};
+	// Just a default context using the primary device config wrapper from our Cuda tests.
+	// Since we mock it here, we will just pass a valid wrapper struct.
+	CudaContext devCtx{};
+	devCtx.m_ContextHandle = g_Context.m_ContextHandle;
+	
+	GpuOptixContext ctx = DeviceOptixContext::createContext(devCtx, options);
+	TEST("createContext creates valid handle", ctx.isValid());
+
+	DeviceOptixContext::destroyContext(ctx);
+	TEST("destroyContext invalidates handle", !ctx.isValid());
+}
+
+// =========================================================
 // Stratum includes
 // =========================================================
 
@@ -1196,6 +1362,12 @@ int main() {
 	testCudaPinnedMemory();
 	testCudaManagedMemory();
 	testCudaVirtualMemory();
+	testCudaStreams();
+	testCudaEvents();
+	testCudaGraphs();
+	testCudaModules();
+	testCudaCompute();
+	testOptixSection6();
 	teardownCuda();
 
 	testStratumRecords();

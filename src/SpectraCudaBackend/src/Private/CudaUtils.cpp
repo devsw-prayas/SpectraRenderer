@@ -383,4 +383,36 @@ namespace Spectra::Cuda::Utils {
 		return result;
 	}
 
+	SPEC_CUDA_BK_RUNTIME_API void initJitOptions(JitOptions& ro_Options) {
+		ro_Options.m_OptLevel              = JitOptimizationLevel::DEFAULT_MAX;
+		ro_Options.m_Target                = JitTarget::TARGET_AUTO;
+		ro_Options.m_CacheMode             = JitCacheMode::NONE;
+		ro_Options.m_GenerateDebugInfo     = false;
+		ro_Options.m_GenerateLineInfo      = false;
+		ro_Options.m_InfoLogBuffer         = nullptr;
+		ro_Options.m_InfoLogBufferSize     = 0;
+		ro_Options.m_ErrorLogBuffer        = nullptr;
+		ro_Options.m_ErrorLogBufferSize    = 0;
+		ro_Options.m_MaxRegistersPerThread = 0;
+	}
+
+	SPEC_CUDA_BK_RUNTIME_API void setJitOptimization(JitOptions& ro_Options, JitOptimizationLevel v_Level, bool v_DebugInfo, bool v_LineInfo) {
+		ro_Options.m_OptLevel          = v_Level;
+		ro_Options.m_GenerateDebugInfo = v_DebugInfo;
+		ro_Options.m_GenerateLineInfo  = v_LineInfo;
+	}
+
+	SPEC_CUDA_BK_RUNTIME_API void setJitHardwareOptions(JitOptions& ro_Options, JitTarget v_Target, JitCacheMode v_Cache, uint32_t v_MaxRegisters) {
+		ro_Options.m_Target                = v_Target;
+		ro_Options.m_CacheMode             = v_Cache;
+		ro_Options.m_MaxRegistersPerThread = v_MaxRegisters;
+	}
+
+	SPEC_CUDA_BK_RUNTIME_API void setJitLogBuffers(JitOptions& ro_Options, char* p_InfoLog, uint32_t v_InfoSize, char* p_ErrorLog, uint32_t v_ErrorSize) {
+		ro_Options.m_InfoLogBuffer      = p_InfoLog;
+		ro_Options.m_InfoLogBufferSize  = v_InfoSize;
+		ro_Options.m_ErrorLogBuffer     = p_ErrorLog;
+		ro_Options.m_ErrorLogBufferSize = v_ErrorSize;
+	}
+
 }

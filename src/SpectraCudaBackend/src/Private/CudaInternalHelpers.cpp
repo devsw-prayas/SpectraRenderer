@@ -464,5 +464,143 @@ namespace Spectra::Cuda::Internal {
 		params.height      = ro_Params.m_Height;
 		return params;
 	}
+
+	CUjit_target CUDA_InternalHelpers::toCudaJitTarget(Utils::JitTarget v_Target) {
+		switch (v_Target) {
+		case Utils::JitTarget::TARGET_SM_80: return CU_TARGET_COMPUTE_80;
+		case Utils::JitTarget::TARGET_SM_86: return CU_TARGET_COMPUTE_86;
+		case Utils::JitTarget::TARGET_SM_89: return CU_TARGET_COMPUTE_89;
+		case Utils::JitTarget::TARGET_SM_90: return CU_TARGET_COMPUTE_90;
+		case Utils::JitTarget::TARGET_AUTO:  return CU_TARGET_COMPUTE_86; // Fallback default
+		default:
+			SPEC_CUDA_BK_ASSERT(false && "Invalid Target");
+			return CU_TARGET_COMPUTE_86;
+		}
+	}
+
+	CUjit_cacheMode CUDA_InternalHelpers::toCudaJitCacheMode(Utils::JitCacheMode v_Cache) {
+		switch (v_Cache) {
+		case Utils::JitCacheMode::NONE: return CU_JIT_CACHE_OPTION_NONE;
+		case Utils::JitCacheMode::CA:   return CU_JIT_CACHE_OPTION_CA;
+		case Utils::JitCacheMode::CG:   return CU_JIT_CACHE_OPTION_CG;
+		default:
+			SPEC_CUDA_BK_ASSERT(false && "Invalid Cache Mode");
+			return CU_JIT_CACHE_OPTION_NONE;
+		}
+	}
+
+	CUjitInputType CUDA_InternalHelpers::toCudaJitInputType(Utils::JitInputType v_Type) {
+		switch (v_Type) {
+		case Utils::JitInputType::CUBIN:   return CU_JIT_INPUT_CUBIN;
+		case Utils::JitInputType::PTX:     return CU_JIT_INPUT_PTX;
+		case Utils::JitInputType::FATBIN:  return CU_JIT_INPUT_FATBINARY;
+		case Utils::JitInputType::OBJECT:  return CU_JIT_INPUT_OBJECT;
+		case Utils::JitInputType::LIBRARY: return CU_JIT_INPUT_LIBRARY;
+		default:
+			SPEC_CUDA_BK_ASSERT(false && "Invalid Jit Input Type");
+			return CU_JIT_INPUT_PTX;
+		}
+	}
+
+	CUDA_JitOptionPacker::CUDA_JitOptionPacker(const Utils::JitOptions& ro_Desc) {
+		if (ro_Desc.m_OptLevel != Utils::JitOptimizationLevel::DEFAULT_MAX) {
+			m_Options[m_Count] = CU_JIT_OPTIMIZATION_LEVEL;
+			m_Values[m_Count]  = (void*)(uint64_t)ro_Desc.m_OptLevel;
+			m_Count++;
+		}
+		
+		if (ro_Desc.m_Target != Utils::JitTarget::TARGET_AUTO) {
+			m_Options[m_Count] = CU_JIT_TARGET;
+			m_Values[m_Count]  = (void*)(uint64_t)CUDA_InternalHelpers::toCudaJitTarget(ro_Desc.m_Target);
+			m_Count++;
+		}
+
+		if (ro_Desc.m_CacheMode != Utils::JitCacheMode::NONE) {
+			m_Options[m_Count] = CU_JIT_CACHE_MODE;
+			m_Values[m_Count]  = (void*)(uint64_t)CUDA_InternalHelpers::toCudaJitCacheMode(ro_Desc.m_CacheMode);
+			m_Count++;
+		}
+
+		if (ro_Desc.m_GenerateDebugInfo) {
+			m_Options[m_Count] = CU_JIT_GENERATE_DEBUG_INFO;
+			m_Values[m_Count]  = (void*)(uint64_t)1;
+			m_Count++;
+		}
+
+		if (ro_Desc.m_GenerateLineInfo) {
+			m_Options[m_Count] = CU_JIT_GENERATE_LINE_INFO;
+			m_Values[m_Count]  = (void*)(uint64_t)1;
+			m_Count++;
+		}
+
+		if (ro_Desc.m_MaxRegistersPerThread > 0) {
+			m_Options[m_Count] = CU_JIT_MAX_REGISTERS;
+			m_Values[m_Count]  = (void*)(uint64_t)ro_Desc.m_MaxRegistersPerThread;
+			m_Count++;
+		}
+
+		if (ro_Desc.m_InfoLogBuffer && ro_Desc.m_InfoLogBufferSize > 0) {
+			m_Options[m_Count] = CU_JIT_INFO_LOG_BUFFER;
+			m_Values[m_Count]  = (void*)ro_Desc.m_InfoLogBuffer;
+			m_Count++;
+
+			m_Options[m_Count] = CU_JIT_INFO_LOG_BUFFER_SIZE_BYTES;
+			m_Values[m_Count]  = (void*)(uint64_t)ro_Desc.m_InfoLogBufferSize;
+			m_Count++;
+		}
+
+		if (ro_Desc.m_ErrorLogBuffer && ro_Desc.m_ErrorLogBufferSize > 0) {
+			m_Options[m_Count] = CU_JIT_ERROR_LOG_BUFFER;
+			m_Values[m_Count]  = (void*)ro_Desc.m_ErrorLogBuffer;
+			m_Count++;
+
+			m_Options[m_Count] = CU_JIT_ERROR_LOG_BUFFER_SIZE_BYTES;
+			m_Values[m_Count]  = (void*)(uint64_t)ro_Desc.m_ErrorLogBufferSize;
+			m_Count++;
+		}
+	}
+
+
+	CUfunction_attribute CUDA_InternalHelpers::toCudaFunctionAttr(Utils::FunctionAttribute v_Attr) {
+		switch (v_Attr) {
+		case Utils::FunctionAttribute::MAX_THREADS_PER_BLOCK: return CU_FUNC_ATTRIBUTE_MAX_THREADS_PER_BLOCK;
+		case Utils::FunctionAttribute::SHARED_SIZE_BYTES: return CU_FUNC_ATTRIBUTE_SHARED_SIZE_BYTES;
+		case Utils::FunctionAttribute::CONST_SIZE_BYTES: return CU_FUNC_ATTRIBUTE_CONST_SIZE_BYTES;
+		case Utils::FunctionAttribute::LOCAL_SIZE_BYTES: return CU_FUNC_ATTRIBUTE_LOCAL_SIZE_BYTES;
+		case Utils::FunctionAttribute::NUM_REGS: return CU_FUNC_ATTRIBUTE_NUM_REGS;
+		case Utils::FunctionAttribute::PTX_VERSION: return CU_FUNC_ATTRIBUTE_PTX_VERSION;
+		case Utils::FunctionAttribute::BINARY_VERSION: return CU_FUNC_ATTRIBUTE_BINARY_VERSION;
+		case Utils::FunctionAttribute::CACHE_MODE_CA: return CU_FUNC_ATTRIBUTE_CACHE_MODE_CA;
+		case Utils::FunctionAttribute::MAX_DYNAMIC_SHARED_SIZE_BYTES: return CU_FUNC_ATTRIBUTE_MAX_DYNAMIC_SHARED_SIZE_BYTES;
+		case Utils::FunctionAttribute::PREFERRED_SHARED_MEMORY_CARVEOUT: return CU_FUNC_ATTRIBUTE_PREFERRED_SHARED_MEMORY_CARVEOUT;
+		}
+		SPEC_CUDA_BK_ASSERT(false && "Invalid FunctionAttribute");
+		SPEC_CUDA_BK_TRAP();
+		SPEC_CUDA_BK_UNREACHABLE();
+	}
+
+	CUfunc_cache CUDA_InternalHelpers::toCudaCacheConfig(Utils::FunctionCacheConfig v_Config) {
+		switch (v_Config) {
+		case Utils::FunctionCacheConfig::PREFER_NONE: return CU_FUNC_CACHE_PREFER_NONE;
+		case Utils::FunctionCacheConfig::PREFER_SHARED: return CU_FUNC_CACHE_PREFER_SHARED;
+		case Utils::FunctionCacheConfig::PREFER_L1: return CU_FUNC_CACHE_PREFER_L1;
+		case Utils::FunctionCacheConfig::PREFER_EQUAL: return CU_FUNC_CACHE_PREFER_EQUAL;
+		}
+		SPEC_CUDA_BK_ASSERT(false && "Invalid CacheConfig");
+		SPEC_CUDA_BK_TRAP();
+		SPEC_CUDA_BK_UNREACHABLE();
+	}
+
+	CUsharedconfig CUDA_InternalHelpers::toCudaSharedMemConfig(Utils::SharedMemConfig v_Config) {
+		switch (v_Config) {
+		case Utils::SharedMemConfig::DEFAULT_BANK_SIZE: return CU_SHARED_MEM_CONFIG_DEFAULT_BANK_SIZE;
+		case Utils::SharedMemConfig::FOUR_BYTE_BANK_SIZE: return CU_SHARED_MEM_CONFIG_FOUR_BYTE_BANK_SIZE;
+		case Utils::SharedMemConfig::EIGHT_BYTE_BANK_SIZE: return CU_SHARED_MEM_CONFIG_EIGHT_BYTE_BANK_SIZE;
+		}
+		SPEC_CUDA_BK_ASSERT(false && "Invalid SharedMemConfig");
+		SPEC_CUDA_BK_TRAP();
+		SPEC_CUDA_BK_UNREACHABLE();
+	}
+
 }
 #endif

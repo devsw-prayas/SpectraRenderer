@@ -64,4 +64,20 @@ if (SPECTRA_ENABLE_CUDA)
         SPECTRA_CUDA_AVAILABLE
         CUDA_NO_RUNTIME_API
     )
+
+    # OptiX configuration
+    find_path(OPTIX_INCLUDE_DIR optix.h
+        PATHS
+        $ENV{OPTIX_PATH}/include
+        $ENV{OPTIX_ROOT_DIR}/include
+        "C:/ProgramData/NVIDIA Corporation/OptiX SDK 8.0.0/include"
+        "C:/ProgramData/NVIDIA Corporation/OptiX SDK 7.6.0/include"
+    )
+    
+    if (OPTIX_INCLUDE_DIR)
+        target_include_directories(SpectraCudaBackend PRIVATE ${OPTIX_INCLUDE_DIR})
+        target_compile_definitions(SpectraCudaBackend PRIVATE SPECTRA_OPTIX_AVAILABLE)
+    else()
+        message(WARNING "OptiX SDK not found. Please set OPTIX_PATH.")
+    endif()
 endif()

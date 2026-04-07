@@ -783,11 +783,210 @@ namespace Spectra::Cuda::Utils {
 	// Params for cuGraphAddMemsetNode. m_ElementSize must be 1, 2, or 4.
 	struct SPEC_CUDA_BK_RUNTIME_API MemsetNodeParams final {
 		uint64_t m_Dst         = 0; // CUdeviceptr
-		size_t   m_Pitch       = 0;
+		size_t   m_Pitch       = 0
+;
 		uint32_t m_Value       = 0;
 		uint32_t m_ElementSize = 1; // bytes: 1, 2, or 4
 		size_t   m_Width       = 0;
 		size_t   m_Height      = 1;
 	};
+
+	// -------------------------------------------------------------------------
+	// Kernel Configuration & Launch
+	// -------------------------------------------------------------------------
+
+	enum class SPEC_CUDA_BK_RUNTIME_API FunctionAttribute final : uint8_t {
+		MAX_THREADS_PER_BLOCK,
+		SHARED_SIZE_BYTES,
+		CONST_SIZE_BYTES,
+		LOCAL_SIZE_BYTES,
+		NUM_REGS,
+		PTX_VERSION,
+		BINARY_VERSION,
+		CACHE_MODE_CA,
+		MAX_DYNAMIC_SHARED_SIZE_BYTES,
+		PREFERRED_SHARED_MEMORY_CARVEOUT
+	};
+
+	enum class SPEC_CUDA_BK_RUNTIME_API FunctionCacheConfig final : uint8_t {
+		PREFER_NONE,
+		PREFER_SHARED,
+		PREFER_L1,
+		PREFER_EQUAL
+	};
+
+	enum class SPEC_CUDA_BK_RUNTIME_API SharedMemConfig final : uint8_t {
+		DEFAULT_BANK_SIZE,
+		FOUR_BYTE_BANK_SIZE,
+		EIGHT_BYTE_BANK_SIZE
+	};
+
+	struct SPEC_CUDA_BK_RUNTIME_API LaunchDimension final {
+		uint32_t x = 1;
+		uint32_t y = 1;
+		uint32_t z = 1;
+
+		LaunchDimension() = default;
+		LaunchDimension(uint32_t _x, uint32_t _y = 1, uint32_t _z = 1) : x(_x), y(_y), z(_z) {}
+	};
+
+	struct SPEC_CUDA_BK_RUNTIME_API OccupancyMaxBlockSizeResult final {
+		int m_MinGridSize = 0;
+		int m_BlockSize   = 0;
+	};
+
+	// -------------------------------------------------------------------------
+	// Compute Modules & Linker
+	// -------------------------------------------------------------------------
+
+	struct SPEC_CUDA_BK_RUNTIME_API SPEC_CUDA_BK_ALIGNAS(8) GpuModule final {
+		void* m_ModuleHandle = nullptr;
+
+		GpuModule() = default;
+		~GpuModule() = default;
+
+		GpuModule(const GpuModule&) = default;
+		GpuModule& operator=(const GpuModule&) = default;
+
+		GpuModule(GpuModule&&) noexcept = default;
+		GpuModule& operator=(GpuModule&&) noexcept = default;
+
+		SPEC_CUDA_BK_NODISCARD bool isValid() const {
+			return m_ModuleHandle != nullptr;
+		}
+	};
+
+	SPEC_CUDA_BK_STATIC_ASSERT(sizeof(GpuModule) == 8, "Invalid GpuModule size, must be 64bit");
+	SPEC_CUDA_BK_STATIC_ASSERT(std::is_standard_layout_v<GpuModule>, "GpuModule must maintain standard layout");
+	SPEC_CUDA_BK_STATIC_ASSERT(std::is_trivially_copyable_v<GpuModule>, "GpuModule must be trivially copyable");
+	SPEC_CUDA_BK_STATIC_ASSERT(std::is_trivially_move_assignable_v<GpuModule>, "GpuModule must be trivially move assignable");
+
+	struct SPEC_CUDA_BK_RUNTIME_API SPEC_CUDA_BK_ALIGNAS(8) GpuFunction final {
+		void* m_FunctionHandle = nullptr;
+
+		GpuFunction() = default;
+		~GpuFunction() = default;
+
+		GpuFunction(const GpuFunction&) = default;
+		GpuFunction& operator=(const GpuFunction&) = default;
+
+		GpuFunction(GpuFunction&&) noexcept = default;
+		GpuFunction& operator=(GpuFunction&&) noexcept = default;
+
+		SPEC_CUDA_BK_NODISCARD bool isValid() const {
+			return m_FunctionHandle != nullptr;
+		}
+	};
+
+	SPEC_CUDA_BK_STATIC_ASSERT(sizeof(GpuFunction) == 8, "Invalid GpuFunction size, must be 64bit");
+	SPEC_CUDA_BK_STATIC_ASSERT(std::is_standard_layout_v<GpuFunction>, "GpuFunction must maintain standard layout");
+	SPEC_CUDA_BK_STATIC_ASSERT(std::is_trivially_copyable_v<GpuFunction>, "GpuFunction must be trivially copyable");
+	SPEC_CUDA_BK_STATIC_ASSERT(std::is_trivially_move_assignable_v<GpuFunction>, "GpuFunction must be trivially move assignable");
+
+	struct SPEC_CUDA_BK_RUNTIME_API SPEC_CUDA_BK_ALIGNAS(16) GlobalMemorySegment final {
+		GpuAddress m_Address = GpuAddress(0);
+		size_t     m_SizeBytes = 0;
+
+		GlobalMemorySegment() = default;
+		~GlobalMemorySegment() = default;
+
+		GlobalMemorySegment(const GlobalMemorySegment&) = default;
+		GlobalMemorySegment& operator=(const GlobalMemorySegment&) = default;
+
+		GlobalMemorySegment(GlobalMemorySegment&&) noexcept = default;
+		GlobalMemorySegment& operator=(GlobalMemorySegment&&) noexcept = default;
+	};
+
+	SPEC_CUDA_BK_STATIC_ASSERT(sizeof(GlobalMemorySegment) == 16, "Invalid GlobalMemorySegment size, must be 128bit");
+	SPEC_CUDA_BK_STATIC_ASSERT(std::is_standard_layout_v<GlobalMemorySegment>, "GlobalMemorySegment must maintain standard layout");
+	SPEC_CUDA_BK_STATIC_ASSERT(std::is_trivially_copyable_v<GlobalMemorySegment>, "GlobalMemorySegment must be trivially copyable");
+	SPEC_CUDA_BK_STATIC_ASSERT(std::is_trivially_move_assignable_v<GlobalMemorySegment>, "GlobalMemorySegment must be trivially move assignable");
+
+	SPEC_CUDA_BK_STATIC_ASSERT(sizeof(GpuFunction) == 8, "Invalid GpuFunction size, must be 64bit");
+	SPEC_CUDA_BK_STATIC_ASSERT(std::is_standard_layout_v<GpuFunction>, "GpuFunction must maintain standard layout");
+	SPEC_CUDA_BK_STATIC_ASSERT(std::is_trivially_copyable_v<GpuFunction>, "GpuFunction must be trivially copyable");
+	SPEC_CUDA_BK_STATIC_ASSERT(std::is_trivially_move_assignable_v<GpuFunction>, "GpuFunction must be trivially move assignable");
+
+	struct SPEC_CUDA_BK_RUNTIME_API SPEC_CUDA_BK_ALIGNAS(8) GpuLinkState final {
+		void* m_LinkStateHandle = nullptr;
+
+		GpuLinkState() = default;
+		~GpuLinkState() = default;
+
+		GpuLinkState(const GpuLinkState&) = default;
+		GpuLinkState& operator=(const GpuLinkState&) = default;
+
+		GpuLinkState(GpuLinkState&&) noexcept = default;
+		GpuLinkState& operator=(GpuLinkState&&) noexcept = default;
+
+		SPEC_CUDA_BK_NODISCARD bool isValid() const {
+			return m_LinkStateHandle != nullptr;
+		}
+	};
+
+	SPEC_CUDA_BK_STATIC_ASSERT(sizeof(GpuLinkState) == 8, "Invalid GpuLinkState size, must be 64bit");
+	SPEC_CUDA_BK_STATIC_ASSERT(std::is_standard_layout_v<GpuLinkState>, "GpuLinkState must maintain standard layout");
+	SPEC_CUDA_BK_STATIC_ASSERT(std::is_trivially_copyable_v<GpuLinkState>, "GpuLinkState must be trivially copyable");
+	SPEC_CUDA_BK_STATIC_ASSERT(std::is_trivially_move_assignable_v<GpuLinkState>, "GpuLinkState must be trivially move assignable");
+
+	enum class SPEC_CUDA_BK_RUNTIME_API JitOptimizationLevel final : uint8_t {
+		O0 = 0,
+		O1 = 1,
+		O2 = 2,
+		O3 = 3,
+		O4 = 4,
+		DEFAULT_MAX = 5 // Internal sentinel to mean we set 4
+	};
+
+	enum class SPEC_CUDA_BK_RUNTIME_API JitTarget final : uint8_t {
+		TARGET_AUTO,
+		TARGET_SM_80, // Ampere
+		TARGET_SM_86, // Ampere RTX
+		TARGET_SM_89, // Ada
+		TARGET_SM_90  // Hopper
+	};
+
+	enum class SPEC_CUDA_BK_RUNTIME_API JitCacheMode final : uint8_t {
+		NONE, // Compile with no -dlcm flag specified
+		CA,   // Compile with L1 cache enabled (-dlcm=ca)
+		CG    // Compile with L1 cache disabled (-dlcm=cg)
+	};
+
+	enum class SPEC_CUDA_BK_RUNTIME_API JitInputType final : uint8_t {
+		CUBIN,
+		PTX,
+		FATBIN,
+		OBJECT,
+		LIBRARY
+	};
+
+	struct SPEC_CUDA_BK_RUNTIME_API SPEC_CUDA_BK_ALIGNAS(16) JitOptions final {
+		JitOptimizationLevel    m_OptLevel              = JitOptimizationLevel::DEFAULT_MAX;
+		JitTarget               m_Target                = JitTarget::TARGET_AUTO;
+		JitCacheMode            m_CacheMode             = JitCacheMode::NONE;
+		bool                    m_GenerateDebugInfo     = false;
+		bool                    m_GenerateLineInfo      = false;
+
+		char*                   m_InfoLogBuffer         = nullptr;
+		uint32_t                m_InfoLogBufferSize     = 0;
+		char*                   m_ErrorLogBuffer        = nullptr;
+		uint32_t                m_ErrorLogBufferSize    = 0;
+		
+		uint32_t                m_MaxRegistersPerThread = 0; // 0 = auto
+
+		JitOptions() = default;
+		~JitOptions() = default;
+
+		JitOptions(const JitOptions&) = default;
+		JitOptions& operator=(const JitOptions&) = default;
+
+		JitOptions(JitOptions&&) noexcept = default;
+		JitOptions& operator=(JitOptions&&) noexcept = default;
+	};
+
+	SPEC_CUDA_BK_RUNTIME_API void initJitOptions(JitOptions& ro_Options);
+	SPEC_CUDA_BK_RUNTIME_API void setJitOptimization(JitOptions& ro_Options, JitOptimizationLevel v_Level, bool v_DebugInfo, bool v_LineInfo);
+	SPEC_CUDA_BK_RUNTIME_API void setJitHardwareOptions(JitOptions& ro_Options, JitTarget v_Target, JitCacheMode v_Cache, uint32_t v_MaxRegisters);
+	SPEC_CUDA_BK_RUNTIME_API void setJitLogBuffers(JitOptions& ro_Options, char* p_InfoLog, uint32_t v_InfoSize, char* p_ErrorLog, uint32_t v_ErrorSize);
 
 }

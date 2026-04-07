@@ -56,6 +56,13 @@ namespace Spectra::Cuda::Internal {
 		static CUstreamCaptureStatus toCudaStreamCaptureStatus(Utils::StreamCaptureStatus v_Status);
 		static uint32_t toStreamFlags(Utils::StreamFlags v_Flags);
 		static uint32_t toEventFlags(Utils::EventFlags v_Flags);
+
+		static CUjit_target toCudaJitTarget(Utils::JitTarget v_Target);
+		static CUjit_cacheMode toCudaJitCacheMode(Utils::JitCacheMode v_Cache);
+		static CUjitInputType toCudaJitInputType(Utils::JitInputType v_Type);
+		static CUfunction_attribute toCudaFunctionAttr(Utils::FunctionAttribute v_Attr);
+		static CUfunc_cache toCudaCacheConfig(Utils::FunctionCacheConfig v_Config);
+		static CUsharedconfig toCudaSharedMemConfig(Utils::SharedMemConfig v_Config);
 	};
 
 	class CUDA_PackingFunctions final {
@@ -67,6 +74,18 @@ namespace Spectra::Cuda::Internal {
 		static CUDA_RESOURCE_VIEW_DESC    packResourceViewDesc(const Utils::ResourceViewDesc& ro_Desc); // → cuTexObjectCreate
 		static CUDA_KERNEL_NODE_PARAMS    packKernelNodeParams(const Utils::KernelNodeParams& ro_Params); // → cuGraphAddKernelNode
 		static CUDA_MEMSET_NODE_PARAMS    packMemsetNodeParams(const Utils::MemsetNodeParams& ro_Params); // → cuGraphAddMemsetNode
+	};
+
+	class CUDA_JitOptionPacker final {
+		CUjit_option m_Options[16];
+		void*        m_Values[16];
+		unsigned int m_Count = 0;
+	public:
+		CUDA_JitOptionPacker(const Utils::JitOptions& ro_Desc);
+
+		unsigned int getCount() const { return m_Count; }
+		CUjit_option* getOptions() { return m_Count > 0 ? m_Options : nullptr; }
+		void** getValues() { return m_Count > 0 ? m_Values : nullptr; }
 	};
 }
 
