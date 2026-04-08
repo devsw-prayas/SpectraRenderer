@@ -17,4 +17,10 @@
 #ifdef SPECTRA_CUDA_AVAILABLE
 #include <cuda.h>
 #endif
+
+#ifdef SPECTRA_OPTIX_AVAILABLE
+#include <optix_host.h>
+#include <optix.h>
+#endif
+
 #endif

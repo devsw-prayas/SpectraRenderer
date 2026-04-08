@@ -2,6 +2,9 @@
 #define ALLOW_HELPERS
 #include "OptixInternalHelpers.h"
 
+#define ALLOW_SYSCALL
+#include "SpecCudaSyscall.h"
+
 // No standard library includes in the backend
 
 namespace Spectra::Cuda::Optix {

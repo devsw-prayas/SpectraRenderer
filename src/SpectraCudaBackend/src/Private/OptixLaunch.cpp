@@ -2,6 +2,9 @@
 #define ALLOW_HELPERS
 #include "OptixInternalHelpers.h"
 
+#define ALLOW_SYSCALL
+#include "SpecCudaSyscall.h"
+
 namespace Spectra::Cuda::Optix {
 
 	void DeviceOptixLaunch::packSbtRecordHeader(

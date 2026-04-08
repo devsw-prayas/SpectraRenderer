@@ -2,6 +2,9 @@
 
 #include "SpectraCudaBackend.h"
 
+#include "SpecCudaCompiler.h"
+#include "SpecCudaDiagnostics.h"
+
 namespace Spectra::Cuda::Utils {
 
 	// =========================================================
@@ -125,7 +128,7 @@ namespace Spectra::Cuda::Utils {
 		VALIDATION_ON  = 1
 	};
 
-	enum class SPEC_CUDA_BK_RUNTIME_API OptixCompileOptimizationLevel final : uint8_t {
+	enum class SPEC_CUDA_BK_RUNTIME_API OptixCompileOptiLevel final : uint8_t {
 		LEVEL_0,
 		LEVEL_1,
 		LEVEL_2,
@@ -133,7 +136,7 @@ namespace Spectra::Cuda::Utils {
 		DEFAULT = LEVEL_3
 	};
 
-	enum class SPEC_CUDA_BK_RUNTIME_API OptixCompileDebugLevel final : uint8_t {
+	enum class SPEC_CUDA_BK_RUNTIME_API OptixCompileDebugLvl final : uint8_t {
 		LEVEL_NONE,
 		LEVEL_MINIMAL,
 		LEVEL_MODERATE,
@@ -149,7 +152,7 @@ namespace Spectra::Cuda::Utils {
 		CALLABLES
 	};
 
-	enum class SPEC_CUDA_BK_RUNTIME_API OptixBuildInputType final : uint8_t {
+	enum class SPEC_CUDA_BK_RUNTIME_API OptixBuildInType final : uint8_t {
 		TRIANGLES,
 		CUSTOM_PRIMITIVES,
 		INSTANCES,
@@ -194,8 +197,8 @@ namespace Spectra::Cuda::Utils {
 
 	struct SPEC_CUDA_BK_RUNTIME_API SPEC_CUDA_BK_ALIGNAS(4) OptixModuleCompileOptions final {
 		int32_t                       m_MaxRegisterCount = 0;
-		OptixCompileOptimizationLevel m_OptLevel         = OptixCompileOptimizationLevel::DEFAULT;
-		OptixCompileDebugLevel        m_DebugLevel       = OptixCompileDebugLevel::DEFAULT;
+		OptixCompileOptiLevel m_OptLevel         = OptixCompileOptiLevel::DEFAULT;
+		OptixCompileDebugLvl        m_DebugLevel       = OptixCompileDebugLvl::DEFAULT;
 		uint32_t                      m_BoundValuesCount = 0;
 
 		OptixModuleCompileOptions() = default;
@@ -335,7 +338,7 @@ namespace Spectra::Cuda::Utils {
 	};
 
 	struct SPEC_CUDA_BK_RUNTIME_API SPEC_CUDA_BK_ALIGNAS(8) OptixBuildInputDesc final {
-		OptixBuildInputType          m_Type;
+		OptixBuildInType          m_Type;
 		OptixBuildInputTriangleArray m_TriangleArray;
 		OptixBuildInputInstanceArray m_InstanceArray;
 
