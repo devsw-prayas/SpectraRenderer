@@ -5,18 +5,62 @@
 #include "SpecVulkanSyscalls.h"
 #include "VulkanInternalHelpers.h"
 
+#define VMA_IMPLEMENTATION
+#include <vk_mem_alloc.h>
+
 namespace Spectra::Vulkan {
-	struct VulkanInstance final {
+	struct DeviceProperties {
+		// Core properties
+		VkPhysicalDeviceProperties2                          m_Properties;
+		VkPhysicalDeviceRayTracingPipelinePropertiesKHR      m_RTProperties;
+		VkPhysicalDeviceAccelerationStructurePropertiesKHR   m_AccelProperties;
+
+		// Features (flat, pNext re-linked on demand)
+		VkPhysicalDeviceFeatures2                            m_Features;
+		VkPhysicalDeviceVulkan12Features                     m_Vk12Features;
+		VkPhysicalDeviceVulkan13Features                     m_Vk13Features;
+		VkPhysicalDeviceAccelerationStructureFeaturesKHR     m_AccelFeatures;
+		VkPhysicalDeviceRayTracingPipelineFeaturesKHR        m_RTPipelineFeatures;
+
+		// Memory
+		VkPhysicalDeviceMemoryProperties2                    m_MemoryProperties;
+
+		// Extensions
+		Utils::VkExtension  m_EnabledExtensions[Utils::VK_SUPPORTED_EXT_COUNT];
+		uint32_t     s_ExtensionCount;
+
+		// Identity
+		char     m_DeviceName[VK_MAX_PHYSICAL_DEVICE_NAME_SIZE];
+		uint32_t m_VendorID;
+		uint32_t m_DeviceID;
+	};
+
+	struct LogicalDevice {
+		VkDevice m_Device;
+		VkQueue  m_GraphicsQueue;
+		VkQueue  m_ComputeQueue;
+		VkQueue  m_TransferQueue;
+	};
+
+	struct SPEC_VK_BK_ALIGNAS(16) VulkanInstance final {
 		constexpr static uint32_t MAX_DEVICES = 32; // TODO replace with build macro
+		constexpr static uint32_t MAX_QUEUE_FAMILIES = 16; // TODO replace with build macro
 		VkInstance m_GlobalInstance;
 		VkDebugUtilsMessengerEXT m_GlobalDebugMessager;
 		VkApplicationInfo m_AppInfo;
+		DeviceProperties m_DeviceProps;
+		Utils::PhysicalDevice m_Device;
+		LogicalDevice m_LogicalDevice;
 
 		Utils::VkExtension m_EnabledExtensions[Utils::VK_SUPPORTED_EXT_COUNT];
 		Utils::VkLayer m_EnableLayers[Utils::VK_SUPPORTED_LAYERS_COUNT];
 		uint32_t s_LayerCount;
 		uint32_t s_ExtensionCount;
 		uint32_t s_DeviceCount;
+
+		uint32_t m_GraphicsFamily;
+		uint32_t m_ComputeFamily;
+		uint32_t m_TransferFamily;
 
 		VulkanInstance() = default;
 		~VulkanInstance() = default;
@@ -67,12 +111,12 @@ namespace Spectra::Vulkan {
 
 		uint32_t extCount = 0;
 		vkEnumerateInstanceExtensionProperties(nullptr, &extCount, nullptr);
-		VkExtensionProperties props[64];
-		SPEC_VK_BK_ASSERT(extCount <= 64);
+		VkExtensionProperties props[Utils::MAX_INSTANCE_EXT];
+		SPEC_VK_BK_ASSERT(extCount <= Utils::MAX_INSTANCE_EXT);
 		vkEnumerateInstanceExtensionProperties(nullptr, &extCount, props);
 
 		g_GlobalInstance.s_ExtensionCount = 0;
-		for (uint32_t i = 0; i < 4; ++i) {
+		for (uint32_t i = 0; i < Internal::VulkanRegistry::INSTANCE_EXTENSIONS; ++i) {
 			const auto& ext = Internal::VulkanRegistry::s_Extensions[i];
 			bool found = false;
 			for (uint32_t j = 0; j < extCount; ++j) {
@@ -106,21 +150,42 @@ namespace Spectra::Vulkan {
 		createInstance.enabledExtensionCount = g_GlobalInstance.s_ExtensionCount;
 		createInstance.ppEnabledExtensionNames = enabledExts;
 
+		uint32_t layerCount = 0;
+		vkEnumerateInstanceLayerProperties(&layerCount, nullptr);
+
+		VkLayerProperties layerProps[32];
+		SPEC_VK_BK_ASSERT(layerCount <= 32);
+		vkEnumerateInstanceLayerProperties(&layerCount, layerProps);
+
+		auto isLayerAvailable = [&](const char* name) {
+			for (uint32_t i = 0; i < layerCount; ++i) {
+				if (strcmp(layerProps[i].layerName, name) == 0)
+					return true;
+			}
+			return false;
+			};
+
 		const char* layers[1];
 		g_GlobalInstance.s_LayerCount = 0;
 
 		if (ro_Desc.m_EnableValidation) {
-			layers[0] = VK_LAYERS_KHRONOS_VALIDATION;
+			const char* validationLayer = VK_LAYERS_KHRONOS_VALIDATION;
+
+			bool found = isLayerAvailable(validationLayer);
+			SPEC_VK_BK_ASSERT(found);
+
+			layers[0] = validationLayer;
 			g_GlobalInstance.s_LayerCount = 1;
 
 			g_GlobalInstance.m_EnableLayers[0] =
-			{ VK_LAYERS_KHRONOS_VALIDATION, Utils::VulkanLayers::VK_VALIDATION };
+			{ validationLayer, Utils::VulkanLayers::VK_VALIDATION };
 		}
 
 		createInstance.enabledLayerCount = g_GlobalInstance.s_LayerCount;
 		createInstance.ppEnabledLayerNames = g_GlobalInstance.s_LayerCount ? layers : nullptr;
 
 		auto debugInfo = Internal::vkInit<VkDebugUtilsMessengerCreateInfoEXT>();
+		debugInfo.pNext = nullptr;
 		if (ro_Desc.m_EnableValidation) {
 			debugInfo.messageSeverity =
 				VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT |
@@ -159,10 +224,272 @@ namespace Spectra::Vulkan {
 
 			SPEC_VK_BK_ASSERT(dbgRes == VK_SUCCESS);
 		}
+
+		g_IsInitialized = true;
 		return &g_GlobalInstance;
+	}
+
+	void VulkanBootstrap::selectPhysicalDevice() {
+		vkEnumeratePhysicalDevices(g_GlobalInstance.m_GlobalInstance, &g_GlobalInstance.s_DeviceCount, nullptr);
+		VkPhysicalDevice devices[VulkanInstance::MAX_DEVICES] = {};
+		vkEnumeratePhysicalDevices(g_GlobalInstance.m_GlobalInstance, &g_GlobalInstance.s_DeviceCount, devices);
+
+		SPEC_VK_BK_ASSERT(g_GlobalInstance.s_DeviceCount > 0);
+		SPEC_VK_BK_ASSERT(g_GlobalInstance.s_DeviceCount <= VulkanInstance::MAX_DEVICES);
+
+		uint32_t bestScore = 0;
+
+		for (uint32_t d = 0; d < g_GlobalInstance.s_DeviceCount; ++d) {
+			auto device = devices[d];
+
+			// --- Properties chain ---
+			auto accelProps = Internal::vkInit<VkPhysicalDeviceAccelerationStructurePropertiesKHR>();
+			auto rtProps = Internal::vkInit<VkPhysicalDeviceRayTracingPipelinePropertiesKHR>();
+			auto props = Internal::vkInit<VkPhysicalDeviceProperties2>();
+			props.pNext = &accelProps;
+			accelProps.pNext = &rtProps;
+			rtProps.pNext = nullptr;
+			vkGetPhysicalDeviceProperties2(device, &props);
+
+			// --- Features chain ---
+			auto features2 = Internal::vkInit<VkPhysicalDeviceFeatures2>();
+			auto vk12 = Internal::vkInit<VkPhysicalDeviceVulkan12Features>();
+			auto vk13 = Internal::vkInit<VkPhysicalDeviceVulkan13Features>();
+			auto accel = Internal::vkInit<VkPhysicalDeviceAccelerationStructureFeaturesKHR>();
+			auto rtPipeline = Internal::vkInit<VkPhysicalDeviceRayTracingPipelineFeaturesKHR>();
+			features2.pNext = &vk12;
+			vk12.pNext = &vk13;
+			vk13.pNext = &accel;
+			accel.pNext = &rtPipeline;
+			rtPipeline.pNext = nullptr;
+			vkGetPhysicalDeviceFeatures2(device, &features2);
+
+			// --- Feature gates ---
+			if (!vk12.bufferDeviceAddress)    continue;
+			if (!vk12.descriptorIndexing)     continue;
+			if (!vk12.timelineSemaphore)      continue;
+			if (!vk13.dynamicRendering)       continue;
+			if (!vk13.synchronization2)       continue;
+			if (!vk13.maintenance4)           continue;
+			if (!accel.accelerationStructure) continue;
+			if (!rtPipeline.rayTracingPipeline) continue;
+
+			// --- Device extension validation ---
+			uint32_t devExtCount = 0;
+			vkEnumerateDeviceExtensionProperties(device, nullptr, &devExtCount, nullptr);
+			VkExtensionProperties devExtProps[512] = {};
+			SPEC_VK_BK_ASSERT(devExtCount <= 512);
+			vkEnumerateDeviceExtensionProperties(device, nullptr, &devExtCount, devExtProps);
+
+			Utils::VkExtension enabledDevExts[Utils::VK_SUPPORTED_EXT_COUNT] = {};
+			uint32_t enabledDevExtCount = 0;
+			bool requiredMissing = false;
+
+			// device + RT - optional extensions are indices 4-26
+			for (uint32_t i = Internal::VulkanRegistry::INSTANCE_EXTENSIONS;
+				 i < Utils::VK_SUPPORTED_EXT_COUNT; ++i) {
+				const auto& ext = Internal::VulkanRegistry::s_Extensions[i];
+				bool found = false;
+				for (uint32_t j = 0; j < devExtCount; ++j) {
+					if (strcmp(devExtProps[j].extensionName, ext.m_Extension) == 0) {
+						found = true;
+						break;
+					}
+				}
+				if (!found && ext.m_Requirement == Utils::ExtensionRequirement::REQUIRED) {
+					requiredMissing = true;
+					break;
+				}
+				if (found) {
+					enabledDevExts[enabledDevExtCount++] = ext;
+				}
+			}
+			if (requiredMissing) continue;
+
+			// --- Queue families ---
+			uint32_t queueCount = 0;
+			vkGetPhysicalDeviceQueueFamilyProperties2(device, &queueCount, nullptr);
+			VkQueueFamilyProperties2 queueProps[VulkanInstance::MAX_QUEUE_FAMILIES] = {};
+			SPEC_VK_BK_ASSERT(queueCount <= VulkanInstance::MAX_QUEUE_FAMILIES);
+			for (uint32_t i = 0; i < queueCount; ++i)
+				queueProps[i] = Internal::vkInit<VkQueueFamilyProperties2>();
+			vkGetPhysicalDeviceQueueFamilyProperties2(device, &queueCount, queueProps);
+
+			uint32_t graphicsFamily = UINT32_MAX, computeFamily = UINT32_MAX, transferFamily = UINT32_MAX;
+			for (uint32_t i = 0; i < queueCount; ++i) {
+				auto flags = queueProps[i].queueFamilyProperties.queueFlags;
+				if ((flags & VK_QUEUE_GRAPHICS_BIT) && graphicsFamily == UINT32_MAX)
+					graphicsFamily = i;
+				if ((flags & VK_QUEUE_COMPUTE_BIT) && !(flags & VK_QUEUE_GRAPHICS_BIT) && computeFamily == UINT32_MAX)
+					computeFamily = i;
+				if ((flags & VK_QUEUE_TRANSFER_BIT) && !(flags & VK_QUEUE_GRAPHICS_BIT) && !(flags & VK_QUEUE_COMPUTE_BIT) && transferFamily == UINT32_MAX)
+					transferFamily = i;
+			}
+			if (graphicsFamily == UINT32_MAX) continue;
+
+			bool dedicatedCompute = computeFamily != UINT32_MAX;
+			bool dedicatedTransfer = transferFamily != UINT32_MAX;
+			if (!dedicatedCompute)  computeFamily = graphicsFamily;
+			if (!dedicatedTransfer) transferFamily = graphicsFamily;
+
+			// --- Memory properties ---
+			auto memProps = Internal::vkInit<VkPhysicalDeviceMemoryProperties2>();
+			vkGetPhysicalDeviceMemoryProperties2(device, &memProps);
+
+			uint64_t vramBytes = 0;
+			for (uint32_t i = 0; i < memProps.memoryProperties.memoryHeapCount; ++i) {
+				auto& heap = memProps.memoryProperties.memoryHeaps[i];
+				if (heap.flags & VK_MEMORY_HEAP_DEVICE_LOCAL_BIT)
+					vramBytes += heap.size;
+			}
+			uint32_t vramMB = static_cast<uint32_t>(vramBytes / (1024ull * 1024));
+
+			// --- Scoring ---
+			uint32_t score = 0;
+			if (props.properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU) score += 1000;
+			score += (vramMB / 1024) * 100;
+			score += rtProps.maxRayRecursionDepth * 10;
+			score += static_cast<uint32_t>(accelProps.maxPrimitiveCount / 1000000);
+			if (dedicatedCompute)  score += 50;
+			if (dedicatedTransfer) score += 25;
+
+			if (score > bestScore) {
+				bestScore = score;
+
+				// --- Persist capabilities ---
+				DeviceProperties& dp = g_GlobalInstance.m_DeviceProps;
+
+				dp.m_Properties = props;
+				dp.m_RTProperties = rtProps;
+				dp.m_AccelProperties = accelProps;
+
+				dp.m_Features = features2;
+				dp.m_Vk12Features = vk12;
+				dp.m_Vk13Features = vk13;
+				dp.m_AccelFeatures = accel;
+				dp.m_RTPipelineFeatures = rtPipeline;
+
+				dp.m_MemoryProperties = memProps;
+
+				// clear pNext on stored structs - they'll be re-linked on demand
+				dp.m_Properties.pNext = nullptr;
+				dp.m_Features.pNext = nullptr;
+				dp.m_MemoryProperties.pNext = nullptr;
+
+				for (uint32_t i = 0; i < enabledDevExtCount; ++i)
+					dp.m_EnabledExtensions[i] = enabledDevExts[i];
+				dp.s_ExtensionCount = enabledDevExtCount;
+
+				strncpy_s(dp.m_DeviceName, props.properties.deviceName, VK_MAX_PHYSICAL_DEVICE_NAME_SIZE - 1);
+				dp.m_DeviceName[VK_MAX_PHYSICAL_DEVICE_NAME_SIZE - 1] = '\0';
+				dp.m_VendorID = props.properties.vendorID;
+				dp.m_DeviceID = props.properties.deviceID;
+
+				// --- Finalize handles ---
+				g_GlobalInstance.m_Device.m_DeviceHandle = device;
+				g_GlobalInstance.m_Device.m_PropertiesHandle = &g_GlobalInstance.m_DeviceProps;
+				g_GlobalInstance.m_GraphicsFamily = graphicsFamily;
+				g_GlobalInstance.m_ComputeFamily = computeFamily;
+				g_GlobalInstance.m_TransferFamily = transferFamily;
+			}
+		}
+
+		SPEC_VK_BK_ASSERT(g_GlobalInstance.m_Device.m_DeviceHandle != nullptr);
+		SPEC_VK_BK_ASSERT(g_GlobalInstance.m_Device.m_PropertiesHandle != nullptr);
+	}
+
+	void VulkanBootstrap::createLogicalDevice() {
+		SPEC_VK_BK_ASSERT(g_GlobalInstance.m_Device.m_DeviceHandle != nullptr);
+
+		VkPhysicalDevice physDevice = static_cast<VkPhysicalDevice>(g_GlobalInstance.m_Device.m_DeviceHandle);
+		DeviceProperties& dp = g_GlobalInstance.m_DeviceProps;
+
+		// --- Deduplicate queue families ---
+		uint32_t uniqueFamilies[3] = {
+			g_GlobalInstance.m_GraphicsFamily,
+			g_GlobalInstance.m_ComputeFamily,
+			g_GlobalInstance.m_TransferFamily
+		};
+
+		VkDeviceQueueCreateInfo queueInfos[3] = {};
+		uint32_t queueInfoCount = 0;
+		float priority = 1.0f;
+
+		for (uint32_t i = 0; i < 3; ++i) {
+			bool duplicate = false;
+			for (uint32_t j = 0; j < i; ++j) {
+				if (uniqueFamilies[i] == uniqueFamilies[j]) {
+					duplicate = true;
+					break;
+				}
+			}
+			if (duplicate) continue;
+
+			auto qi = Internal::vkInit<VkDeviceQueueCreateInfo>();
+			qi.queueFamilyIndex = uniqueFamilies[i];
+			qi.queueCount = 1;
+			qi.pQueuePriorities = &priority;
+			queueInfos[queueInfoCount++] = qi;
+		}
+
+		// --- Re-link feature pNext chain ---
+		dp.m_Features.pNext = &dp.m_Vk12Features;
+		dp.m_Vk12Features.pNext = &dp.m_Vk13Features;
+		dp.m_Vk13Features.pNext = &dp.m_AccelFeatures;
+		dp.m_AccelFeatures.pNext = &dp.m_RTPipelineFeatures;
+		dp.m_RTPipelineFeatures.pNext = nullptr;
+
+		// --- Extension names ---
+		const char* extNames[Utils::VK_SUPPORTED_EXT_COUNT] = {};
+		for (uint32_t i = 0; i < dp.s_ExtensionCount; ++i)
+			extNames[i] = dp.m_EnabledExtensions[i].m_Extension;
+
+		// --- Device create ---
+		auto deviceInfo = Internal::vkInit<VkDeviceCreateInfo>();
+		deviceInfo.pNext = &dp.m_Features;
+		deviceInfo.queueCreateInfoCount = queueInfoCount;
+		deviceInfo.pQueueCreateInfos = queueInfos;
+		deviceInfo.enabledExtensionCount = dp.s_ExtensionCount;
+		deviceInfo.ppEnabledExtensionNames = extNames;
+		deviceInfo.pEnabledFeatures = nullptr;
+
+		VkResult res = vkCreateDevice(physDevice, &deviceInfo, nullptr, &g_GlobalInstance.m_LogicalDevice.m_Device);
+		SPEC_VK_BK_ASSERT(res == VK_SUCCESS);
+
+		VkDevice dev = g_GlobalInstance.m_LogicalDevice.m_Device;
+
+		// --- Retrieve queues ---
+		vkGetDeviceQueue(dev, g_GlobalInstance.m_GraphicsFamily, 0, &g_GlobalInstance.m_LogicalDevice.m_GraphicsQueue);
+		vkGetDeviceQueue(dev, g_GlobalInstance.m_ComputeFamily, 0, &g_GlobalInstance.m_LogicalDevice.m_ComputeQueue);
+		vkGetDeviceQueue(dev, g_GlobalInstance.m_TransferFamily, 0, &g_GlobalInstance.m_LogicalDevice.m_TransferQueue);
+
+		// --- Debug naming ---
+#if SPEC_VK_BK_BUILD_DEBUG
+		auto vkSetDebugName = reinterpret_cast<PFN_vkSetDebugUtilsObjectNameEXT>(
+			vkGetDeviceProcAddr(dev, "vkSetDebugUtilsObjectNameEXT"));
+
+		if (vkSetDebugName) {
+			auto nameObj = [&](VkObjectType type, uint64_t handle, const char* name) {
+				auto info = Internal::vkInit<VkDebugUtilsObjectNameInfoEXT>();
+				info.objectType = type;
+				info.objectHandle = handle;
+				info.pObjectName = name;
+				vkSetDebugName(dev, &info);
+				};
+
+			nameObj(VK_OBJECT_TYPE_QUEUE, reinterpret_cast<uint64_t>(g_GlobalInstance.m_LogicalDevice.m_GraphicsQueue), "Queue::Graphics");
+			nameObj(VK_OBJECT_TYPE_QUEUE, reinterpret_cast<uint64_t>(g_GlobalInstance.m_LogicalDevice.m_ComputeQueue), "Queue::Compute");
+			nameObj(VK_OBJECT_TYPE_QUEUE, reinterpret_cast<uint64_t>(g_GlobalInstance.m_LogicalDevice.m_TransferQueue), "Queue::Transfer");
+		}
+#endif
+
+		SPEC_VK_BK_ASSERT(g_GlobalInstance.m_LogicalDevice.m_Device != VK_NULL_HANDLE);
 	}
 
 	InstanceHandle VulkanBootstrap::getVulkanInstance() {
 		return &g_GlobalInstance;
+	}
+
+	void VulkanBootstrap::shutdownVulkan(InstanceHandle p_Handle) {
 	}
 }

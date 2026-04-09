@@ -56,6 +56,7 @@ if (SPECTRA_ENABLE_VULKAN)
     find_package(Vulkan REQUIRED)
     target_include_directories(SpectraVulkanBackend PRIVATE
         ${Vulkan_INCLUDE_DIRS}
+        ${CMAKE_SOURCE_DIR}/external/VMA/include
     )
     target_link_libraries(SpectraVulkanBackend PRIVATE
         Vulkan::Vulkan

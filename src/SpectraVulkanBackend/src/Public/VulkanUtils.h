@@ -6,6 +6,7 @@
 namespace Spectra::Vulkan::Utils {
 	inline constexpr uint32_t VK_SUPPORTED_EXT_COUNT = 27;
 	inline constexpr uint32_t VK_SUPPORTED_LAYERS_COUNT = 1;
+	inline constexpr uint32_t MAX_INSTANCE_EXT = 128;
 
 	enum class SPEC_VK_BK_RUNTIME_API VulkanExtensions final : uint8_t {
 		// Instance Extensions
@@ -103,5 +104,22 @@ namespace Spectra::Vulkan::Utils {
 
 		InitDesc(InitDesc&&) noexcept = default;
 		InitDesc& operator=(InitDesc&&) noexcept = default;
+	};
+
+	struct SPEC_VK_BK_RUNTIME_API SPEC_VK_BK_ALIGNAS(8) PhysicalDevice final {
+		void* m_DeviceHandle;
+		void* m_PropertiesHandle;
+
+		bool isValid() const {
+			return m_DeviceHandle != nullptr && m_PropertiesHandle != nullptr;
+		}
+
+		PhysicalDevice() : m_DeviceHandle(nullptr), m_PropertiesHandle(nullptr) {}
+
+		PhysicalDevice(const PhysicalDevice&) = default;
+		PhysicalDevice& operator=(const PhysicalDevice&) = default;
+
+		PhysicalDevice(PhysicalDevice&&) noexcept = default;
+		PhysicalDevice& operator=(PhysicalDevice&&) noexcept = default;
 	};
 }
