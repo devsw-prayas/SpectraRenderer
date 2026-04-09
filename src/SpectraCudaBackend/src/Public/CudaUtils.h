@@ -174,6 +174,10 @@ namespace Spectra::Cuda::Utils {
 		CudaContext() = default;
 		~CudaContext() = default;
 
+		bool isValid() const {
+			return m_Handle != nullptr;
+		}
+
 		CudaContext(const CudaContext&) = default;
 		CudaContext& operator=(const CudaContext&) = default;
 

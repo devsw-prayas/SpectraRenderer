@@ -44,9 +44,14 @@ namespace Spectra::Cuda::Optix {
 		static GpuOptixTraversableHandle relocate(
 			const GpuOptixContext& ro_Context,
 			const GpuStream& ro_Stream,
-			const GpuOptixTraversableHandle& ro_InputHandle,
+			const GpuOptixRelocationInfo& ro_Info,
 			uint64_t v_TargetRelocateBufferAddress,
 			size_t v_TargetRelocateBufferSize
+		);
+
+		static GpuOptixRelocationInfo getRelocationInfo(
+			const GpuOptixContext& ro_Context,
+			const GpuOptixTraversableHandle& ro_Handle
 		);
 	};
 }

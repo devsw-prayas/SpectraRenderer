@@ -1,4 +1,8 @@
 #include "OptixPipeline.h"
+
+#define ALLOW_SYSCALL
+#include "SpecCudaSyscall.h"
+
 #define ALLOW_HELPERS
 #include "OptixInternalHelpers.h"
 
@@ -21,6 +25,19 @@ namespace Spectra::Cuda::Optix {
 		nativeModuleOptions.maxRegisterCount = ro_ModuleOptions.m_MaxRegisterCount;
 		nativeModuleOptions.optLevel = Internal::Optix_InternalHelpers::toOptixCompileOptimizationLevel(ro_ModuleOptions.m_OptLevel);
 		nativeModuleOptions.debugLevel = Internal::Optix_InternalHelpers::toOptixCompileDebugLevel(ro_ModuleOptions.m_DebugLevel);
+		nativeModuleOptions.numBoundValues = ro_ModuleOptions.m_BoundValuesCount;
+
+		::OptixModuleCompileBoundValueEntry* nativeBoundValues = nullptr;
+		if (ro_ModuleOptions.m_BoundValuesCount > 0) {
+			nativeBoundValues = new ::OptixModuleCompileBoundValueEntry[ro_ModuleOptions.m_BoundValuesCount];
+			Internal::Optix_PackingFunctions::packBoundValues(
+				ro_ModuleOptions.m_BoundValues,
+				ro_ModuleOptions.m_BoundValuesCount,
+				nativeBoundValues
+			);
+		}
+
+		nativeModuleOptions.boundValues = nativeBoundValues;
 		nativeModuleOptions.numBoundValues = ro_ModuleOptions.m_BoundValuesCount;
 
 		::OptixPipelineCompileOptions nativePipelineOptions{};
@@ -52,6 +69,10 @@ namespace Spectra::Cuda::Optix {
 			&sizeofLog,
 			&nativeModule
 		));
+
+		if (nativeBoundValues) {
+			delete[] nativeBoundValues;
+		}
 
 		moduleHandle.m_Handle = static_cast<void*>(nativeModule);
 #endif
@@ -154,14 +175,15 @@ namespace Spectra::Cuda::Optix {
 #endif
 	}
 
-	OptixStackSizes DeviceOptixPipeline::getProgramGroupStackSize(const GpuOptixProgramGroup& ro_Group) {
+	OptixStackSizes DeviceOptixPipeline::getProgramGroupStackSize(
+		const GpuOptixProgramGroup& ro_Group, const GpuOptixPipeline& ro_Pipeline) {
 		OptixStackSizes sizes{};
 #ifdef SPECTRA_OPTIX_AVAILABLE
 		SPEC_CUDA_BK_ASSERT(ro_Group.isValid());
 		::OptixStackSizes nativeSizes{};
 		OPTIX_ERROR_TRAP(optixProgramGroupGetStackSize(
 			static_cast<::OptixProgramGroup>(ro_Group.m_Handle),
-			&nativeSizes
+			&nativeSizes, static_cast<OptixPipeline>(ro_Pipeline.m_Handle)
 		));
 		sizes.m_CssRG = nativeSizes.cssRG;
 		sizes.m_CssMS = nativeSizes.cssMS;

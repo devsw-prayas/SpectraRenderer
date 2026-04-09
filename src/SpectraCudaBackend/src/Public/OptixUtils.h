@@ -2,6 +2,9 @@
 
 #include "SpectraCudaBackend.h"
 
+#include "SpecCudaCompiler.h"
+#include "SpecCudaDiagnostics.h"
+
 namespace Spectra::Cuda::Utils {
 
 	// =========================================================
@@ -113,11 +116,11 @@ namespace Spectra::Cuda::Utils {
 	// =========================================================
 
 	enum class SPEC_CUDA_BK_RUNTIME_API OptixLogLevel final : uint8_t {
-		DISABLE = 0,
-		FATAL   = 1,
-		ERROR   = 2,
-		WARN    = 3,
-		PRINT   = 4
+		LVL_DISABLE = 0,
+		LVL_FATAL   = 1,
+		LVL_ERROR   = 2,
+		LVL_WARN    = 3,
+		LVL_PRINT   = 4
 	};
 
 	enum class SPEC_CUDA_BK_RUNTIME_API OptixValidationMode final : uint8_t {
@@ -125,7 +128,7 @@ namespace Spectra::Cuda::Utils {
 		VALIDATION_ON  = 1
 	};
 
-	enum class SPEC_CUDA_BK_RUNTIME_API OptixCompileOptimizationLevel final : uint8_t {
+	enum class SPEC_CUDA_BK_RUNTIME_API OptixCompileOptiLevel final : uint8_t {
 		LEVEL_0,
 		LEVEL_1,
 		LEVEL_2,
@@ -133,7 +136,7 @@ namespace Spectra::Cuda::Utils {
 		DEFAULT = LEVEL_3
 	};
 
-	enum class SPEC_CUDA_BK_RUNTIME_API OptixCompileDebugLevel final : uint8_t {
+	enum class SPEC_CUDA_BK_RUNTIME_API OptixCompileDebugLvl final : uint8_t {
 		LEVEL_NONE,
 		LEVEL_MINIMAL,
 		LEVEL_MODERATE,
@@ -149,7 +152,7 @@ namespace Spectra::Cuda::Utils {
 		CALLABLES
 	};
 
-	enum class SPEC_CUDA_BK_RUNTIME_API OptixBuildInputType final : uint8_t {
+	enum class SPEC_CUDA_BK_RUNTIME_API OptixBuildInType final : uint8_t {
 		TRIANGLES,
 		CUSTOM_PRIMITIVES,
 		INSTANCES,
@@ -192,11 +195,35 @@ namespace Spectra::Cuda::Utils {
 		OptixContextOptions& operator=(OptixContextOptions&&) noexcept = default;
 	};
 
+	struct SPEC_CUDA_BK_RUNTIME_API SPEC_CUDA_BK_ALIGNAS(8) OptixBoundValueEntry final {
+		size_t      m_PipelineParamOffsetInBytes = 0;
+		size_t      m_SizeInBytes = 0;
+		const void* m_BoundValuePtr = nullptr;
+		const char* m_Annotation = nullptr; // optional, nullptr == "No annotation"
+
+		OptixBoundValueEntry() = default;
+		~OptixBoundValueEntry() = default;
+
+		OptixBoundValueEntry(const OptixBoundValueEntry&) = default;
+		OptixBoundValueEntry& operator=(const OptixBoundValueEntry&) = default;
+
+		OptixBoundValueEntry(OptixBoundValueEntry&&) noexcept = default;
+		OptixBoundValueEntry& operator=(OptixBoundValueEntry&&) noexcept = default;
+	};
+
+	SPEC_CUDA_BK_STATIC_ASSERT(sizeof(OptixBoundValueEntry) == 32,
+							   "OptixBoundValueEntry size mismatch with native");
+	SPEC_CUDA_BK_STATIC_ASSERT(std::is_standard_layout_v<OptixBoundValueEntry>,
+							   "OptixBoundValueEntry must maintain standard layout");
+	SPEC_CUDA_BK_STATIC_ASSERT(std::is_trivially_copyable_v<OptixBoundValueEntry>,
+							   "OptixBoundValueEntry must be trivially copyable");
+
 	struct SPEC_CUDA_BK_RUNTIME_API SPEC_CUDA_BK_ALIGNAS(4) OptixModuleCompileOptions final {
 		int32_t                       m_MaxRegisterCount = 0;
-		OptixCompileOptimizationLevel m_OptLevel         = OptixCompileOptimizationLevel::DEFAULT;
-		OptixCompileDebugLevel        m_DebugLevel       = OptixCompileDebugLevel::DEFAULT;
+		OptixCompileOptiLevel m_OptLevel         = OptixCompileOptiLevel::DEFAULT;
+		OptixCompileDebugLvl        m_DebugLevel       = OptixCompileDebugLvl::DEFAULT;
 		uint32_t                      m_BoundValuesCount = 0;
+		const OptixBoundValueEntry* m_BoundValues = nullptr;
 
 		OptixModuleCompileOptions() = default;
 		~OptixModuleCompileOptions() = default;
@@ -335,7 +362,7 @@ namespace Spectra::Cuda::Utils {
 	};
 
 	struct SPEC_CUDA_BK_RUNTIME_API SPEC_CUDA_BK_ALIGNAS(8) OptixBuildInputDesc final {
-		OptixBuildInputType          m_Type;
+		OptixBuildInType          m_Type;
 		OptixBuildInputTriangleArray m_TriangleArray;
 		OptixBuildInputInstanceArray m_InstanceArray;
 
@@ -377,4 +404,28 @@ namespace Spectra::Cuda::Utils {
 		OptixAccelBufferSizes(OptixAccelBufferSizes&&) noexcept = default;
 		OptixAccelBufferSizes& operator=(OptixAccelBufferSizes&&) noexcept = default;
 	};
+
+	struct SPEC_CUDA_BK_RUNTIME_API SPEC_CUDA_BK_ALIGNAS(8) GpuOptixRelocationInfo final {
+		uint64_t m_Info[4] = {};
+
+		GpuOptixRelocationInfo() = default;
+		~GpuOptixRelocationInfo() = default;
+
+		GpuOptixRelocationInfo(const GpuOptixRelocationInfo&) = default;
+		GpuOptixRelocationInfo& operator=(const GpuOptixRelocationInfo&) = default;
+
+		GpuOptixRelocationInfo(GpuOptixRelocationInfo&&) noexcept = default;
+		GpuOptixRelocationInfo& operator=(GpuOptixRelocationInfo&&) noexcept = default;
+
+		SPEC_CUDA_BK_NODISCARD bool isValid() const {
+			return m_Info[0] != 0 || m_Info[1] != 0 || m_Info[2] != 0 || m_Info[3] != 0;
+		}
+	};
+
+	SPEC_CUDA_BK_STATIC_ASSERT(sizeof(GpuOptixRelocationInfo) == 32, "Invalid GpuOptixRelocationInfo size, must be 32 bytes");
+	SPEC_CUDA_BK_STATIC_ASSERT(std::is_standard_layout_v<GpuOptixRelocationInfo>, "GpuOptixRelocationInfo must maintain standard layout");
+	SPEC_CUDA_BK_STATIC_ASSERT(std::is_trivially_copyable_v<GpuOptixRelocationInfo>, "GpuOptixRelocationInfo must be trivially copyable");
+	SPEC_CUDA_BK_STATIC_ASSERT(std::is_trivially_move_assignable_v<GpuOptixRelocationInfo>, "GpuOptixRelocationInfo must be trivially move assignable");
+
+
 }
