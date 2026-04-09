@@ -137,34 +137,47 @@ namespace Spectra::Cuda::Optix {
 		return handle;
 	}
 
+	GpuOptixRelocationInfo DeviceOptixAccel::getRelocationInfo(
+		const GpuOptixContext& ro_Context,
+		const GpuOptixTraversableHandle& ro_Handle) {
+		GpuOptixRelocationInfo info{};
+#ifdef SPECTRA_OPTIX_AVAILABLE
+		SPEC_CUDA_BK_ASSERT(ro_Context.isValid());
+		SPEC_CUDA_BK_ASSERT(ro_Handle.isValid());
+
+		OPTIX_ERROR_TRAP(optixAccelGetRelocationInfo(
+			static_cast<OptixDeviceContext>(ro_Context.m_Handle),
+			static_cast<::OptixTraversableHandle>(ro_Handle.m_Handle),
+			reinterpret_cast<::OptixRelocationInfo*>(info.m_Info)
+		));
+#endif
+		return info;
+	}
+
 	GpuOptixTraversableHandle DeviceOptixAccel::relocate(
 		const GpuOptixContext& ro_Context,
 		const GpuStream& ro_Stream,
-		const GpuOptixTraversableHandle& ro_InputHandle,
+		const GpuOptixRelocationInfo& ro_Info,
 		uint64_t v_TargetRelocateBufferAddress,
-		size_t v_TargetRelocateBufferSize)
-	{
+		size_t v_TargetRelocateBufferSize) {
 		GpuOptixTraversableHandle handle{};
 #ifdef SPECTRA_OPTIX_AVAILABLE
 		SPEC_CUDA_BK_ASSERT(ro_Context.isValid());
 		SPEC_CUDA_BK_ASSERT(ro_Stream.isValid());
-		SPEC_CUDA_BK_ASSERT(ro_InputHandle.isValid());
+		SPEC_CUDA_BK_ASSERT(ro_Info.isValid());
 
 		::OptixTraversableHandle nativeHandle = 0;
-		// Note: Optix relocation requires OptixRelocateInput but we abstract a simplified version.
-		// For the sake of the smoke test parity, we just use a basic pass through structure.
-		::OptixRelocateInput relocateInput{};
-		// populate if required by future engine needs...
-		
 		OPTIX_ERROR_TRAP(optixAccelRelocate(
 			static_cast<OptixDeviceContext>(ro_Context.m_Handle),
-			static_cast<CUstream>(ro_Stream.m_Handle),
-			&relocateInput, // Placeholder
+			static_cast<CUstream>(ro_Stream.m_StreamHandle),
+			reinterpret_cast<const ::OptixRelocationInfo*>(ro_Info.m_Info),
+			nullptr,
+			0,
 			static_cast<CUdeviceptr>(v_TargetRelocateBufferAddress),
 			v_TargetRelocateBufferSize,
 			&nativeHandle
 		));
-		
+
 		handle.m_Handle = nativeHandle;
 #endif
 		return handle;

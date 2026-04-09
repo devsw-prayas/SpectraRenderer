@@ -31,6 +31,11 @@ namespace Spectra::Cuda::Internal {
 	class Optix_PackingFunctions final {
 	public:
 		static void packBuildInputs(const Utils::OptixBuildInputDesc* p_Inputs, uint32_t v_NumInputs, ::OptixBuildInput* p_NativeInputs);
+		static void packBoundValues(
+			const Utils::OptixBoundValueEntry* p_Entries,
+			uint32_t v_Count,
+			::OptixModuleCompileBoundValueEntry* p_NativeEntries
+		);
 	};
 
 #endif

@@ -1,10 +1,9 @@
 #include "OptixContextManager.h"
-#define ALLOW_HELPERS
-#include "OptixInternalHelpers.h"
-
-// The OptiX function table definition must be instantiated in exactly one translation unit.
 #define ALLOW_SYSCALL
 #include "SpecCudaSyscall.h"
+
+#define ALLOW_HELPERS
+#include "OptixInternalHelpers.h"
 
 namespace Spectra::Cuda::Optix {
 	bool DeviceOptixContext::initOptix() {

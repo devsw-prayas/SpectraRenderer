@@ -21,6 +21,7 @@
 #ifdef SPECTRA_OPTIX_AVAILABLE
 #include <optix_host.h>
 #include <optix.h>
+#include <optix_stubs.h>
 #endif
 
 #endif

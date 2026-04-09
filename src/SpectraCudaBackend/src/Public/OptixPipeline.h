@@ -37,7 +37,7 @@ namespace Spectra::Cuda::Optix {
 		static void destroyProgramGroup(GpuOptixProgramGroup& ro_Group);
 
 		// Retrieves the stack size requirements for a specific program group.
-		static OptixStackSizes getProgramGroupStackSize(const GpuOptixProgramGroup& ro_Group);
+		static OptixStackSizes getProgramGroupStackSize(const GpuOptixProgramGroup& ro_Group, const GpuOptixPipeline& ro_Pipeline);
 
 		// -------------------------------------------------------------------------
 		// Pipeline

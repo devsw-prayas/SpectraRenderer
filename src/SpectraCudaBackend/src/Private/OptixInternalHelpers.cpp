@@ -1,11 +1,9 @@
+#define ALLOW_SYSCALL
+#include "SpecCudaSyscall.h"
 #define ALLOW_HELPERS
 #include "OptixInternalHelpers.h"
 
-#define ALLOW_SYSCALL
-#include "SpecCudaSyscall.h"
-
 namespace Spectra::Cuda::Internal {
-
 #ifdef SPECTRA_OPTIX_AVAILABLE
 
 	OptixCompileOptimizationLevel Optix_InternalHelpers::toOptixCompileOptimizationLevel(Utils::OptixCompileOptiLevel v_Level) {
@@ -61,7 +59,17 @@ namespace Spectra::Cuda::Internal {
 			}
 		}
 	}
+
+	void Optix_PackingFunctions::packBoundValues(
+		const Utils::OptixBoundValueEntry* p_Entries,
+		uint32_t v_Count,
+		::OptixModuleCompileBoundValueEntry* p_NativeEntries) {
+		for (uint32_t i = 0; i < v_Count; ++i) {
+			p_NativeEntries[i].pipelineParamOffsetInBytes = p_Entries[i].m_PipelineParamOffsetInBytes;
+			p_NativeEntries[i].sizeInBytes = p_Entries[i].m_SizeInBytes;
+			p_NativeEntries[i].boundValuePtr = p_Entries[i].m_BoundValuePtr;
+			p_NativeEntries[i].annotation = p_Entries[i].m_Annotation;
+		}
+	}
 #endif
-
-
 }

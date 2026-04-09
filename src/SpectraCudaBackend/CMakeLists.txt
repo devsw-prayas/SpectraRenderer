@@ -72,12 +72,16 @@ if (SPECTRA_ENABLE_CUDA)
         $ENV{OPTIX_ROOT_DIR}/include
         "C:/ProgramData/NVIDIA Corporation/OptiX SDK 8.0.0/include"
         "C:/ProgramData/NVIDIA Corporation/OptiX SDK 7.6.0/include"
+        "C:/ProgramData/NVIDIA Corporation/OptiX SDK 9.0.0/include"
+        "C:/ProgramData/NVIDIA Corporation/OptiX SDK 9.1.0/include"
     )
     
-    if (OPTIX_INCLUDE_DIR)
-        target_include_directories(SpectraCudaBackend PRIVATE ${OPTIX_INCLUDE_DIR})
-        target_compile_definitions(SpectraCudaBackend PRIVATE SPECTRA_OPTIX_AVAILABLE)
-    else()
-        message(WARNING "OptiX SDK not found. Please set OPTIX_PATH.")
-    endif()
+if (OPTIX_INCLUDE_DIR)
+    target_include_directories(SpectraCudaBackend PRIVATE ${OPTIX_INCLUDE_DIR})
+    target_compile_definitions(SpectraCudaBackend PRIVATE
+        SPECTRA_OPTIX_AVAILABLE
+    )
+else()
+    message(FATAL_ERROR "OptiX headers not found")
+endif()
 endif()
