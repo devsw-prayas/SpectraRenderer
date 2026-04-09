@@ -2,6 +2,9 @@
 #define ALLOW_HELPERS
 #include "OptixInternalHelpers.h"
 
+#define ALLOW_SYSCALL
+#include "SpecCudaSyscall.h"
+
 namespace Spectra::Cuda::Optix {
 
 	void DeviceOptixLaunch::packSbtRecordHeader(
@@ -24,7 +27,7 @@ namespace Spectra::Cuda::Optix {
 		const GpuStream& ro_Stream,
 		uint64_t v_PipelineParamsAddress,
 		size_t v_PipelineParamsSize,
-		const OptixShaderBindingTable& ro_Sbt,
+		const ShaderBindingTable& ro_Sbt,
 		uint32_t v_Width,
 		uint32_t v_Height,
 		uint32_t v_Depth)
@@ -35,11 +38,7 @@ namespace Spectra::Cuda::Optix {
 
 		::OptixShaderBindingTable nativeSbt{};
 		nativeSbt.raygenRecord = static_cast<CUdeviceptr>(ro_Sbt.m_RaygenRecord);
-		
-		nativeSbt.exceptionRecordBase = static_cast<CUdeviceptr>(ro_Sbt.m_ExceptionRecordBase);
-		nativeSbt.exceptionRecordStrideInBytes = ro_Sbt.m_ExceptionRecordStrideInBytes;
-		nativeSbt.exceptionRecordCount = ro_Sbt.m_ExceptionRecordCount;
-		
+
 		nativeSbt.missRecordBase = static_cast<CUdeviceptr>(ro_Sbt.m_MissRecordBase);
 		nativeSbt.missRecordStrideInBytes = ro_Sbt.m_MissRecordStrideInBytes;
 		nativeSbt.missRecordCount = ro_Sbt.m_MissRecordCount;
@@ -54,7 +53,7 @@ namespace Spectra::Cuda::Optix {
 
 		OPTIX_ERROR_TRAP(optixLaunch(
 			static_cast<::OptixPipeline>(ro_Pipeline.m_Handle),
-			static_cast<CUstream>(ro_Stream.m_Handle),
+			static_cast<CUstream>(ro_Stream.m_StreamHandle),
 			static_cast<CUdeviceptr>(v_PipelineParamsAddress),
 			v_PipelineParamsSize,
 			&nativeSbt,

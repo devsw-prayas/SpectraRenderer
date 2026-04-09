@@ -7,12 +7,8 @@
 namespace Spectra::Cuda::Optix {
 	using namespace Utils;
 
-	struct OptixShaderBindingTable {
+	struct ShaderBindingTable {
 		uint64_t m_RaygenRecord = 0;
-		
-		uint64_t m_ExceptionRecordBase = 0;
-		uint32_t m_ExceptionRecordStrideInBytes = 0;
-		uint32_t m_ExceptionRecordCount = 0;
 		
 		uint64_t m_MissRecordBase = 0;
 		uint32_t m_MissRecordStrideInBytes = 0;
@@ -41,7 +37,7 @@ namespace Spectra::Cuda::Optix {
 			const GpuStream& ro_Stream,
 			uint64_t v_PipelineParamsAddress,
 			size_t v_PipelineParamsSize,
-			const OptixShaderBindingTable& ro_Sbt,
+			const ShaderBindingTable& ro_Sbt,
 			uint32_t v_Width,
 			uint32_t v_Height,
 			uint32_t v_Depth

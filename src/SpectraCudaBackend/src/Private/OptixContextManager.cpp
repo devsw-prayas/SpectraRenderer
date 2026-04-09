@@ -1,11 +1,9 @@
 #include "OptixContextManager.h"
+#define ALLOW_SYSCALL
+#include "SpecCudaSyscall.h"
+
 #define ALLOW_HELPERS
 #include "OptixInternalHelpers.h"
-
-// The OptiX function table definition must be instantiated in exactly one translation unit.
-#ifdef SPECTRA_OPTIX_AVAILABLE
-#include <optix_function_table_definition.h>
-#endif
 
 namespace Spectra::Cuda::Optix {
 	bool DeviceOptixContext::initOptix() {
@@ -35,7 +33,7 @@ namespace Spectra::Cuda::Optix {
 
 		OptixDeviceContext nativeCtx = nullptr;
 		OPTIX_ERROR_TRAP(optixDeviceContextCreate(
-			static_cast<CUcontext>(ro_DeviceCtx.m_ContextHandle),
+			static_cast<CUcontext>(ro_DeviceCtx.m_Handle),
 			&options,
 			&nativeCtx
 		));
