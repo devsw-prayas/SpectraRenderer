@@ -33,6 +33,7 @@ namespace Spectra::Cuda::Internal {
 			case Utils::OptixBuildInType::TRIANGLES:
 				p_NativeInputs[i].type = OPTIX_BUILD_INPUT_TYPE_TRIANGLES;
 				p_NativeInputs[i].triangleArray.vertexBuffers = reinterpret_cast<CUdeviceptr*>(const_cast<uint64_t*>(p_Inputs[i].m_TriangleArray.m_VertexBuffers));
+				//p_NativeInputs[i].triangleArray.numVertexBuffers = p_Inputs[i].m_TriangleArray.m_NumVertexBuffers;
 				p_NativeInputs[i].triangleArray.numVertices = p_Inputs[i].m_TriangleArray.m_NumVertices;
 				p_NativeInputs[i].triangleArray.vertexFormat = static_cast<OptixVertexFormat>(p_Inputs[i].m_TriangleArray.m_VertexFormat);
 				p_NativeInputs[i].triangleArray.vertexStrideInBytes = p_Inputs[i].m_TriangleArray.m_VertexStrideInBytes;

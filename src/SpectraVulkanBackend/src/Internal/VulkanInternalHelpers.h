@@ -167,4 +167,12 @@ namespace Spectra::Vulkan::Internal {
 		props.pNext = nullptr;
 		return props;
 	}
+
+	template<>
+	SPEC_VK_BK_FORCEINLINE VkCommandPoolCreateInfo vkInit<VkCommandPoolCreateInfo>() {
+		VkCommandPoolCreateInfo info{};
+		info.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+		info.pNext = nullptr;
+		return info;
+	}
 }

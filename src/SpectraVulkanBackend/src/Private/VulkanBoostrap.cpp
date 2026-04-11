@@ -5,10 +5,28 @@
 #include "SpecVulkanSyscalls.h"
 #include "VulkanInternalHelpers.h"
 
-#define VMA_IMPLEMENTATION
 #include <vk_mem_alloc.h>
 
+
+// VulkanBootstrap.cpp
+// Spectra Vulkan Backend - Bootstrap & Initialization
+//
+// Initialization sequence (must follow this exact order):
+//   1. initializeVulkan()   - VkInstance, debug messenger, instance extensions
+//   2. selectPhysicalDevice() - GPU selection, feature/extension validation,
+//                               capability persistence into DeviceProperties
+//   3. createLogicalDevice() - VkDevice, queue retrieval, debug naming
+//   4. createAllocator()    - VMA allocator, buffer device address + budget
+//   5. createCommandPools() - One pool per unique queue family
+//
+// Shutdown: shutdownVulkan() - destroys in reverse order
+
+
 namespace Spectra::Vulkan {
+
+	// Flat bag of physical device capability structs.
+	// pNext chains are intentionally cleared after query and re-linked on demand
+	// (e.g. at logical device creation). Never store pointers into this struct.
 	struct DeviceProperties {
 		// Core properties
 		VkPhysicalDeviceProperties2                          m_Properties;
@@ -35,6 +53,10 @@ namespace Spectra::Vulkan {
 		uint32_t m_DeviceID;
 	};
 
+	// Owns the VkDevice handle and the three queue handles.
+	// Queues are retrieved once at createLogicalDevice() and never re-queried.
+	// Graphics family always exists. Compute/Transfer may alias Graphics if no
+	// dedicated family was found on the physical device.
 	struct LogicalDevice {
 		VkDevice m_Device;
 		VkQueue  m_GraphicsQueue;
@@ -42,6 +64,45 @@ namespace Spectra::Vulkan {
 		VkQueue  m_TransferQueue;
 	};
 
+	// Wraps VmaAllocator. VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT is always
+	// set (required for RT). VMA_ALLOCATOR_CREATE_EXT_MEMORY_BUDGET_BIT is set only
+	// if VK_EXT_memory_budget was present and enabled during physical device selection.
+	struct VulkanAllocator {
+		VmaAllocator m_Allocator;
+
+		bool isValid() const {
+			return m_Allocator != VK_NULL_HANDLE;
+		}
+
+		VulkanAllocator() : m_Allocator(VK_NULL_HANDLE) {}
+	};
+
+	// One VkCommandPool per unique queue family.
+	// If compute/transfer alias graphics, the pool handle is shared - do NOT
+	// double-destroy aliased pools. Destruction logic in shutdownVulkan() accounts
+	// for this via handle comparison.
+	struct CommandPools {
+		VkCommandPool m_GraphicsPool;
+		VkCommandPool m_ComputePool;
+		VkCommandPool m_TransferPool;
+
+		bool isValid() const {
+			return m_GraphicsPool != VK_NULL_HANDLE
+				&& m_ComputePool != VK_NULL_HANDLE
+				&& m_TransferPool != VK_NULL_HANDLE;
+		}
+
+		CommandPools()
+			: m_GraphicsPool(VK_NULL_HANDLE)
+			, m_ComputePool(VK_NULL_HANDLE)
+			, m_TransferPool(VK_NULL_HANDLE) {
+		}
+	};
+
+	// Central opaque state for the entire Vulkan backend.
+	// Exposed externally only as InstanceHandle (void*).
+	// All subsystems (device, allocator, pools) are flat members - no heap allocation.
+	// Lifetime: static global, valid from initializeVulkan() to shutdownVulkan().
 	struct SPEC_VK_BK_ALIGNAS(16) VulkanInstance final {
 		constexpr static uint32_t MAX_DEVICES = 32; // TODO replace with build macro
 		constexpr static uint32_t MAX_QUEUE_FAMILIES = 16; // TODO replace with build macro
@@ -51,6 +112,8 @@ namespace Spectra::Vulkan {
 		DeviceProperties m_DeviceProps;
 		Utils::PhysicalDevice m_Device;
 		LogicalDevice m_LogicalDevice;
+		VulkanAllocator m_Allocator;
+		CommandPools m_CommandPools;
 
 		Utils::VkExtension m_EnabledExtensions[Utils::VK_SUPPORTED_EXT_COUNT];
 		Utils::VkLayer m_EnableLayers[Utils::VK_SUPPORTED_LAYERS_COUNT];
@@ -344,6 +407,13 @@ namespace Spectra::Vulkan {
 			}
 			uint32_t vramMB = static_cast<uint32_t>(vramBytes / (1024ull * 1024));
 
+			// Scoring weights:
+			//   +1000  discrete GPU
+			//   +100   per GB VRAM
+			//   +10    per ray recursion depth level
+			//   +1     per million max primitives
+			//   +50    dedicated async compute family
+			//   +25    dedicated DMA transfer family
 			// --- Scoring ---
 			uint32_t score = 0;
 			if (props.properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU) score += 1000;
@@ -432,7 +502,9 @@ namespace Spectra::Vulkan {
 			queueInfos[queueInfoCount++] = qi;
 		}
 
-		// --- Re-link feature pNext chain ---
+		// Re-link the feature pNext chain for VkDeviceCreateInfo.
+		// Stored structs have pNext cleared after selectPhysicalDevice() to avoid
+		// dangling pointers. Must be re-linked here before passing to vkCreateDevice.
 		dp.m_Features.pNext = &dp.m_Vk12Features;
 		dp.m_Vk12Features.pNext = &dp.m_Vk13Features;
 		dp.m_Vk13Features.pNext = &dp.m_AccelFeatures;
@@ -486,10 +558,160 @@ namespace Spectra::Vulkan {
 		SPEC_VK_BK_ASSERT(g_GlobalInstance.m_LogicalDevice.m_Device != VK_NULL_HANDLE);
 	}
 
+	void VulkanBootstrap::createAllocator() {
+		SPEC_VK_BK_ASSERT(g_GlobalInstance.m_Device.m_DeviceHandle != nullptr);
+		SPEC_VK_BK_ASSERT(g_GlobalInstance.m_LogicalDevice.m_Device != VK_NULL_HANDLE);
+
+		VkPhysicalDevice physDevice = static_cast<VkPhysicalDevice>(g_GlobalInstance.m_Device.m_DeviceHandle);
+		DeviceProperties& dp = g_GlobalInstance.m_DeviceProps;
+
+		// --- Vulkan function pointers --- required for Vulkan 1.3
+		VmaVulkanFunctions vmaFuncs{};
+		vmaFuncs.vkGetInstanceProcAddr = vkGetInstanceProcAddr;
+		vmaFuncs.vkGetDeviceProcAddr = vkGetDeviceProcAddr;
+
+		// --- Allocator flags ---
+		VmaAllocatorCreateFlags flags = VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT;
+
+		// VMA_DYNAMIC_VULKAN_FUNCTIONS is implied by passing pVulkanFunctions with
+		// only vkGetInstanceProcAddr and vkGetDeviceProcAddr filled. VMA resolves
+		// all other function pointers itself at runtime. Required for Vulkan 1.3.
+		for (uint32_t i = 0; i < dp.s_ExtensionCount; ++i) {
+			if (dp.m_EnabledExtensions[i].m_ExtensionName == Utils::VulkanExtensions::VK_MEMORY_BUDGET) {
+				flags |= VMA_ALLOCATOR_CREATE_EXT_MEMORY_BUDGET_BIT;
+				break;
+			}
+		}
+
+		VmaAllocatorCreateInfo allocInfo{};
+		allocInfo.flags = flags;
+		allocInfo.vulkanApiVersion = VK_API_VERSION_1_3;
+		allocInfo.instance = g_GlobalInstance.m_GlobalInstance;
+		allocInfo.physicalDevice = physDevice;
+		allocInfo.device = g_GlobalInstance.m_LogicalDevice.m_Device;
+		allocInfo.pVulkanFunctions = &vmaFuncs;
+
+		VkResult res = vmaCreateAllocator(&allocInfo, &g_GlobalInstance.m_Allocator.m_Allocator);
+		SPEC_VK_BK_ASSERT(res == VK_SUCCESS);
+		SPEC_VK_BK_ASSERT(g_GlobalInstance.m_Allocator.isValid());
+	}
+
+	void VulkanBootstrap::createCommandPools() {
+		SPEC_VK_BK_ASSERT(g_GlobalInstance.m_LogicalDevice.m_Device != VK_NULL_HANDLE);
+
+		VkDevice dev = g_GlobalInstance.m_LogicalDevice.m_Device;
+
+		auto createPool = [&](uint32_t familyIndex) -> VkCommandPool {
+			auto poolInfo = Internal::vkInit<VkCommandPoolCreateInfo>();
+			poolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+			poolInfo.queueFamilyIndex = familyIndex;
+
+			VkCommandPool pool = VK_NULL_HANDLE;
+			VkResult res = vkCreateCommandPool(dev, &poolInfo, nullptr, &pool);
+			SPEC_VK_BK_ASSERT(res == VK_SUCCESS);
+			return pool;
+			};
+
+		g_GlobalInstance.m_CommandPools.m_GraphicsPool = createPool(g_GlobalInstance.m_GraphicsFamily);
+
+		// deduplicate - only create separate pools for distinct families
+		if (g_GlobalInstance.m_ComputeFamily != g_GlobalInstance.m_GraphicsFamily)
+			g_GlobalInstance.m_CommandPools.m_ComputePool = createPool(g_GlobalInstance.m_ComputeFamily);
+		else
+			g_GlobalInstance.m_CommandPools.m_ComputePool = g_GlobalInstance.m_CommandPools.m_GraphicsPool;
+
+		if (g_GlobalInstance.m_TransferFamily != g_GlobalInstance.m_GraphicsFamily &&
+			g_GlobalInstance.m_TransferFamily != g_GlobalInstance.m_ComputeFamily)
+			g_GlobalInstance.m_CommandPools.m_TransferPool = createPool(g_GlobalInstance.m_TransferFamily);
+		else
+			g_GlobalInstance.m_CommandPools.m_TransferPool = g_GlobalInstance.m_CommandPools.m_GraphicsPool;
+
+		SPEC_VK_BK_ASSERT(g_GlobalInstance.m_CommandPools.isValid());
+
+#if SPEC_VK_BK_BUILD_DEBUG
+		auto vkSetDebugName = reinterpret_cast<PFN_vkSetDebugUtilsObjectNameEXT>(
+			vkGetDeviceProcAddr(dev, "vkSetDebugUtilsObjectNameEXT"));
+
+		if (vkSetDebugName) {
+			auto nameObj = [&](VkObjectType type, uint64_t handle, const char* name) {
+				auto info = Internal::vkInit<VkDebugUtilsObjectNameInfoEXT>();
+				info.objectType = type;
+				info.objectHandle = handle;
+				info.pObjectName = name;
+				vkSetDebugName(dev, &info);
+				};
+
+			nameObj(VK_OBJECT_TYPE_COMMAND_POOL, reinterpret_cast<uint64_t>(g_GlobalInstance.m_CommandPools.m_GraphicsPool), "CommandPool::Graphics");
+			if (g_GlobalInstance.m_CommandPools.m_ComputePool != g_GlobalInstance.m_CommandPools.m_GraphicsPool)
+				nameObj(VK_OBJECT_TYPE_COMMAND_POOL, reinterpret_cast<uint64_t>(g_GlobalInstance.m_CommandPools.m_ComputePool), "CommandPool::Compute");
+			if (g_GlobalInstance.m_CommandPools.m_TransferPool != g_GlobalInstance.m_CommandPools.m_GraphicsPool)
+				nameObj(VK_OBJECT_TYPE_COMMAND_POOL, reinterpret_cast<uint64_t>(g_GlobalInstance.m_CommandPools.m_TransferPool), "CommandPool::Transfer");
+		}
+#endif
+	}
+
 	InstanceHandle VulkanBootstrap::getVulkanInstance() {
 		return &g_GlobalInstance;
 	}
 
 	void VulkanBootstrap::shutdownVulkan(InstanceHandle p_Handle) {
+		SPEC_VK_BK_ASSERT(p_Handle != nullptr);
+
+		VkDevice dev = g_GlobalInstance.m_LogicalDevice.m_Device;
+
+		// Destroy in strict reverse-init order:
+		//   CommandPools -> VMA -> LogicalDevice -> DebugMessenger -> Instance
+		// Aliased pool handles (compute/transfer sharing graphics pool) must not be
+		// destroyed twice - guard via handle comparison before each destroy call.
+		if (g_GlobalInstance.m_CommandPools.m_TransferPool != VK_NULL_HANDLE &&
+			g_GlobalInstance.m_CommandPools.m_TransferPool != g_GlobalInstance.m_CommandPools.m_GraphicsPool &&
+			g_GlobalInstance.m_CommandPools.m_TransferPool != g_GlobalInstance.m_CommandPools.m_ComputePool)
+			vkDestroyCommandPool(dev, g_GlobalInstance.m_CommandPools.m_TransferPool, nullptr);
+
+		if (g_GlobalInstance.m_CommandPools.m_ComputePool != VK_NULL_HANDLE &&
+			g_GlobalInstance.m_CommandPools.m_ComputePool != g_GlobalInstance.m_CommandPools.m_GraphicsPool)
+			vkDestroyCommandPool(dev, g_GlobalInstance.m_CommandPools.m_ComputePool, nullptr);
+
+		if (g_GlobalInstance.m_CommandPools.m_GraphicsPool != VK_NULL_HANDLE)
+			vkDestroyCommandPool(dev, g_GlobalInstance.m_CommandPools.m_GraphicsPool, nullptr);
+
+		g_GlobalInstance.m_CommandPools.m_GraphicsPool = VK_NULL_HANDLE;
+		g_GlobalInstance.m_CommandPools.m_ComputePool = VK_NULL_HANDLE;
+		g_GlobalInstance.m_CommandPools.m_TransferPool = VK_NULL_HANDLE;
+
+		// --- VMA ---
+		if (g_GlobalInstance.m_Allocator.isValid()) {
+			vmaDestroyAllocator(g_GlobalInstance.m_Allocator.m_Allocator);
+			g_GlobalInstance.m_Allocator.m_Allocator = VK_NULL_HANDLE;
+		}
+
+		// --- Logical Device ---
+		if (dev != VK_NULL_HANDLE) {
+			vkDeviceWaitIdle(dev);
+			vkDestroyDevice(dev, nullptr);
+			g_GlobalInstance.m_LogicalDevice.m_Device = VK_NULL_HANDLE;
+			g_GlobalInstance.m_LogicalDevice.m_GraphicsQueue = VK_NULL_HANDLE;
+			g_GlobalInstance.m_LogicalDevice.m_ComputeQueue = VK_NULL_HANDLE;
+			g_GlobalInstance.m_LogicalDevice.m_TransferQueue = VK_NULL_HANDLE;
+		}
+
+		// --- Debug Messenger ---
+#if SPEC_VK_BK_BUILD_DEBUG
+		if (g_GlobalInstance.m_GlobalDebugMessager != VK_NULL_HANDLE) {
+			auto fn = reinterpret_cast<PFN_vkDestroyDebugUtilsMessengerEXT>(
+				vkGetInstanceProcAddr(g_GlobalInstance.m_GlobalInstance, "vkDestroyDebugUtilsMessengerEXT"));
+			if (fn)
+				fn(g_GlobalInstance.m_GlobalInstance, g_GlobalInstance.m_GlobalDebugMessager, nullptr);
+			g_GlobalInstance.m_GlobalDebugMessager = VK_NULL_HANDLE;
+		}
+#endif
+
+		// --- Instance ---
+		if (g_GlobalInstance.m_GlobalInstance != VK_NULL_HANDLE) {
+			vkDestroyInstance(g_GlobalInstance.m_GlobalInstance, nullptr);
+			g_GlobalInstance.m_GlobalInstance = VK_NULL_HANDLE;
+		}
+
+		g_IsInitialized = false;
 	}
 }

@@ -38,6 +38,8 @@
 
 #include "CoriumRuntime.h"
 #include "CoriumUtility.h"
+#include "CoriumPointers.h"
+#include "CoriumThread.h"
 // =========================================================
 // Minimal test harness
 // =========================================================
@@ -863,7 +865,7 @@ static void testOptixSection6() {
 	// Just a default context using the primary device config wrapper from our Cuda tests.
 	// Since we mock it here, we will just pass a valid wrapper struct.
 	CudaContext devCtx{};
-	devCtx.m_ContextHandle = g_Context.m_ContextHandle;
+	devCtx.m_Handle = g_CudaCtx.m_Handle;
 	
 	GpuOptixContext ctx = DeviceOptixContext::createContext(devCtx, options);
 	TEST("createContext creates valid handle", ctx.isValid());
@@ -1344,6 +1346,475 @@ static void testStratumMacros() {
 }
 
 // =========================================================
+// Corium Smart Pointers
+// =========================================================
+
+static void testSmartPointers() {
+    section("Corium Smart Pointers");
+
+    using namespace Corium::Memory;
+    using namespace Corium::Memory::Allocators;
+    using namespace Corium::Memory::Internal;
+
+    GeneralAllocator&      genAlloc  = AllocatorRegistry::s_GeneralAllocator[0];
+    ControlBlockAllocator& ctrlAlloc = AllocatorRegistry::s_ControlBlockAllocator[0];
+
+    // Tracked — trivial test object that records its own destruction.
+    struct Tracked {
+        int   m_Value;
+        bool* m_Destroyed;
+        Tracked(int v_Value, bool* p_Destroyed) : m_Value(v_Value), m_Destroyed(p_Destroyed) {}
+        ~Tracked() { if (m_Destroyed) *m_Destroyed = true; }
+    };
+
+    // ── UniquePtr<T> ─────────────────────────────────────────────────────────
+
+    printf("  -- UniquePtr --\n");
+
+    // Default construction
+    {
+        UniquePtr<Tracked> empty{};
+        TEST("UniquePtr default: null", !empty);
+        TEST("UniquePtr default: get() null", empty.get() == nullptr);
+    }
+
+    // Construction, value access, destructor
+    {
+        bool destroyed = false;
+        {
+            UniquePtr<Tracked> u(&genAlloc, 42, &destroyed);
+            TEST("UniquePtr: valid after construction", (bool)u);
+            TEST("UniquePtr: get() non-null", u.get() != nullptr);
+            TEST("UniquePtr: operator->", u->m_Value == 42);
+            TEST("UniquePtr: operator*",  (*u).m_Value == 42);
+            TEST("UniquePtr: not destroyed yet", !destroyed);
+        }
+        TEST("UniquePtr: destructor called on scope exit", destroyed);
+    }
+
+    // Move construction
+    {
+        bool destroyed = false;
+        UniquePtr<Tracked> a(&genAlloc, 7, &destroyed);
+        UniquePtr<Tracked> b(std::move(a));
+        TEST("UniquePtr move ctor: source null", !a);
+        TEST("UniquePtr move ctor: dest valid", (bool)b);
+        TEST("UniquePtr move ctor: value preserved", b->m_Value == 7);
+        TEST("UniquePtr move ctor: not destroyed", !destroyed);
+    }
+
+    // Move assignment
+    {
+        bool destroyedA = false;
+        bool destroyedB = false;
+        UniquePtr<Tracked> a(&genAlloc, 1, &destroyedA);
+        UniquePtr<Tracked> b(&genAlloc, 2, &destroyedB);
+        b = std::move(a);
+        TEST("UniquePtr move assign: old b destroyed", destroyedB);
+        TEST("UniquePtr move assign: source null", !a);
+        TEST("UniquePtr move assign: dest has new value", b->m_Value == 1);
+        TEST("UniquePtr move assign: a not destroyed", !destroyedA);
+    }
+
+    // reset()
+    {
+        bool destroyed = false;
+        UniquePtr<Tracked> u(&genAlloc, 5, &destroyed);
+        u.reset();
+        TEST("UniquePtr reset: destroyed", destroyed);
+        TEST("UniquePtr reset: null after reset", !u);
+    }
+
+    // release() — caller owns raw ptr, no destruction
+    {
+        bool destroyed = false;
+        UniquePtr<Tracked> u(&genAlloc, 99, &destroyed);
+        Tracked* raw = u.release();
+        TEST("UniquePtr release: raw non-null", raw != nullptr);
+        TEST("UniquePtr release: handle null", !u);
+        TEST("UniquePtr release: NOT destroyed", !destroyed);
+        raw->~Tracked();
+        genAlloc.deallocate(raw, sizeof(Tracked));
+        TEST("UniquePtr release: destroyed after manual cleanup", destroyed);
+    }
+
+    // ── SharedPtr<T> ─────────────────────────────────────────────────────────
+
+    printf("  -- SharedPtr --\n");
+
+    // make(), value access, useCount
+    {
+        bool destroyed = false;
+        SharedPtr<Tracked> s1 = SharedPtr<Tracked>::make(&genAlloc, &ctrlAlloc, 100, &destroyed);
+        TEST("SharedPtr make: valid", (bool)s1);
+        TEST("SharedPtr make: operator->", s1->m_Value == 100);
+        TEST("SharedPtr make: operator*",  (*s1).m_Value == 100);
+        TEST("SharedPtr make: useCount 1", s1.useCount() == 1);
+        TEST("SharedPtr make: not destroyed", !destroyed);
+    }
+
+    // adopt()
+    {
+        bool destroyed = false;
+        Tracked* raw = genAlloc.emplace<Tracked>(55, &destroyed);
+        SharedPtr<Tracked> s = SharedPtr<Tracked>::adopt(raw, &genAlloc, &ctrlAlloc);
+        TEST("SharedPtr adopt: valid", (bool)s);
+        TEST("SharedPtr adopt: value", s->m_Value == 55);
+        s.reset();
+        TEST("SharedPtr adopt: destroyed on reset", destroyed);
+    }
+
+    // Copy — ref count increments
+    {
+        bool destroyed = false;
+        SharedPtr<Tracked> s1 = SharedPtr<Tracked>::make(&genAlloc, &ctrlAlloc, 7, &destroyed);
+        SharedPtr<Tracked> s2 = s1;
+        TEST("SharedPtr copy: both valid", (bool)s1 && (bool)s2);
+        TEST("SharedPtr copy: useCount 2", s1.useCount() == 2);
+        TEST("SharedPtr copy: same value", s2->m_Value == 7);
+        s2.reset();
+        TEST("SharedPtr copy reset: useCount 1", s1.useCount() == 1);
+        TEST("SharedPtr copy reset: not yet destroyed", !destroyed);
+        s1.reset();
+        TEST("SharedPtr last reset: destroyed", destroyed);
+    }
+
+    // Move — no ref count change
+    {
+        bool destroyed = false;
+        SharedPtr<Tracked> s1 = SharedPtr<Tracked>::make(&genAlloc, &ctrlAlloc, 3, &destroyed);
+        SharedPtr<Tracked> s2 = std::move(s1);
+        TEST("SharedPtr move: source null", !s1);
+        TEST("SharedPtr move: dest valid", (bool)s2);
+        TEST("SharedPtr move: useCount still 1", s2.useCount() == 1);
+        TEST("SharedPtr move: not destroyed", !destroyed);
+    }
+
+    // Copy assign, self-assign guard
+    {
+        bool destroyed = false;
+        SharedPtr<Tracked> s1 = SharedPtr<Tracked>::make(&genAlloc, &ctrlAlloc, 9, &destroyed);
+        SharedPtr<Tracked> s2;
+        s2 = s1;
+        TEST("SharedPtr copy assign: useCount 2", s1.useCount() == 2);
+        s1 = s1;  // self-assign must be a no-op
+        TEST("SharedPtr self-assign: useCount still 2", s1.useCount() == 2);
+        TEST("SharedPtr self-assign: not destroyed", !destroyed);
+    }
+
+    // ── WeakPtr<T> ───────────────────────────────────────────────────────────
+
+    printf("  -- WeakPtr --\n");
+
+    // Basic construction and lock
+    {
+        bool destroyed = false;
+        SharedPtr<Tracked> sp = SharedPtr<Tracked>::make(&genAlloc, &ctrlAlloc, 77, &destroyed);
+        WeakPtr<Tracked> wp = sp.weak();
+
+        TEST("WeakPtr: not expired while SharedPtr alive", !wp.expired());
+        TEST("WeakPtr: operator bool true", (bool)wp);
+
+        SharedPtr<Tracked> locked = wp.lock();
+        TEST("WeakPtr lock: valid", (bool)locked);
+        TEST("WeakPtr lock: correct value", locked->m_Value == 77);
+        TEST("WeakPtr lock: useCount 2", sp.useCount() == 2);
+        locked.reset();
+        TEST("WeakPtr lock released: useCount 1", sp.useCount() == 1);
+    }
+
+    // Object destroyed — lock returns empty
+    {
+        bool destroyed = false;
+        WeakPtr<Tracked> wp;
+        {
+            SharedPtr<Tracked> sp = SharedPtr<Tracked>::make(&genAlloc, &ctrlAlloc, 11, &destroyed);
+            wp = sp.weak();
+            TEST("WeakPtr: not expired before sp gone", !wp.expired());
+        }
+        TEST("WeakPtr: expired after SharedPtr destroyed", wp.expired());
+        TEST("WeakPtr: operator bool false", !(bool)wp);
+        TEST("WeakPtr: object actually destroyed", destroyed);
+        SharedPtr<Tracked> dead = wp.lock();
+        TEST("WeakPtr lock after expiry: empty", !dead);
+    }
+
+    // WeakPtr copy and move
+    {
+        bool destroyed = false;
+        SharedPtr<Tracked> sp = SharedPtr<Tracked>::make(&genAlloc, &ctrlAlloc, 22, &destroyed);
+        WeakPtr<Tracked> w1 = sp.weak();
+        WeakPtr<Tracked> w2 = w1;             // copy
+        WeakPtr<Tracked> w3 = std::move(w1);  // move
+
+        TEST("WeakPtr copy: valid", !w2.expired());
+        TEST("WeakPtr move: source expired/null", w1.expired());
+        TEST("WeakPtr move: dest valid", !w3.expired());
+        TEST("WeakPtr copy lock: correct value", w2.lock()->m_Value == 22);
+        TEST("WeakPtr move lock: correct value", w3.lock()->m_Value == 22);
+
+        sp.reset();
+        TEST("WeakPtr copy+move: both expired after SharedPtr gone",
+             w2.expired() && w3.expired());
+        TEST("WeakPtr: object destroyed", destroyed);
+    }
+
+    // WeakPtr reset
+    {
+        bool destroyed = false;
+        SharedPtr<Tracked> sp = SharedPtr<Tracked>::make(&genAlloc, &ctrlAlloc, 5, &destroyed);
+        WeakPtr<Tracked> wp = sp.weak();
+        wp.reset();
+        TEST("WeakPtr reset: expired", wp.expired());
+        TEST("WeakPtr reset: SharedPtr unaffected", sp.useCount() == 1);
+    }
+}
+
+// =========================================================
+// Corium NativeThread
+// =========================================================
+
+static void testNativeThreads() {
+    using namespace Corium::Core;
+    using namespace Corium::Core::Atomics;
+    using Corium::Core::Atomic::AtomicValue32;
+
+    // Helper: build a frozen ThreadAttrDesc with sensible defaults.
+    auto makeAttr = [](Flag v_Detach = disallow) -> ThreadAttrDesc {
+        ThreadAttrDesc attr{};
+        init(attr);
+        setAffinity(attr, 0xFF);
+        shouldSupportIdealProcessor(attr, disallow);
+        canDetach(attr, v_Detach);
+        vaGuardEnabled(attr, disallow);
+        validate(attr);
+        return attr;
+    };
+
+    // ── Descriptor init / validate / freeze ─────────────────────────────────
+
+    section("NativeThread: Descriptors");
+
+    {
+        ThreadAttrDesc attr{};
+        init(attr);
+        TEST("ThreadAttrDesc init: UNINITIALIZED", attr.m_State == DescriptorState::UNINITIALIZED);
+
+        setAffinity(attr, 0xFF);
+        shouldSupportIdealProcessor(attr, allow);
+        setIdealProcessor(attr, 0);
+        canDetach(attr, disallow);
+        vaGuardEnabled(attr, allow);
+
+        Flag attrOk = validate(attr);
+        TEST("ThreadAttrDesc validate: returns true", attrOk);
+        TEST("ThreadAttrDesc validate: frozen",       attr.m_State == DescriptorState::FROZEN);
+    }
+
+    {
+        ThreadLaunchDesc launch{};
+        init(launch);
+        TEST("ThreadLaunchDesc init: UNINITIALIZED", launch.m_State == DescriptorState::UNINITIALIZED);
+
+        attachLaunchAddr(launch, Corium::Core::Utils::buildClosure<void()>([] {}, 0));
+        setVaSize(launch, 1024 * 1024);
+        setName(launch, "test-thread");
+        isPreSuspended(launch, disallow);
+
+        bool launchOk = validate(launch);
+        TEST("ThreadLaunchDesc validate: returns true", launchOk);
+        TEST("ThreadLaunchDesc validate: frozen",       launch.m_State == DescriptorState::FROZEN);
+    }
+
+    // ── createThread / isAlive / joinThread / closeHandle ───────────────────
+
+    section("NativeThread: Create / Join / Close");
+
+    {
+        AtomicValue32<uint32_t> ran{ 0u };
+
+        ThreadAttrDesc attr = makeAttr();
+
+        ThreadLaunchDesc launch{};
+        init(launch);
+        attachLaunchAddr(launch, Corium::Core::Utils::buildClosure<void()>([&ran] {
+            ran.store(1u, MemoryOrder::RELEASE);
+        }, 0));
+        setVaSize(launch, 1024 * 1024);
+        setName(launch, "create-join-test");
+        isPreSuspended(launch, disallow);
+        validate(launch);
+
+        ThreadHandle handle = NativeThread::createThread(std::move(launch), attr);
+        TEST("createThread: handle not REAPED", handle.expectedState() != ThreadState::REAPED);
+
+        bool joined = NativeThread::joinThread(handle);
+        TEST("joinThread: returns true",   joined);
+        TEST("joinThread: task body ran",  ran.load(MemoryOrder::ACQUIRE) == 1u);
+        TEST("isAlive after join: false",  !NativeThread::isAlive(handle));
+
+        bool closed = NativeThread::closeHandle(handle);
+        TEST("closeHandle: returns true",  closed);
+    }
+
+    // ── suspendThread / resumeThread ─────────────────────────────────────────
+
+    section("NativeThread: Suspend / Resume");
+
+    {
+        // Two flags: thread signals main it is parked; main signals thread to exit.
+        AtomicValue32<uint32_t> parked{ 0u };
+        ParkHandle              exitGate{ 0u };
+
+        ThreadAttrDesc attr = makeAttr();
+
+        ThreadLaunchDesc launch{};
+        init(launch);
+        attachLaunchAddr(launch, Corium::Core::Utils::buildClosure<void()>([&parked, &exitGate] {
+            parked.store(1u, MemoryOrder::RELEASE);
+            NativeThread::waitOnAddress(exitGate);
+        }, 0));
+        setVaSize(launch, 1024 * 1024);
+        setName(launch, "suspend-resume-test");
+        isPreSuspended(launch, disallow);
+        validate(launch);
+
+        ThreadHandle handle = NativeThread::createThread(std::move(launch), attr);
+
+        // Spin until thread has set the flag (guarantees it is running).
+        while (parked.load(MemoryOrder::ACQUIRE) == 0u) {}
+
+        bool suspended = NativeThread::suspendThread(handle);
+        TEST("suspendThread: returns true", suspended);
+
+        bool resumed = NativeThread::resumeThread(handle);
+        TEST("resumeThread: returns true", resumed);
+
+        exitGate.m_ParkingPermit.store(1u, MemoryOrder::RELEASE);
+        NativeThread::wakeOnAddress(exitGate);
+
+        NativeThread::joinThread(handle);
+        NativeThread::closeHandle(handle);
+    }
+
+    // ── duplicateHandle ───────────────────────────────────────────────────────
+
+    section("NativeThread: duplicateHandle");
+
+    {
+        AtomicValue32<uint32_t> ran{ 0u };
+        ParkHandle              startGate{ 0u };
+
+        ThreadAttrDesc attr = makeAttr();
+
+        ThreadLaunchDesc launch{};
+        init(launch);
+        attachLaunchAddr(launch, Corium::Core::Utils::buildClosure<void()>([&ran, &startGate] {
+            // Park until main has called duplicateHandle and tested isAlive.
+            NativeThread::waitOnAddress(startGate);
+            ran.store(1u, MemoryOrder::RELEASE);
+        }, 0));
+        setVaSize(launch, 1024 * 1024);
+        setName(launch, "dup-handle-test");
+        isPreSuspended(launch, disallow);
+        validate(launch);
+
+        ThreadHandle original = NativeThread::createThread(std::move(launch), attr);
+        ThreadHandle dup      = NativeThread::duplicateHandle(original);
+
+        TEST("duplicateHandle: dup not REAPED",       dup.expectedState() != ThreadState::REAPED);
+        TEST("duplicateHandle: original still alive", NativeThread::isAlive(original));
+
+        // Release the thread so it can finish.
+        startGate.m_ParkingPermit.store(1u, MemoryOrder::RELEASE);
+        NativeThread::wakeOnAddress(startGate);
+
+        bool joined = NativeThread::joinThread(dup);
+        TEST("joinThread via dup: returns true", joined);
+        TEST("joinThread via dup: task ran",     ran.load(MemoryOrder::ACQUIRE) == 1u);
+
+        NativeThread::closeHandle(original);
+        NativeThread::closeHandle(dup);
+    }
+
+    // ── detachThread ─────────────────────────────────────────────────────────
+
+    section("NativeThread: detachThread");
+
+    {
+        AtomicValue32<uint32_t> detached{ 0u };
+        ParkHandle              exitGate{ 0u };
+
+        // Mark detach allowed in attr.
+        ThreadAttrDesc attr = makeAttr(allow);
+
+        ThreadLaunchDesc launch{};
+        init(launch);
+        attachLaunchAddr(launch, Corium::Core::Utils::buildClosure<void()>([&exitGate] {
+            NativeThread::waitOnAddress(exitGate);
+        }, 0));
+        setVaSize(launch, 1024 * 1024);
+        setName(launch, "detach-test");
+        isPreSuspended(launch, disallow);
+        validate(launch);
+
+        ThreadHandle handle   = NativeThread::createThread(std::move(launch), attr);
+        bool         detachOk = NativeThread::detachThread(handle);
+        TEST("detachThread: returns true", detachOk);
+
+        // Signal the thread to exit — it runs independently after detach.
+        exitGate.m_ParkingPermit.store(1u, MemoryOrder::RELEASE);
+        NativeThread::wakeOnAddress(exitGate);
+    }
+
+    // ── park / wakeAllOnAddress ───────────────────────────────────────────────
+
+    section("NativeThread: park / wakeAllOnAddress");
+
+    {
+        constexpr uint32_t THREAD_COUNT = 4u;
+
+        ParkHandle              gate{ 0u };
+        AtomicValue32<uint32_t> parkedCount{ 0u };
+        AtomicValue32<uint32_t> wokenCount{ 0u };
+
+		ThreadHandle handles[THREAD_COUNT] = {};
+
+        for (uint32_t i = 0u; i < THREAD_COUNT; ++i) {
+            ThreadAttrDesc attr = makeAttr();
+
+            ThreadLaunchDesc launch{};
+            init(launch);
+            attachLaunchAddr(launch, Corium::Core::Utils::buildClosure<void()>([&gate, &parkedCount, &wokenCount] {
+                parkedCount.increment(1u, MemoryOrder::RELEASE);
+                NativeThread::waitOnAddress(gate);
+                wokenCount.increment(1u, MemoryOrder::RELEASE);
+            }, 0));
+            setVaSize(launch, 1024 * 1024);
+            setName(launch, "park-test");
+            isPreSuspended(launch, disallow);
+            validate(launch);
+
+            handles[i] = NativeThread::createThread(std::move(launch), attr);
+        }
+
+        // Spin until all threads have incremented parkedCount.
+        while (parkedCount.load(MemoryOrder::ACQUIRE) < THREAD_COUNT) {}
+
+        gate.m_ParkingPermit.store(1u, MemoryOrder::RELEASE);
+        NativeThread::wakeAllOnAddress(gate);
+
+        for (uint32_t i = 0u; i < THREAD_COUNT; ++i)
+            NativeThread::joinThread(handles[i]);
+
+        TEST("wakeAllOnAddress: all threads unparked", wokenCount.load(MemoryOrder::ACQUIRE) == THREAD_COUNT);
+
+        for (uint32_t i = 0u; i < THREAD_COUNT; ++i)
+            NativeThread::closeHandle(handles[i]);
+    }
+}
+
+// =========================================================
 // Entry Point
 // =========================================================
 
@@ -1382,6 +1853,17 @@ int main() {
 	printf("Results: %d passed, %d failed\n", g_Passed, g_Failed);
 
 	Corium::CoriumRuntime::initRuntime();
+
+	testSmartPointers();
+
+	printf("\n==========================================\n");
+	printf("Smart Pointer Results: %d passed, %d failed\n", g_Passed, g_Failed);
+
+	testNativeThreads();
+
+	printf("\n==========================================\n");
+	printf("NativeThread Results: %d passed, %d failed\n", g_Passed, g_Failed);
+
 	int a = 3;
 	int b = 300;
 	auto closure = Corium::Core::Utils::buildClosure<void(int)>([b](int x) {

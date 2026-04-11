@@ -131,9 +131,9 @@ namespace Spectra::Cuda::Optix {
 				break;
 			case OptixProgramGroupKind::CALLABLES:
 				nativeDescs[i].kind = OPTIX_PROGRAM_GROUP_KIND_CALLABLES;
-				nativeDescs[i].callables.moduleDC = static_cast<::OptixModule>(p_Descs[i].m_ModuleCallables.m_Handle);
+				nativeDescs[i].callables.moduleDC = static_cast<::OptixModule>(p_Descs[i].m_ModuleCallablesDC.m_Handle);
 				nativeDescs[i].callables.entryFunctionNameDC = p_Descs[i].m_EntryFunctionNameDC;
-				nativeDescs[i].callables.moduleCC = static_cast<::OptixModule>(p_Descs[i].m_ModuleCallables.m_Handle);
+				nativeDescs[i].callables.moduleCC = static_cast<::OptixModule>(p_Descs[i].m_ModuleCallablesCC.m_Handle);
 				nativeDescs[i].callables.entryFunctionNameCC = p_Descs[i].m_EntryFunctionNameCC;
 				break;
 			}

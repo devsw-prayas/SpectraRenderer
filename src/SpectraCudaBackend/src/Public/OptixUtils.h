@@ -218,7 +218,7 @@ namespace Spectra::Cuda::Utils {
 	SPEC_CUDA_BK_STATIC_ASSERT(std::is_trivially_copyable_v<OptixBoundValueEntry>,
 							   "OptixBoundValueEntry must be trivially copyable");
 
-	struct SPEC_CUDA_BK_RUNTIME_API SPEC_CUDA_BK_ALIGNAS(4) OptixModuleCompileOptions final {
+	struct SPEC_CUDA_BK_RUNTIME_API SPEC_CUDA_BK_ALIGNAS(8) OptixModuleCompileOptions final {
 		int32_t                       m_MaxRegisterCount = 0;
 		OptixCompileOptiLevel m_OptLevel         = OptixCompileOptiLevel::DEFAULT;
 		OptixCompileDebugLvl        m_DebugLevel       = OptixCompileDebugLvl::DEFAULT;
@@ -279,7 +279,8 @@ namespace Spectra::Cuda::Utils {
 		GpuOptixModule m_ModuleException;
 		const char*    m_EntryFunctionNameException = nullptr;
 
-		GpuOptixModule m_ModuleCallables;
+		GpuOptixModule m_ModuleCallablesDC;
+		GpuOptixModule m_ModuleCallablesCC;
 		const char*    m_EntryFunctionNameDC        = nullptr;
 		const char*    m_EntryFunctionNameCC        = nullptr;
 

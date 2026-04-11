@@ -16,6 +16,8 @@ namespace Spectra::Vulkan {
 		static void selectPhysicalDevice();
 		static InstanceHandle getVulkanInstance();
 		static void createLogicalDevice();
+		static void createAllocator();
+		static void createCommandPools();
 		static void shutdownVulkan(InstanceHandle p_Handle);
 	};
 }
