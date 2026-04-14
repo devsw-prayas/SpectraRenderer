@@ -84,6 +84,7 @@ add_subdirectory(common/StormSTL)
 add_subdirectory(common/Kerbecs)
 add_subdirectory(common/Leibniz)
 add_subdirectory(common/Hades-Benchmark)
+add_subdirectory(src/SpectraValidationKit)
 
 add_compile_definitions(
     # Kerbecs only

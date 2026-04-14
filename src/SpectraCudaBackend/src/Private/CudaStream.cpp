@@ -19,7 +19,7 @@ namespace Spectra::Cuda::Streams {
 			return ro_Stream;
 		}
 
-		CUDA_ERROR_TRAP(result)
+		CUDA_ERROR_TRAP(result);
 		return GpuStream{};
 	}
 
@@ -34,7 +34,7 @@ namespace Spectra::Cuda::Streams {
 			return ro_Stream;
 		}
 
-		CUDA_ERROR_TRAP(result)
+		CUDA_ERROR_TRAP(result);
 		return GpuStream{};
 	}
 
@@ -47,7 +47,7 @@ namespace Spectra::Cuda::Streams {
 			return;
 		}
 
-		CUDA_ERROR_TRAP(result)
+		CUDA_ERROR_TRAP(result);
 	}
 
 	void DeviceStreams::syncStream(const GpuStream& ro_Stream) {
@@ -56,7 +56,7 @@ namespace Spectra::Cuda::Streams {
 		const CUresult result = cuStreamSynchronize(static_cast<CUstream>(ro_Stream.m_StreamHandle));
 		if (result == CUDA_SUCCESS) return;
 
-		CUDA_ERROR_TRAP(result)
+		CUDA_ERROR_TRAP(result);
 	}
 
 	bool DeviceStreams::queryStream(const GpuStream& ro_Stream) {
@@ -66,7 +66,7 @@ namespace Spectra::Cuda::Streams {
 		if (result == CUDA_SUCCESS) return true;
 		if (result == CUDA_ERROR_NOT_READY) return false;
 
-		CUDA_ERROR_TRAP(result)
+		CUDA_ERROR_TRAP(result);
 		return false;
 	}
 
@@ -82,7 +82,7 @@ namespace Spectra::Cuda::Streams {
 
 		if (result == CUDA_SUCCESS) return;
 
-		CUDA_ERROR_TRAP(result)
+		CUDA_ERROR_TRAP(result);
 	}
 
 	void DeviceStreams::addStreamCallback(GpuStream& ro_Stream, void* p_Callback, void* p_UserData) {
@@ -98,7 +98,7 @@ namespace Spectra::Cuda::Streams {
 
 		if (result == CUDA_SUCCESS) return;
 
-		CUDA_ERROR_TRAP(result)
+		CUDA_ERROR_TRAP(result);
 	}
 
 	void DeviceStreams::beginStreamCapture(GpuStream& ro_Stream, StreamCaptureMode v_Mode) {
@@ -109,7 +109,7 @@ namespace Spectra::Cuda::Streams {
 
 		if (result == CUDA_SUCCESS) return;
 
-		CUDA_ERROR_TRAP(result)
+		CUDA_ERROR_TRAP(result);
 	}
 
 	GpuGraph DeviceStreams::endStreamCapture(GpuStream& ro_Stream) {
@@ -124,7 +124,7 @@ namespace Spectra::Cuda::Streams {
 			return ro_Graph;
 		}
 
-		CUDA_ERROR_TRAP(result)
+		CUDA_ERROR_TRAP(result);
 		return GpuGraph{};
 	}
 }

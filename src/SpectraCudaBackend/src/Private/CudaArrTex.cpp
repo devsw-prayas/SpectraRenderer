@@ -19,7 +19,7 @@ namespace Spectra::Cuda::Arrays {
 		CUDA_RESOURCE_VIEW_DESC descC = Internal::CUDA_PackingFunctions::packResourceViewDesc(ro_ResViewDesc);
 		CUresult result = cuTexObjectCreate(&obj.m_TextureObject, &descA, &descB, &descC);
 		if (result == CUDA_SUCCESS) return obj;
-		CUDA_ERROR_TRAP(result)
+		CUDA_ERROR_TRAP(result);
 			SPEC_CUDA_BK_UNREACHABLE();
 	}
 
@@ -29,7 +29,7 @@ namespace Spectra::Cuda::Arrays {
 			ro_TextureObject.m_TextureObject = 0;
 			return;
 		}
-		CUDA_ERROR_TRAP(result)
+		CUDA_ERROR_TRAP(result);
 	}
 
 	CudaArray Arrays::createArray(const Array3dDesc& ro_Desc) {
@@ -38,7 +38,7 @@ namespace Spectra::Cuda::Arrays {
 		CUDA_ARRAY3D_DESCRIPTOR dsec = Internal::CUDA_PackingFunctions::packArray3dDesc(ro_Desc);
 		CUresult result = cuArray3DCreate_v2(reinterpret_cast<CUarray*>(&arr.m_Array), &dsec);
 		if (result == CUDA_SUCCESS) return arr;
-		CUDA_ERROR_TRAP(result)
+		CUDA_ERROR_TRAP(result);
 			SPEC_CUDA_BK_UNREACHABLE();
 	}
 
@@ -49,7 +49,7 @@ namespace Spectra::Cuda::Arrays {
 			ro_Array.m_Array = nullptr;
 			return;
 		}
-		CUDA_ERROR_TRAP(result)
+		CUDA_ERROR_TRAP(result);
 	}
 
 	SurfObject Surfaces::createSurfaceObject(const ResourceDesc& ro_Desc) {
@@ -58,7 +58,7 @@ namespace Spectra::Cuda::Arrays {
 		CUDA_RESOURCE_DESC desc = Internal::CUDA_PackingFunctions::packResourceDesc(ro_Desc);
 		const CUresult result = cuSurfObjectCreate(&obj.m_SurfaceObject, &desc);
 		if (result == CUDA_SUCCESS) return obj;
-		CUDA_ERROR_TRAP(result)
+		CUDA_ERROR_TRAP(result);
 		SPEC_CUDA_BK_UNREACHABLE();
 	}
 
@@ -69,6 +69,6 @@ namespace Spectra::Cuda::Arrays {
 			ro_SurfaceObject.m_SurfaceObject = 0;
 			return;
 		}
-		CUDA_ERROR_TRAP(result)
+		CUDA_ERROR_TRAP(result);
 	}
 }

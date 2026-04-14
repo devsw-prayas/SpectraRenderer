@@ -11,7 +11,7 @@ namespace Spectra::Cuda::Modules {
 
 		CUlinkState linkState = nullptr;
 		CUresult res = cuLinkCreate(packer.getCount(), packer.getOptions(), packer.getValues(), &linkState);
-		CUDA_ERROR_TRAP(res)
+		CUDA_ERROR_TRAP(res);
 
 		GpuLinkState state;
 		state.m_LinkStateHandle = static_cast<void*>(linkState);
@@ -24,7 +24,7 @@ namespace Spectra::Cuda::Modules {
 
 		CUjitInputType type = Internal::CUDA_InternalHelpers::toCudaJitInputType(v_Type);
 		CUresult res = cuLinkAddData(static_cast<CUlinkState>(ro_State.m_LinkStateHandle), type, p_Data, v_Size, p_Name, 0, nullptr, nullptr);
-		CUDA_ERROR_TRAP(res)
+		CUDA_ERROR_TRAP(res);
 	}
 
 	GpuModule DeviceLinker::completeAndLoad(GpuLinkState& ro_State) {
@@ -34,7 +34,7 @@ namespace Spectra::Cuda::Modules {
 		size_t sizeOut = 0;
 
 		CUresult res = cuLinkComplete(static_cast<CUlinkState>(ro_State.m_LinkStateHandle), &cubinOut, &sizeOut);
-		CUDA_ERROR_TRAP(res)
+		CUDA_ERROR_TRAP(res);
 
 		return DeviceModules::loadModuleData(cubinOut);
 	}
@@ -42,7 +42,7 @@ namespace Spectra::Cuda::Modules {
 	void DeviceLinker::destroyLinkState(GpuLinkState& ro_State) {
 		if (ro_State.isValid()) {
 			CUresult res = cuLinkDestroy(static_cast<CUlinkState>(ro_State.m_LinkStateHandle));
-			CUDA_ERROR_TRAP(res)
+			CUDA_ERROR_TRAP(res);
 			ro_State.m_LinkStateHandle = nullptr;
 		}
 	}

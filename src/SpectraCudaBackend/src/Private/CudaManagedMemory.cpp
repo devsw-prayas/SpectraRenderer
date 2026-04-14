@@ -18,7 +18,7 @@ namespace Spectra::Cuda::Memory {
 			addr.m_GpuAddr = ptr;
 			return addr;
 		}
-		CUDA_ERROR_TRAP(result)
+		CUDA_ERROR_TRAP(result);
 			return addr;
 	}
 
@@ -39,7 +39,7 @@ namespace Spectra::Cuda::Memory {
 			ro_Addr.m_GpuAddr, v_Count,
 			Internal::CUDA_InternalHelpers::toMemAdviseEnum(v_Advise), cudaDev);
 		if (result == CUDA_SUCCESS) return;
-		CUDA_ERROR_TRAP(result)
+		CUDA_ERROR_TRAP(result);
 	}
 
 	void ManagedMemory::prefetchAsync(
@@ -59,6 +59,6 @@ namespace Spectra::Cuda::Memory {
 			ro_Addr.m_GpuAddr, v_Count,
 			cudaDev, static_cast<CUstream>(ro_Stream.m_StreamHandle));
 		if (result == CUDA_SUCCESS) return;
-		CUDA_ERROR_TRAP(result)
+		CUDA_ERROR_TRAP(result);
 	}
 }

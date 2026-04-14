@@ -18,7 +18,7 @@ namespace Spectra::Cuda::Graphs {
 			return ro_Graph;
 		}
 
-		CUDA_ERROR_TRAP(result)
+		CUDA_ERROR_TRAP(result);
 		return GpuGraph{};
 	}
 
@@ -31,7 +31,7 @@ namespace Spectra::Cuda::Graphs {
 			return;
 		}
 
-		CUDA_ERROR_TRAP(result)
+		CUDA_ERROR_TRAP(result);
 	}
 
 	GpuGraphNode DeviceGraphs::addKernelNode(GpuGraph& ro_Graph, const GpuGraphNode* p_Deps, uint32_t v_DepCount, const KernelNodeParams& ro_Params) {
@@ -59,7 +59,7 @@ namespace Spectra::Cuda::Graphs {
 			return ro_Node;
 		}
 
-		CUDA_ERROR_TRAP(result)
+		CUDA_ERROR_TRAP(result);
 		return GpuGraphNode{};
 	}
 
@@ -92,7 +92,7 @@ namespace Spectra::Cuda::Graphs {
 			return ro_Node;
 		}
 
-		CUDA_ERROR_TRAP(result)
+		CUDA_ERROR_TRAP(result);
 		return GpuGraphNode{};
 	}
 
@@ -125,7 +125,7 @@ namespace Spectra::Cuda::Graphs {
 			return ro_Node;
 		}
 
-		CUDA_ERROR_TRAP(result)
+		CUDA_ERROR_TRAP(result);
 		return GpuGraphNode{};
 	}
 
@@ -151,7 +151,7 @@ namespace Spectra::Cuda::Graphs {
 
 		if (result == CUDA_SUCCESS) return;
 
-		CUDA_ERROR_TRAP(result)
+		CUDA_ERROR_TRAP(result);
 	}
 
 	GpuGraphExec DeviceGraphs::instantiate(const GpuGraph& ro_Graph) {
@@ -166,7 +166,7 @@ namespace Spectra::Cuda::Graphs {
 			return ro_Exec;
 		}
 
-		CUDA_ERROR_TRAP(result)
+		CUDA_ERROR_TRAP(result);
 		return GpuGraphExec{};
 	}
 
@@ -181,7 +181,7 @@ namespace Spectra::Cuda::Graphs {
 
 		if (result == CUDA_SUCCESS) return;
 
-		CUDA_ERROR_TRAP(result)
+		CUDA_ERROR_TRAP(result);
 	}
 
 	bool DeviceGraphs::execUpdate(GpuGraphExec& ro_Exec, const GpuGraph& ro_NewGraph) {
@@ -208,6 +208,6 @@ namespace Spectra::Cuda::Graphs {
 			return;
 		}
 
-		CUDA_ERROR_TRAP(result)
+		CUDA_ERROR_TRAP(result);
 	}
 }

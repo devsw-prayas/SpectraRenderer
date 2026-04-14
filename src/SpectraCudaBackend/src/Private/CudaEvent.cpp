@@ -18,7 +18,7 @@ namespace Spectra::Cuda::Events {
 			return ro_Event;
 		}
 
-		CUDA_ERROR_TRAP(result)
+		CUDA_ERROR_TRAP(result);
 			return GpuEvent{};
 	}
 
@@ -31,7 +31,7 @@ namespace Spectra::Cuda::Events {
 			return;
 		}
 
-		CUDA_ERROR_TRAP(result)
+		CUDA_ERROR_TRAP(result);
 	}
 
 	void DeviceEvents::recordEvent(const GpuEvent& ro_Event, const GpuStream& ro_Stream) {
@@ -45,7 +45,7 @@ namespace Spectra::Cuda::Events {
 
 		if (result == CUDA_SUCCESS) return;
 
-		CUDA_ERROR_TRAP(result)
+		CUDA_ERROR_TRAP(result);
 	}
 
 	void DeviceEvents::syncEvent(const GpuEvent& ro_Event) {
@@ -54,7 +54,7 @@ namespace Spectra::Cuda::Events {
 		const CUresult result = cuEventSynchronize(static_cast<CUevent>(ro_Event.m_EventHandle));
 		if (result == CUDA_SUCCESS) return;
 
-		CUDA_ERROR_TRAP(result)
+		CUDA_ERROR_TRAP(result);
 	}
 
 	bool DeviceEvents::queryEvent(const GpuEvent& ro_Event) {
@@ -64,7 +64,7 @@ namespace Spectra::Cuda::Events {
 		if (result == CUDA_SUCCESS) return true;
 		if (result == CUDA_ERROR_NOT_READY) return false;
 
-		CUDA_ERROR_TRAP(result)
+		CUDA_ERROR_TRAP(result);
 			return false;
 	}
 
@@ -80,7 +80,7 @@ namespace Spectra::Cuda::Events {
 
 		if (result == CUDA_SUCCESS) return ms;
 
-		CUDA_ERROR_TRAP(result)
+		CUDA_ERROR_TRAP(result);
 			return 0.0f;
 	}
 
@@ -96,7 +96,7 @@ namespace Spectra::Cuda::Events {
 			return ro_Handle;
 		}
 
-		CUDA_ERROR_TRAP(result)
+		CUDA_ERROR_TRAP(result);
 			return GpuIpcEventHandle{};
 	}
 
@@ -113,7 +113,7 @@ namespace Spectra::Cuda::Events {
 			return ro_Event;
 		}
 
-		CUDA_ERROR_TRAP(result)
+		CUDA_ERROR_TRAP(result);
 			return GpuEvent{};
 	}
 }

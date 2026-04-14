@@ -10,7 +10,7 @@ namespace Spectra::Cuda::Modules {
 
 		CUmodule moduleHandle = nullptr;
 		CUresult res = cuModuleLoad(&moduleHandle, p_Path);
-		CUDA_ERROR_TRAP(res)
+		CUDA_ERROR_TRAP(res);
 
 		GpuModule gpuModule;
 		gpuModule.m_ModuleHandle = static_cast<void*>(moduleHandle);
@@ -22,7 +22,7 @@ namespace Spectra::Cuda::Modules {
 
 		CUmodule moduleHandle = nullptr;
 		CUresult res = cuModuleLoadData(&moduleHandle, p_Image);
-		CUDA_ERROR_TRAP(res)
+		CUDA_ERROR_TRAP(res);
 
 		GpuModule gpuModule;
 		gpuModule.m_ModuleHandle = static_cast<void*>(moduleHandle);
@@ -36,7 +36,7 @@ namespace Spectra::Cuda::Modules {
 
 		CUmodule moduleHandle = nullptr;
 		CUresult res = cuModuleLoadDataEx(&moduleHandle, p_Image, packer.getCount(), packer.getOptions(), packer.getValues());
-		CUDA_ERROR_TRAP(res)
+		CUDA_ERROR_TRAP(res);
 
 		GpuModule gpuModule;
 		gpuModule.m_ModuleHandle = static_cast<void*>(moduleHandle);
@@ -49,7 +49,7 @@ namespace Spectra::Cuda::Modules {
 
 		CUfunction functionHandle = nullptr;
 		CUresult res = cuModuleGetFunction(&functionHandle, static_cast<CUmodule>(ro_Module.m_ModuleHandle), p_Name);
-		CUDA_ERROR_TRAP(res)
+		CUDA_ERROR_TRAP(res);
 
 		GpuFunction gpuFunction;
 		gpuFunction.m_FunctionHandle = static_cast<void*>(functionHandle);
@@ -64,7 +64,7 @@ namespace Spectra::Cuda::Modules {
 		size_t size = 0;
 
 		CUresult res = cuModuleGetGlobal(&ptr, &size, static_cast<CUmodule>(ro_Module.m_ModuleHandle), p_Name);
-		CUDA_ERROR_TRAP(res)
+		CUDA_ERROR_TRAP(res);
 
 		GlobalMemorySegment segment;
 		segment.m_Address   = GpuAddress(ptr);
@@ -76,7 +76,7 @@ namespace Spectra::Cuda::Modules {
 	void DeviceModules::unloadModule(GpuModule& ro_Module) {
 		if (ro_Module.isValid()) {
 			CUresult res = cuModuleUnload(static_cast<CUmodule>(ro_Module.m_ModuleHandle));
-			CUDA_ERROR_TRAP(res)
+			CUDA_ERROR_TRAP(res);
 			ro_Module.m_ModuleHandle = nullptr;
 		}
 	}

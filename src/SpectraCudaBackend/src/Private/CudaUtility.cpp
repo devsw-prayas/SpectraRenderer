@@ -14,6 +14,6 @@ namespace Spectra::Cuda::Utility {
 		CUDA_MEMCPY3D desc = Internal::CUDA_PackingFunctions::pack3dMemcpyDesc(ro_MemcpyDesc);
 		const CUresult result = cuMemcpy3DAsync(&desc, static_cast<CUstream>(ro_Stream.m_StreamHandle));
 		if (result == CUDA_SUCCESS) return;
-		CUDA_ERROR_TRAP(result)
+		CUDA_ERROR_TRAP(result);
 	}
 }
