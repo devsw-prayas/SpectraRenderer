@@ -14,26 +14,20 @@ add_library(SpectraProfiler SHARED
     ${SpectraProfiler_SOURCE}
     ${SpectraProfiler_INL}
 )
-target_compile_definitions(SpectraProfiler PRIVATE SpectraProfiler_EXPORTS)
 
-target_include_directories(SpectraProfiler PRIVATE
+target_compile_definitions(SpectraProfiler PRIVATE
+    SPECTRA_PROFILER_SHARED
+    SPECTRA_BUILDING_RUNTIME
+    SpectraProfiler_EXPORTS
+)
+
+target_include_directories(SpectraProfiler PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/src/Public
 )
 
-target_precompile_headers(SpectraProfiler PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src/Public/Core.h)
+target_precompile_headers(SpectraProfiler PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src/Public/SpectraProfiler.h)
 
-if (MSVC)
-    target_compile_options(SpectraProfiler PRIVATE
-        /W4
-        /permissive-
-        /Zc:__cplusplus
-        /arch:AVX2
-    )
-else()
-    target_compile_options(SpectraProfiler PRIVATE
-        -Wall
-        -Wextra
-        -Wpedantic
-        -mavx2
-    )
-endif()
+target_compile_options(SpectraProfiler PRIVATE
+    $<$<AND:$<COMPILE_LANGUAGE:CXX>,$<CXX_COMPILER_ID:MSVC>>:/arch:AVX2 /W4 /permissive->
+    $<$<AND:$<COMPILE_LANGUAGE:CXX>,$<NOT:$<CXX_COMPILER_ID:MSVC>>>:-mavx2 -Wall -Wextra -Wpedantic>
+)

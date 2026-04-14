@@ -2,7 +2,7 @@
 setlocal EnableDelayedExpansion
 
 echo ===================================
-echo  CMake Project Generator
+echo  Spectra Project Generator (Ver 2.0)
 echo ===================================
 echo.
 
@@ -95,8 +95,9 @@ echo [OK] .gitignore written.
 
 echo.
 echo Done! Project ready at: !ROOT!
-echo Build with:
-echo   cd "!ROOT!\build"
+echo Build with (from Spectra Root):
+echo   mkdir build
+echo   cd build
 echo   cmake ..
 echo   cmake --build . --config Release
 echo.
@@ -171,7 +172,6 @@ exit /b 0
     echo #include ^<memory^>
 ) > "src\Public\!PROJECT_NAME!.h" || exit /b 1
 (
-    echo #pragma once
     echo #include "!PROJECT_NAME!.h"
     echo.
     echo class !PROJECT_NAME! {
@@ -196,8 +196,6 @@ exit /b 0
     echo set^(CMAKE_CXX_STANDARD !CXX_STD_VAL!^)
     echo set^(CMAKE_CXX_STANDARD_REQUIRED ON^)
     echo set^(CMAKE_CXX_EXTENSIONS OFF^)
-    echo set^(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin/$^<CONFIG^>^)
-    echo link_directories^(${CMAKE_SOURCE_DIR}/bin/$^<CONFIG^>^)
     echo.
     echo file^(GLOB_RECURSE !PROJECT_NAME!_HEADERS  CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/src/Public/*.h"^)
     echo file^(GLOB_RECURSE !PROJECT_NAME!_SOURCE   CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/src/Private/*.cpp"^)
@@ -224,27 +222,16 @@ exit /b 0
         echo ^)
     )
     echo.
-    echo target_include_directories^(!PROJECT_NAME! PRIVATE
+    echo target_include_directories^(!PROJECT_NAME! PUBLIC
     echo     ${CMAKE_CURRENT_SOURCE_DIR}/src/Public
     echo ^)
     echo.
     echo target_precompile_headers^(!PROJECT_NAME! PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src/Public/!PROJECT_NAME!.h^)
     echo.
-    echo if ^(MSVC^)
-    echo     target_compile_options^(!PROJECT_NAME! PRIVATE
-    echo         /W4
-    echo         /permissive-
-    echo         /Zc:__cplusplus
-    echo         /arch:AVX2
-    echo     ^)
-    echo else^(^)
-    echo     target_compile_options^(!PROJECT_NAME! PRIVATE
-    echo         -Wall
-    echo         -Wextra
-    echo         -Wpedantic
-    echo         -mavx2
-    echo     ^)
-    echo endif^(^)
+    echo target_compile_options^(!PROJECT_NAME! PRIVATE
+    echo     $^\<^\<AND:$^\<COMPILE_LANGUAGE:CXX^>,$^\<CXX_COMPILER_ID:MSVC^^\>^\>:/arch:AVX2/W4/permissive-^>
+    echo     $^\<^\<AND:$^\<COMPILE_LANGUAGE:CXX^>,$^\<NOT:$^\<CXX_COMPILER_ID:MSVC^^\>^\>^\>:-mavx2 -Wall -Wextra^>
+    echo ^)
 ) > CMakeLists.txt || exit /b 1
 exit /b 0
 

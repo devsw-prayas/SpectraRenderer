@@ -14,26 +14,19 @@ add_library(SpectraFileSystem SHARED
     ${SpectraFileSystem_SOURCE}
     ${SpectraFileSystem_INL}
 )
-target_compile_definitions(SpectraFileSystem PRIVATE SpectraFileSystem_EXPORTS)
 
-target_include_directories(SpectraFileSystem PRIVATE
+target_compile_definitions(SpectraFileSystem PRIVATE 
+    SPECTRA_FILESYSTEM_SHARED
+    SPECTRA_FILESYSTEM_EXPORTS
+)
+
+target_include_directories(SpectraFileSystem PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/src/Public
 )
 
 target_precompile_headers(SpectraFileSystem PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src/Public/SpectraFileSystem.h)
 
-if (MSVC)
-    target_compile_options(SpectraFileSystem PRIVATE
-        /W4
-        /permissive-
-        /Zc:__cplusplus
-        /arch:AVX2
-    )
-else()
-    target_compile_options(SpectraFileSystem PRIVATE
-        -Wall
-        -Wextra
-        -Wpedantic
-        -mavx2
-    )
-endif()
+target_compile_options(SpectraFileSystem PRIVATE
+    $<$<AND:$<COMPILE_LANGUAGE:CXX>,$<CXX_COMPILER_ID:MSVC>>:/arch:AVX2 /W4 /permissive->
+    $<$<AND:$<COMPILE_LANGUAGE:CXX>,$<NOT:$<CXX_COMPILER_ID:MSVC>>>:-mavx2 -Wall -Wextra -Wpedantic>
+)

@@ -1,22 +1,20 @@
 cmake_minimum_required(VERSION 3.20)
-project(SpectraCudaBackend LANGUAGES CXX)
+project(SpectraCudaBackend LANGUAGES CXX CUDA)
 
 option(SPECTRA_ENABLE_CUDA "Enable CUDA GPU backend" ON)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin/$<CONFIG>)
-link_directories(${CMAKE_SOURCE_DIR}/bin/$<CONFIG>)
 
 file(GLOB_RECURSE SpectraCudaBackend_HEADERS          CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/src/Public/*.h")
-file(GLOB_RECURSE SpectraCudaBackend_SOURCE            CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/src/Private/*.cpp")
+file(GLOB_RECURSE SpectraCudaBackend_SOURCES          CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/src/Private/*.cpp")
 file(GLOB_RECURSE SpectraCudaBackend_INL               CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/src/Public/*.inl")
 file(GLOB_RECURSE SpectraCudaBackend_INTERNAL_HEADERS  CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/src/Internal/*.h")
 
 add_library(SpectraCudaBackend SHARED
     ${SpectraCudaBackend_HEADERS}
-    ${SpectraCudaBackend_SOURCE}
+    ${SpectraCudaBackend_SOURCES}
     ${SpectraCudaBackend_INL}
     ${SpectraCudaBackend_INTERNAL_HEADERS}
 )
@@ -32,25 +30,12 @@ target_compile_definitions(SpectraCudaBackend PRIVATE
     SPEC_CUDA_BK_SHARED
 )
 
-target_precompile_headers(SpectraCudaBackend PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/Public/SpectraCudaBackend.h
-)
+target_precompile_headers(SpectraCudaBackend PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src/Public/SpectraCudaBackend.h)
 
-if (MSVC)
-    target_compile_options(SpectraCudaBackend PRIVATE
-        /W4
-        /permissive-
-        /Zc:__cplusplus
-        /arch:AVX2
-    )
-else()
-    target_compile_options(SpectraCudaBackend PRIVATE
-        -Wall
-        -Wextra
-        -Wpedantic
-        -mavx2
-    )
-endif()
+target_compile_options(SpectraCudaBackend PRIVATE
+    $<$<AND:$<COMPILE_LANGUAGE:CXX>,$<CXX_COMPILER_ID:MSVC>>:/arch:AVX2 /W4 /permissive->
+    $<$<AND:$<COMPILE_LANGUAGE:CXX>,$<NOT:$<CXX_COMPILER_ID:MSVC>>>:-mavx2 -Wall -Wextra -Wpedantic>
+)
 
 if (SPECTRA_ENABLE_CUDA)
     find_package(CUDAToolkit REQUIRED)
@@ -76,12 +61,19 @@ if (SPECTRA_ENABLE_CUDA)
         "C:/ProgramData/NVIDIA Corporation/OptiX SDK 9.1.0/include"
     )
     
-if (OPTIX_INCLUDE_DIR)
-    target_include_directories(SpectraCudaBackend PRIVATE ${OPTIX_INCLUDE_DIR})
-    target_compile_definitions(SpectraCudaBackend PRIVATE
-        SPECTRA_OPTIX_AVAILABLE
-    )
-else()
-    message(FATAL_ERROR "OptiX headers not found")
+    if (OPTIX_INCLUDE_DIR)
+        target_include_directories(SpectraCudaBackend PRIVATE ${OPTIX_INCLUDE_DIR})
+        target_compile_definitions(SpectraCudaBackend PRIVATE
+            SPECTRA_OPTIX_AVAILABLE
+        )
+    else()
+        message(FATAL_ERROR "OptiX headers not found")
+    endif()
 endif()
-endif()
+
+# Ensure CUDA targets are optimized and matched to Host architecture
+set_target_properties(SpectraCudaBackend PROPERTIES 
+    CUDA_SEPARABLE_COMPILATION ON
+    CUDA_STANDARD 17
+    CUDA_STANDARD_REQUIRED ON
+)
