@@ -3,12 +3,15 @@
 #include "CudaUtils.h"
 
 #define CUDA_ERROR_TRAP(result)	 \
-	do{												 \
-		const char* errorStr = nullptr;				   \
-		cuGetErrorString(result, &errorStr);		   \
-		SPEC_CUDA_BK_ASSERT(false && errorStr);		   \
-		SPEC_CUDA_BK_TRAP();						   \
-	}while(0); 										   \
+	do {												 \
+		CUresult res = (result);                        \
+		if (res != CUDA_SUCCESS) {                      \
+			const char* errorStr = nullptr;				\
+			cuGetErrorString(res, &errorStr);		    \
+			SPEC_CUDA_BK_ASSERT(false && errorStr);		\
+			SPEC_CUDA_BK_TRAP();						\
+		}                                               \
+	} while(0)
 
 #ifdef ALLOW_HELPERS
 #include <cuda.h>
