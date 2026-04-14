@@ -112,7 +112,6 @@ add_subdirectory(src/SpectraMaterials)
 add_subdirectory(src/SpectraRenderEngine)
 add_subdirectory(src/SpectraRenderPipeline)
 add_subdirectory(src/SpectraPlatformRuntime)
-add_subdirectory(src/SpectraUI)
 add_subdirectory(src/SpectraMemory)
 add_subdirectory(src/SpectraFileSystem)
 add_subdirectory(src/SpectraProfiler)
@@ -141,7 +140,6 @@ endforeach()
 
 set_target_properties(SpectraEditor          PROPERTIES FOLDER "Editor")
 set_target_properties(SpectraLauncher        PROPERTIES FOLDER "Launcher")
-set_target_properties(SpectraUI              PROPERTIES FOLDER "UI")
 set_target_properties(SpectraPlatformRuntime PROPERTIES FOLDER "Runtime")
 
 # ---------------------------------------------------------------

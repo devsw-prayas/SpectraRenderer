@@ -126,9 +126,9 @@ if /i "!LOOP_CHOICE!"=="y" (
     echo #include ^<string^>
     echo #include ^<vector^>
     echo #include ^<memory^>
-) > "src\Public\Core.h" || exit /b 1
+) > "src\Public\!PROJECT_NAME!.h" || exit /b 1
 (
-    echo #include "Core.h"
+    echo #include "!PROJECT_NAME!.h"
     echo.
     echo int main^(^) {
     echo     std::cout ^<^< "Hello from !PROJECT_NAME!^^n";
@@ -150,10 +150,6 @@ exit /b 0
     echo #else
     echo #  define !PROJECT_NAME!_API __declspec^(dllimport^)
     echo #endif
-) > "src\Public\Core.h" || exit /b 1
-(
-    echo #pragma once
-    echo #include "Core.h"
     echo.
     echo !PROJECT_NAME!_API void Init^(^);
 ) > "src\Public\!PROJECT_NAME!.h" || exit /b 1
@@ -173,10 +169,10 @@ exit /b 0
     echo #include ^<string^>
     echo #include ^<vector^>
     echo #include ^<memory^>
-) > "src\Public\Core.h" || exit /b 1
+) > "src\Public\!PROJECT_NAME!.h" || exit /b 1
 (
     echo #pragma once
-    echo #include "Core.h"
+    echo #include "!PROJECT_NAME!.h"
     echo.
     echo class !PROJECT_NAME! {
     echo public:
@@ -203,9 +199,9 @@ exit /b 0
     echo set^(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin/$^<CONFIG^>^)
     echo link_directories^(${CMAKE_SOURCE_DIR}/bin/$^<CONFIG^>^)
     echo.
-    echo file^(GLOB_RECURSE !PROJECT_NAME!_HEADERS  CONFIGURE_DEPENDS "${CMAKE_SOURCE_DIR}/src/Public/*.h"^)
-    echo file^(GLOB_RECURSE !PROJECT_NAME!_SOURCE   CONFIGURE_DEPENDS "${CMAKE_SOURCE_DIR}/src/Private/*.cpp"^)
-    echo file^(GLOB_RECURSE !PROJECT_NAME!_INL      CONFIGURE_DEPENDS "${CMAKE_SOURCE_DIR}/src/Public/*.inl"^)
+    echo file^(GLOB_RECURSE !PROJECT_NAME!_HEADERS  CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/src/Public/*.h"^)
+    echo file^(GLOB_RECURSE !PROJECT_NAME!_SOURCE   CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/src/Private/*.cpp"^)
+    echo file^(GLOB_RECURSE !PROJECT_NAME!_INL      CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/src/Public/*.inl"^)
     echo.
     if "!BUILD_TYPE!"=="1" (
         echo add_executable^(!PROJECT_NAME!
@@ -229,10 +225,10 @@ exit /b 0
     )
     echo.
     echo target_include_directories^(!PROJECT_NAME! PRIVATE
-    echo     ${CMAKE_SOURCE_DIR}/src/Public
+    echo     ${CMAKE_CURRENT_SOURCE_DIR}/src/Public
     echo ^)
     echo.
-    echo target_precompile_headers^(!PROJECT_NAME! PRIVATE ${CMAKE_SOURCE_DIR}/src/Public/Core.h^)
+    echo target_precompile_headers^(!PROJECT_NAME! PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src/Public/!PROJECT_NAME!.h^)
     echo.
     echo if ^(MSVC^)
     echo     target_compile_options^(!PROJECT_NAME! PRIVATE
