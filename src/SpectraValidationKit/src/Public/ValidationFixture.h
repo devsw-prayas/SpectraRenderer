@@ -2,7 +2,7 @@
 
 #include "Validator.h"
 #include "BufferComparator.h"
-#include <Hades/Fixture.h>
+#include <Fixture.h>
 
 namespace Spectra::Validation {
 
