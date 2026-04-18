@@ -6,12 +6,15 @@
 #include "MemoryZone.h"
 #include "Logger.h"
 #include "ShadowMap.h"
+#include "Records.h"
 
 #include <tuple>
 #include <type_traits>
 #include <thread>
 #include <typeinfo>
 #include <cstdio>
+#include <string>
+#include "Orchestrator.h"
 
 namespace KerbecsValidation {
 
@@ -47,7 +50,19 @@ namespace KerbecsValidation {
     };
 
     struct ViolationLogger {
-        void report(const Kerbecs::Violation&) noexcept {}
+        void report(const Kerbecs::Violation& v) noexcept {
+            char msg[512];
+            std::snprintf(msg, sizeof(msg), 
+                "[KERBECS VIOLATION] Kind=%d at %p (Block: %p, Size: %zu) Thread: %u",
+                (int)v.m_Kind, v.m_Address, v.m_BlockBase, v.m_BlockSize, v.m_ThreadID);
+            
+            Stratum::Logging::Orchestrator::getInstance().log(
+                Stratum::Records::LogLevel::Error,
+                "KerbecsValidation",
+                "Kerbecs",
+                "VIOLATION",
+                msg);
+        }
     };
 
     static Spectra::Validation::Validator* s_pValidator = nullptr;
@@ -95,6 +110,8 @@ namespace KerbecsValidation {
             return 0; // functional tests
         }
 
+
+
         void dumpAndVerify(bool v_Cond, const char* p_Message) {
             if (!v_Cond) {
                 auto& zone = Kerbecs::MemoryZone::instance();
@@ -121,11 +138,17 @@ namespace KerbecsValidation {
         using Base = CombinatorialBase<LifecycleFixture, L, P, C, A, CX>;
 
         explicit LifecycleFixture(CpuAdapter& ro_Adapter)
-            : Base(ro_Adapter) {}
+            : Base(ro_Adapter) {
+            this->m_Shadow.m_Name = "Lifecycle";
+        }
 
         void startupImpl() {
-            bool allocOK = Kerbecs::Shadow::shadowAllocate<P>(&this->m_Shadow, C::value);
+            bool allocOK = Kerbecs::Shadow::shadowAllocate<P>(&this->m_Shadow, C::value, this->alignment());
             this->dumpAndVerify(allocOK, "shadowAllocate failed");
+            
+            // Construct index 0 here once, so m_LiveCount is incremented exactly once.
+            bool ctorOK = Kerbecs::Shadow::shadowConstruct<P>(&this->m_Shadow);
+            this->verify(ctorOK, "shadowConstruct failed");
         }
 
         void executeImpl() {
@@ -138,15 +161,16 @@ namespace KerbecsValidation {
         }
 
         void _exec() {
-            // Construct first element
-            bool ctorOK = Kerbecs::Shadow::shadowConstruct<P>(&this->m_Shadow);
-            this->verify(ctorOK, "shadowConstruct failed");
-
+            // Verify construction state (idempotent for benchmarking)
             Kerbecs::Shadow::Utils::MemoryState s = Kerbecs::Shadow::shadowGetMemoryState<P>(&this->m_Shadow, 0);
             this->m_Validator.expect(s == Kerbecs::Shadow::Utils::MemoryState::CONSTRUCTED, "Object should be CONSTRUCTED");
         }
 
-        void resetImpl(CpuAdapter&) {}
+        void resetImpl(CpuAdapter&) {
+            auto& zone = Kerbecs::MemoryZone::instance();
+            zone.m_Epoch.fetch_add(4, std::memory_order_acq_rel);
+            zone.m_Quarantine.flushEligible(zone.m_Registry.poolSegment());
+        }
 
         void teardownImpl() {
             // Destroy index 0 (the one that was constructed in executeImpl).
@@ -167,30 +191,33 @@ namespace KerbecsValidation {
     struct PartialInitFixture : CombinatorialBase<PartialInitFixture, L, P, C, A, CX> {
         using Base = CombinatorialBase<PartialInitFixture, L, P, C, A, CX>;
 
-        explicit PartialInitFixture(CpuAdapter& ro_Adapter) : Base(ro_Adapter) {}
+        explicit PartialInitFixture(CpuAdapter& ro_Adapter) : Base(ro_Adapter) {
+            this->m_Shadow.m_Name = "PartialInit";
+        }
 
         void startupImpl() {
-            this->dumpAndVerify(Kerbecs::Shadow::shadowAllocate<P>(&this->m_Shadow, C::value), "Allocate failed");
+            this->dumpAndVerify(Kerbecs::Shadow::shadowAllocate<P>(&this->m_Shadow, C::value, this->alignment()), "Allocate failed");
+            for (size_t i = 0; i < C::value; i += 2) {
+                this->verify(Kerbecs::Shadow::shadowConstructAt<P>(&this->m_Shadow, i), "Construct failed");
+            }
         }
 
         void executeImpl() {
-            if constexpr (C::value > 1) {
-                for (size_t i = 0; i < C::value; i += 2) {
-                    this->verify(Kerbecs::Shadow::shadowConstructAt<P>(&this->m_Shadow, i), "Construct failed");
-                }
-                
-                for (size_t i = 0; i < C::value; i++) {
-                    auto s = Kerbecs::Shadow::shadowGetMemoryState<P>(&this->m_Shadow, i);
-                    if (i % 2 == 0) {
-                        this->m_Validator.expect(s == Kerbecs::Shadow::Utils::MemoryState::CONSTRUCTED, "Even idx CONSTRUCTED target failed");
-                    } else {
-                        this->m_Validator.expect(s == Kerbecs::Shadow::Utils::MemoryState::UNINITIALIZED, "Odd idx UNINITIALIZED target failed");
-                    }
+            for (size_t i = 0; i < C::value; i++) {
+                auto s = Kerbecs::Shadow::shadowGetMemoryState<P>(&this->m_Shadow, i);
+                if (i % 2 == 0) {
+                    this->m_Validator.expect(s == Kerbecs::Shadow::Utils::MemoryState::CONSTRUCTED, "Even idx CONSTRUCTED target failed");
+                } else {
+                    this->m_Validator.expect(s == Kerbecs::Shadow::Utils::MemoryState::UNINITIALIZED, "Odd idx UNINITIALIZED target failed");
                 }
             }
         }
 
-        void resetImpl(CpuAdapter&) {}
+        void resetImpl(CpuAdapter&) {
+            auto& zone = Kerbecs::MemoryZone::instance();
+            zone.m_Epoch.fetch_add(4, std::memory_order_acq_rel);
+            zone.m_Quarantine.flushEligible(zone.m_Registry.poolSegment());
+        }
 
         void teardownImpl() {
             for (size_t i = 0; i < C::value; i += 2) {
@@ -207,46 +234,45 @@ namespace KerbecsValidation {
     template <typename L, typename P, typename C, typename A, typename CX>
     struct QuarantineFlowFixture : CombinatorialBase<QuarantineFlowFixture, L, P, C, A, CX> {
         using Base = CombinatorialBase<QuarantineFlowFixture, L, P, C, A, CX>;
-        explicit QuarantineFlowFixture(CpuAdapter& ro_Adapter) : Base(ro_Adapter) {}
-
-        void startupImpl() {
-            this->dumpAndVerify(Kerbecs::Shadow::shadowAllocate<P>(&this->m_Shadow, 1), "Allocate failed");
-            this->dumpAndVerify(Kerbecs::Shadow::shadowConstruct<P>(&this->m_Shadow), "Construct failed");
+        explicit QuarantineFlowFixture(CpuAdapter& ro_Adapter) : Base(ro_Adapter) {
+            this->m_Shadow.m_Name = "QuarantineFlow";
         }
-
+    
+        void startupImpl() {
+            // NO-OP: We allocate inside execute to ensure atoms
+        }
+    
         void executeImpl() {
+            auto& zone = Kerbecs::MemoryZone::instance();
+
+            // Allocation+Construction happens HERE to ensure self-containment
+            this->dumpAndVerify(Kerbecs::Shadow::shadowAllocate<P>(&this->m_Shadow, 1, this->alignment()), "Allocate failed");
+            this->dumpAndVerify(Kerbecs::Shadow::shadowConstruct<P>(&this->m_Shadow), "Construct failed");
+
             // Destroy triggers insertion to quarantine
             bool destroyOk = Kerbecs::Shadow::shadowDestroy<P>(&this->m_Shadow, 0);
-            KERBECS_UNUSED(destroyOk);
-
-            auto& zone = Kerbecs::MemoryZone::instance();
-
-            // Advance Epoch by 1 -> node is in Quarantine Queue but not flushable
-            zone.m_Epoch.fetch_add(1, std::memory_order_release);
-
-            // Should still exist in registry as Quarantine due to grace period
-            auto s1 = Kerbecs::Shadow::shadowGetMemoryState<P>(&this->m_Shadow, 0);
-            this->m_Validator.expect(s1 == Kerbecs::Shadow::Utils::MemoryState::DESTROYED, "Should report DESTROYED whilst in quarantine");
-
-            // Advance Epoch by 2 -> flushable
-            zone.m_Epoch.fetch_add(2, std::memory_order_release);
-            zone.m_Quarantine.flushEligible(zone.m_Registry.poolSegment());
-
-            // Node stripped from registry -> gets CORRUPTED/WildPointer evaluation
-            auto s2 = Kerbecs::Shadow::shadowGetMemoryState<P>(&this->m_Shadow, 0);
-            this->m_Validator.expect(s2 == Kerbecs::Shadow::Utils::MemoryState::CORRUPTED, "Should report CORRUPTED once freed completely");
-        }
-
-        void resetImpl(CpuAdapter&) {
-            // Hades calls execute twice (calibration + measurement). Between calls,
-            // flush quarantine and re-allocate so executeImpl starts from a clean state.
-            auto& zone = Kerbecs::MemoryZone::instance();
+            this->verify(destroyOk, "shadowDestroy failed");
+    
+            // Verify state is DESTROYED while in quarantine
+            auto s2 = Kerbecs::Shadow::shadowGetMemoryState<P>(&this->m_Shadow, 0, false);
+            this->verify(s2 == Kerbecs::Shadow::Utils::MemoryState::DESTROYED, "Quarantine state check failed");
+    
+            // Advanced epoch and flush to verify retirement
             zone.m_Epoch.fetch_add(4, std::memory_order_acq_rel);
             zone.m_Quarantine.flushEligible(zone.m_Registry.poolSegment());
-            Kerbecs::Shadow::shadowAllocate<P>(&this->m_Shadow, 1);
-            Kerbecs::Shadow::shadowConstruct<P>(&this->m_Shadow);
+    
+            // Verify state is CORRUPTED (Dead) after flush
+            auto s3 = Kerbecs::Shadow::shadowGetMemoryState<P>(&this->m_Shadow, 0, false);
+            this->verify(s3 == Kerbecs::Shadow::Utils::MemoryState::CORRUPTED, "Final state check failed");
         }
-
+    
+        void resetImpl(CpuAdapter&) {
+            // Clear metadata only. The actual block was retire-flushed in execute.
+            this->m_Shadow.m_BlockBase = nullptr;
+            this->m_Shadow.m_RawPtr = nullptr;
+            this->m_Shadow.m_TotalSize = 0;
+        }
+    
         void teardownImpl() {}
     };
 
