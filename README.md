@@ -3,7 +3,6 @@
 An unbiased, GPU-accelerated spectral path tracer built from scratch.  
 Developed by [Prayas Bharadwaj](https://www.linkedin.com/in/prayas-bharadwaj-053886323/)
 
----
 
 ## What it is
 
@@ -11,7 +10,6 @@ Spectra operates entirely in the wavelength domain — no RGB approximations. Ev
 
 The default compute backend is CUDA/OptiX (Ampere, SM 80–86). Vulkan is the graphics layer.
 
----
 
 ## Architecture
 
@@ -47,8 +45,6 @@ Each library is self-contained and can be used independently outside of Spectra.
 | **SpectraUI** | UI framework |
 | **SpectraEditor** | Editor application |
 | **SpectraLauncher** | Application launcher |
-
----
 
 ## Build
 
@@ -115,7 +111,6 @@ Debug variants exist for all instrumentation configurations.
 | `bleeding-edge-daily` | Active development — no build guarantees |
 | `bleeding-edge` | Experimental features |
 
----
 
 ## License
 
