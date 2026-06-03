@@ -13,10 +13,9 @@ namespace Spectra::Vulkan::Internal {
 		static std::vector<Utils::VkLayer>     s_Layers;
 
 		static constexpr int INSTANCE_EXTENSIONS = 4;
-		static constexpr int DEVICE_EXTENSIONS   = 16;
-		static constexpr int RT_EXTENSIONS       = 4;
+		static constexpr int DEVICE_EXTENSIONS = 16;
+		static constexpr int RT_EXTENSIONS = 4;
 		static constexpr int OPTIONAL_EXTENSIONS = 3;
-
 		static void initRegistry();
 
 		static const Utils::VkExtension* find(Utils::VulkanExtensions name) {
@@ -33,10 +32,8 @@ namespace Spectra::Vulkan::Internal {
 		VulkanRegistry& operator=(VulkanRegistry&&) noexcept = delete;
 	};
 
-	// -------------------------------------------------------------------------
 	// vkInit<T> — zero-init + sType + pNext = nullptr for every Vulkan struct.
 	// Primary template asserts at compile time if a specialization is missing.
-	// -------------------------------------------------------------------------
 
 	template<typename T>
 	SPEC_VK_BK_FORCEINLINE T vkInit() {
@@ -44,9 +41,7 @@ namespace Spectra::Vulkan::Internal {
 		return {};
 	}
 
-	// -------------------------------------------------------------------------
 	// Bootstrap / Instance
-	// -------------------------------------------------------------------------
 
 	template<> SPEC_VK_BK_FORCEINLINE VkApplicationInfo vkInit<VkApplicationInfo>() {
 		VkApplicationInfo info{};
@@ -83,9 +78,7 @@ namespace Spectra::Vulkan::Internal {
 		return info;
 	}
 
-	// -------------------------------------------------------------------------
 	// Physical device selection
-	// -------------------------------------------------------------------------
 
 	template<> SPEC_VK_BK_FORCEINLINE VkPhysicalDeviceProperties2 vkInit<VkPhysicalDeviceProperties2>() {
 		VkPhysicalDeviceProperties2 props{};
@@ -157,9 +150,7 @@ namespace Spectra::Vulkan::Internal {
 		return props;
 	}
 
-	// -------------------------------------------------------------------------
 	// Logical device
-	// -------------------------------------------------------------------------
 
 	template<> SPEC_VK_BK_FORCEINLINE VkDeviceQueueCreateInfo vkInit<VkDeviceQueueCreateInfo>() {
 		VkDeviceQueueCreateInfo info{};
@@ -175,9 +166,7 @@ namespace Spectra::Vulkan::Internal {
 		return info;
 	}
 
-	// -------------------------------------------------------------------------
 	// Command pools / buffers
-	// -------------------------------------------------------------------------
 
 	template<> SPEC_VK_BK_FORCEINLINE VkCommandPoolCreateInfo vkInit<VkCommandPoolCreateInfo>() {
 		VkCommandPoolCreateInfo info{};
@@ -200,9 +189,7 @@ namespace Spectra::Vulkan::Internal {
 		return info;
 	}
 
-	// -------------------------------------------------------------------------
 	// Synchronisation
-	// -------------------------------------------------------------------------
 
 	template<> SPEC_VK_BK_FORCEINLINE VkFenceCreateInfo vkInit<VkFenceCreateInfo>() {
 		VkFenceCreateInfo info{};
@@ -260,9 +247,7 @@ namespace Spectra::Vulkan::Internal {
 		return info;
 	}
 
-	// -------------------------------------------------------------------------
 	// Pipeline barriers (synchronization2)
-	// -------------------------------------------------------------------------
 
 	template<> SPEC_VK_BK_FORCEINLINE VkMemoryBarrier2 vkInit<VkMemoryBarrier2>() {
 		VkMemoryBarrier2 barrier{};
@@ -292,9 +277,7 @@ namespace Spectra::Vulkan::Internal {
 		return info;
 	}
 
-	// -------------------------------------------------------------------------
 	// Resources
-	// -------------------------------------------------------------------------
 
 	template<> SPEC_VK_BK_FORCEINLINE VkBufferCreateInfo vkInit<VkBufferCreateInfo>() {
 		VkBufferCreateInfo info{};
@@ -359,9 +342,7 @@ namespace Spectra::Vulkan::Internal {
 		return info;
 	}
 
-	// -------------------------------------------------------------------------
 	// Swapchain
-	// -------------------------------------------------------------------------
 
 	template<> SPEC_VK_BK_FORCEINLINE VkWin32SurfaceCreateInfoKHR vkInit<VkWin32SurfaceCreateInfoKHR>() {
 		VkWin32SurfaceCreateInfoKHR info{};
@@ -384,9 +365,7 @@ namespace Spectra::Vulkan::Internal {
 		return info;
 	}
 
-	// -------------------------------------------------------------------------
 	// Descriptors
-	// -------------------------------------------------------------------------
 
 	template<> SPEC_VK_BK_FORCEINLINE VkDescriptorSetLayoutCreateInfo vkInit<VkDescriptorSetLayoutCreateInfo>() {
 		VkDescriptorSetLayoutCreateInfo info{};
@@ -437,9 +416,7 @@ namespace Spectra::Vulkan::Internal {
 		return info;
 	}
 
-	// -------------------------------------------------------------------------
 	// Shaders & pipelines
-	// -------------------------------------------------------------------------
 
 	template<> SPEC_VK_BK_FORCEINLINE VkShaderModuleCreateInfo vkInit<VkShaderModuleCreateInfo>() {
 		VkShaderModuleCreateInfo info{};
@@ -553,9 +530,7 @@ namespace Spectra::Vulkan::Internal {
 		return info;
 	}
 
-	// -------------------------------------------------------------------------
 	// Dynamic rendering
-	// -------------------------------------------------------------------------
 
 	template<> SPEC_VK_BK_FORCEINLINE VkRenderingInfo vkInit<VkRenderingInfo>() {
 		VkRenderingInfo info{};
@@ -571,9 +546,7 @@ namespace Spectra::Vulkan::Internal {
 		return info;
 	}
 
-	// -------------------------------------------------------------------------
 	// Acceleration structures
-	// -------------------------------------------------------------------------
 
 	template<> SPEC_VK_BK_FORCEINLINE VkAccelerationStructureCreateInfoKHR vkInit<VkAccelerationStructureCreateInfoKHR>() {
 		VkAccelerationStructureCreateInfoKHR info{};
@@ -610,14 +583,55 @@ namespace Spectra::Vulkan::Internal {
 		return info;
 	}
 
-	// -------------------------------------------------------------------------
+	template<> SPEC_VK_BK_FORCEINLINE VkMemoryAllocateInfo vkInit<VkMemoryAllocateInfo>() {
+		VkMemoryAllocateInfo info{};
+		info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+		info.pNext = nullptr;
+		return info;
+	}
+
+	template<> SPEC_VK_BK_FORCEINLINE VkMemoryGetWin32HandleInfoKHR vkInit<VkMemoryGetWin32HandleInfoKHR>() {
+		VkMemoryGetWin32HandleInfoKHR info{};
+		info.sType = VK_STRUCTURE_TYPE_MEMORY_GET_WIN32_HANDLE_INFO_KHR;
+		info.pNext = nullptr;
+		return info;
+	}
+
+	template<> SPEC_VK_BK_FORCEINLINE VkBufferDeviceAddressInfo vkInit<VkBufferDeviceAddressInfo>() {
+		VkBufferDeviceAddressInfo info{};
+		info.sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO;
+		info.pNext = nullptr;
+		return info;
+	}
+
 	// Queries
-	// -------------------------------------------------------------------------
 
 	template<> SPEC_VK_BK_FORCEINLINE VkQueryPoolCreateInfo vkInit<VkQueryPoolCreateInfo>() {
 		VkQueryPoolCreateInfo info{};
 		info.sType = VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO;
 		info.pNext = nullptr;
 		return info;
+	}
+
+	// CUDA / external semaphore export
+
+	template<> SPEC_VK_BK_FORCEINLINE VkSemaphoreGetWin32HandleInfoKHR vkInit<VkSemaphoreGetWin32HandleInfoKHR>() {
+		VkSemaphoreGetWin32HandleInfoKHR info{};
+		info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_GET_WIN32_HANDLE_INFO_KHR;
+		info.pNext = nullptr;
+		return info;
+	}
+
+	// AllocationCallbacksDesc → VkAllocationCallbacks
+
+	SPEC_VK_BK_FORCEINLINE VkAllocationCallbacks toVkAllocationCallbacks(const Utils::AllocationCallbacksDesc& r_Desc) {
+		VkAllocationCallbacks alloc{};
+		alloc.pUserData = r_Desc.m_pUserData;
+		alloc.pfnAllocation = reinterpret_cast<PFN_vkAllocationFunction>(r_Desc.m_pfnAllocation);
+		alloc.pfnReallocation = reinterpret_cast<PFN_vkReallocationFunction>(r_Desc.m_pfnReallocation);
+		alloc.pfnFree = reinterpret_cast<PFN_vkFreeFunction>(r_Desc.m_pfnFree);
+		alloc.pfnInternalAllocation = reinterpret_cast<PFN_vkInternalAllocationNotification>(r_Desc.m_pfnInternalAlloc);
+		alloc.pfnInternalFree = reinterpret_cast<PFN_vkInternalFreeNotification>(r_Desc.m_pfnInternalFree);
+		return alloc;
 	}
 }

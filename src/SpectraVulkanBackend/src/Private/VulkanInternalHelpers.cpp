@@ -2,9 +2,6 @@
 #include "VulkanInternalHelpers.h"
 #include "VulkanUtils.h"
 
-#define ALLOW_SYSCALL
-#include "SpecVulkanSyscalls.h"
-
 namespace Spectra::Vulkan::Internal {
     std::vector<Utils::VkExtension> VulkanRegistry::s_Extensions;
     std::vector<Utils::VkLayer> VulkanRegistry::s_Layers;

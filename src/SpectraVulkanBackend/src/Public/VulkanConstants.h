@@ -130,6 +130,13 @@ namespace Spectra::Vulkan::Utils {
 		NONE
 	};
 
+	// Values match VkPipelineBindPoint — impl casts directly.
+	enum class PipelineBindPoint : uint32_t {
+		GRAPHICS    = 0,
+		COMPUTE     = 1,
+		RAY_TRACING = 1000165000,
+	};
+
 	// Values match VkFormat — impl casts directly. Curated subset.
 	enum class Format : uint16_t {
 		UNDEFINED           = 0,
@@ -403,6 +410,21 @@ namespace Spectra::Vulkan::Utils {
 		FIFO_RELAXED = 3,
 	};
 
+	// Values match VkColorSpaceKHR — impl casts directly. Curated subset.
+	enum class ColorSpace : uint32_t {
+		SRGB_NONLINEAR = 0,
+		HDR10_ST2084   = 1000104002,
+		BT2020_LINEAR  = 1000104005,
+	};
+
+	// Swapchain acquire/present status — does not alias VkResult values.
+	enum class SwapchainStatus : uint8_t {
+		OK          = 0,
+		SUBOPTIMAL  = 1,
+		OUT_OF_DATE = 2,
+		ERROR       = 3,
+	};
+
 	// Values match VkAccelerationStructureTypeKHR — impl casts directly.
 	enum class AccelerationStructureType : uint8_t {
 		TOP_LEVEL    = 0,
@@ -437,6 +459,27 @@ namespace Spectra::Vulkan::Utils {
 		PIPELINE_STATISTICS = 1,
 		TIMESTAMP           = 2,
 	};
+
+	using PFN_VkAlloc         = void*(SPEC_VK_BK_API_PTR*)(void* pUserData, size_t size, size_t alignment, uint32_t scope);
+	using PFN_VkRealloc       = void*(SPEC_VK_BK_API_PTR*)(void* pUserData, void* pOriginal, size_t size, size_t alignment, uint32_t scope);
+	using PFN_VkFree          = void (SPEC_VK_BK_API_PTR*)(void* pUserData, void* pMemory);
+	using PFN_VkInternalAlloc = void (SPEC_VK_BK_API_PTR*)(void* pUserData, size_t size, uint32_t type, uint32_t scope);
+	using PFN_VkInternalFree  = void (SPEC_VK_BK_API_PTR*)(void* pUserData, size_t size, uint32_t type, uint32_t scope);
+
+	// Values match VkSystemAllocationScope — impl casts directly.
+	enum class AllocationScope : uint32_t {
+		COMMAND  = 0,
+		OBJECT   = 1,
+		CACHE    = 2,
+		DEVICE   = 3,
+		INSTANCE = 4,
+	};
+
+	// Values match VkInternalAllocationType — impl casts directly.
+	enum class InternalAllocationType : uint32_t {
+		EXECUTABLE = 0,
+	};
+
 
 	// -------------------------------------------------------------------------
 	// Bitwise operators — flag enums only

@@ -169,6 +169,12 @@ namespace Spectra::Vulkan {
 
 #define SPEC_VK_BK_ALIGNAS(n) alignas(n)
 
+#if defined(_WIN32)
+#define SPEC_VK_BK_API_PTR __stdcall
+#else
+#define SPEC_VK_BK_API_PTR
+#endif
+
 #if SPEC_VK_BK_COMPILER_CLANG || SPEC_VK_BK_COMPILER_GCC
 #define SPEC_VK_BK_ASSUME_ALIGNED(ptr, n) __builtin_assume_aligned((ptr), (n))
 #else
