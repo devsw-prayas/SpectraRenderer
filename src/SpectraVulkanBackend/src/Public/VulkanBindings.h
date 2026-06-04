@@ -282,21 +282,34 @@ namespace Spectra::Vulkan::Utils {
 	// Acceleration structure descs
 
 	struct SPEC_VK_BK_RUNTIME_API SPEC_VK_BK_ALIGNAS(8) ASGeometryTriangles final {
-		Format   m_VertexFormat = Format::R32G32B32_SFLOAT;
-		uint64_t m_VertexDeviceAddress = 0;
-		uint32_t m_VertexStride = 0;
-		uint32_t m_MaxVertex = 0;
-		IndexType m_IndexType = IndexType::UINT32;
-		uint64_t  m_IndexDeviceAddress = 0;
+		Format    m_VertexFormat        = Format::R32G32B32_SFLOAT;
+		uint64_t  m_VertexDeviceAddress = 0;
+		uint32_t  m_VertexStride        = 0;
+		uint32_t  m_MaxVertex           = 0;
+		IndexType m_IndexType           = IndexType::UINT32;
+		uint64_t  m_IndexDeviceAddress  = 0;
 	};
 
-	struct SPEC_VK_BK_RUNTIME_API SPEC_VK_BK_ALIGNAS(8) ASBuildDesc final {
-		AccelerationStructureType        m_Type = AccelerationStructureType::BOTTOM_LEVEL;
-		AccelerationStructureBuildFlags  m_Flags = AccelerationStructureBuildFlags::NONE;
-		const ASGeometryTriangles* m_Geometries = nullptr;
-		uint32_t                         m_GeometryCount = 0;
-		AccelerationStructureHandle      m_Dst = {};
-		uint64_t                         m_ScratchDeviceAddress = 0;
+	struct SPEC_VK_BK_RUNTIME_API SPEC_VK_BK_ALIGNAS(8) ASGeometryInstances final {
+		uint64_t m_InstancesDeviceAddress = 0;
+		bool     m_ArrayOfPointers        = false;
+	};
+
+	struct SPEC_VK_BK_RUNTIME_API SPEC_VK_BK_ALIGNAS(8) ASBuildSizes final {
+		uint64_t m_AccelStructureSize = 0;
+		uint64_t m_ScratchSize        = 0;
+	};
+
+	struct SPEC_VK_BK_RUNTIME_API SPEC_VK_BK_ALIGNAS(16) ASBuildDesc final {
+		AccelerationStructureType           m_Type              = AccelerationStructureType::BOTTOM_LEVEL;
+		AccelerationStructureBuildFlags     m_Flags             = AccelerationStructureBuildFlags::NONE;
+		const ASGeometryTriangles*          m_Geometries        = nullptr;  // BLAS: one per geometry
+		const ASGeometryInstances*          m_Instances         = nullptr;  // TLAS: one per geometry (usually 1); overrides m_Geometries
+		uint32_t                            m_GeometryCount     = 0;
+		const uint32_t*                     m_PrimitiveCounts   = nullptr;  // required: one per geometry
+		const GeometryFlags*                m_GeometryFlags     = nullptr;  // optional: per-geometry; nullptr = all OPAQUE
+		AccelerationStructureHandle         m_Dst               = {};
+		uint64_t                            m_ScratchDeviceAddress = 0;
 	};
 
 	// Shader binding table region — maps directly to VkStridedDeviceAddressRegionKHR.

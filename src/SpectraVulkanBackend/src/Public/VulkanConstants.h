@@ -455,9 +455,10 @@ namespace Spectra::Vulkan::Utils {
 	};
 
 	// Values match VkQueryType — impl casts directly.
-	enum class QueryType : uint8_t {
-		PIPELINE_STATISTICS = 1,
-		TIMESTAMP           = 2,
+	enum class QueryType : uint32_t {
+		PIPELINE_STATISTICS                   = 1,
+		TIMESTAMP                             = 2,
+		ACCELERATION_STRUCTURE_COMPACTED_SIZE = 1000150000,
 	};
 
 	using PFN_VkAlloc         = void*(SPEC_VK_BK_API_PTR*)(void* pUserData, size_t size, size_t alignment, uint32_t scope);

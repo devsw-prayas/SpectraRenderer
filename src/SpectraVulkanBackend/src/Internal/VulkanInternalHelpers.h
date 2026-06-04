@@ -583,6 +583,20 @@ namespace Spectra::Vulkan::Internal {
 		return info;
 	}
 
+	template<> SPEC_VK_BK_FORCEINLINE VkAccelerationStructureGeometryInstancesDataKHR vkInit<VkAccelerationStructureGeometryInstancesDataKHR>() {
+		VkAccelerationStructureGeometryInstancesDataKHR info{};
+		info.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_INSTANCES_DATA_KHR;
+		info.pNext = nullptr;
+		return info;
+	}
+
+	template<> SPEC_VK_BK_FORCEINLINE VkCopyAccelerationStructureInfoKHR vkInit<VkCopyAccelerationStructureInfoKHR>() {
+		VkCopyAccelerationStructureInfoKHR info{};
+		info.sType = VK_STRUCTURE_TYPE_COPY_ACCELERATION_STRUCTURE_INFO_KHR;
+		info.pNext = nullptr;
+		return info;
+	}
+
 	template<> SPEC_VK_BK_FORCEINLINE VkMemoryAllocateInfo vkInit<VkMemoryAllocateInfo>() {
 		VkMemoryAllocateInfo info{};
 		info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;

@@ -1,5 +1,6 @@
 #include "SpectraVulkanBackend.h"
 #include "VulkanDeferredRelease.h"
+#include "VulkanAccelStructure.h"
 #include "VulkanState.h"
 
 namespace Spectra::Vulkan::Internal {
@@ -47,6 +48,12 @@ namespace Spectra::Vulkan::Internal {
 		slot.m_Samplers[slot.m_SamplerCount++] = r_Handle;
 	}
 
+	void DeferReleaseQueue::deferAccelStructure(const Utils::AccelerationStructureHandle& r_Handle) {
+		FrameSlot& slot = m_Slots[m_CurrentSlot];
+		SPEC_VK_BK_ASSERT(slot.m_AccelStructureCount < MAX_ACCEL_STRUCTURES);
+		slot.m_AccelStructures[slot.m_AccelStructureCount++] = r_Handle;
+	}
+
 	void DeferReleaseQueue::advance() {
 		m_CurrentSlot = (m_CurrentSlot + 1) % FRAMES_IN_FLIGHT;
 
@@ -75,6 +82,9 @@ namespace Spectra::Vulkan::Internal {
 
 		for (uint32_t i = 0; i < slot.m_SamplerCount; ++i)
 			vkDestroySampler(dev, static_cast<VkSampler>(slot.m_Samplers[i].m_Handle), nullptr);
+
+		for (uint32_t i = 0; i < slot.m_AccelStructureCount; ++i)
+			VulkanAccelStructure::destroyAccelStructure(slot.m_AccelStructures[i]);
 
 		slot.reset();
 	}

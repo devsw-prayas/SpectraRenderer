@@ -211,12 +211,14 @@ namespace Spectra::Vulkan::Utils {
 		PipelineCacheHandle& operator=(PipelineCacheHandle&&) noexcept = default;
 	};
 
-	struct SPEC_VK_BK_RUNTIME_API SPEC_VK_BK_ALIGNAS(8) AccelerationStructureHandle final {
-		void* m_Handle;
+	struct SPEC_VK_BK_RUNTIME_API SPEC_VK_BK_ALIGNAS(16) AccelerationStructureHandle final {
+		void* m_Handle;         // VkAccelerationStructureKHR
+		void* m_BackingBuffer;  // VkBuffer (backing buffer, owned by this handle)
+		void* m_BackingAlloc;   // VmaAllocation (backing buffer allocation)
 
 		bool isValid() const { return m_Handle != nullptr; }
 
-		AccelerationStructureHandle() : m_Handle(nullptr) {}
+		AccelerationStructureHandle() : m_Handle(nullptr), m_BackingBuffer(nullptr), m_BackingAlloc(nullptr) {}
 		AccelerationStructureHandle(const AccelerationStructureHandle&) = default;
 		AccelerationStructureHandle& operator=(const AccelerationStructureHandle&) = default;
 		AccelerationStructureHandle(AccelerationStructureHandle&&) noexcept = default;

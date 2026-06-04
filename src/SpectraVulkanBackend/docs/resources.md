@@ -186,4 +186,4 @@ g_DeferRelease.advance();
 // Resources deferred 2+ frames ago are now destroyed.
 ```
 
-Slot capacities per frame: 64 buffers, 32 images, 64 image views, 32 samplers (plus 64 fences and 64 semaphores from the sync layer). Exceeding any limit triggers an assertion.
+Slot capacities per frame: 64 buffers, 32 images, 64 image views, 32 samplers, 16 acceleration structures (plus 64 fences and 64 semaphores from the sync layer). Exceeding any limit triggers an assertion.
