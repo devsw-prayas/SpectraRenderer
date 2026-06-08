@@ -116,6 +116,7 @@ add_subdirectory(src/SpectraPlatformRuntime)
 add_subdirectory(src/SpectraMemory)
 add_subdirectory(src/SpectraFileSystem)
 add_subdirectory(src/SpectraProfiler)
+add_subdirectory(src/SpectraRHI)
 
 foreach(target Corium StormSTL Stratum Leibniz)
     set_target_properties(${target} PROPERTIES FOLDER "Common")
@@ -134,7 +135,7 @@ foreach(target Kerbecs Hades SpectraProfiler)
     set_target_properties(${target} PROPERTIES FOLDER "Tools")
 endforeach()
 
-foreach(target SpectraMemory SpectraFileSystem)
+foreach(target SpectraMemory SpectraFileSystem SpectraRHI)
     set_target_properties(${target} PROPERTIES FOLDER "Engine")
 endforeach()
 
