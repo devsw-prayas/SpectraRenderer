@@ -169,6 +169,9 @@ namespace Spectra::RHI {
 
 #define SPEC_RHI_ALIGNAS(n) alignas(n)
 
+#define ENUM_CLASS_8(name)  enum class name : uint8_t
+#define ENUM_CLASS_32(name) enum class name : uint32_t
+
 #if defined(_WIN32)
 #define SPEC_RHI_API_PTR __stdcall
 #else
