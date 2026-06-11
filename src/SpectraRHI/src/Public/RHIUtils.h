@@ -69,6 +69,13 @@ namespace Spectra::RHI::Utils {
 		ASBuild
 	};
 
+	// Pairs a pipeline stage with an access type to express one side of a resource hazard.
+	// Used as srcAccess and dstAccess in RHIBarrierDesc; both sides must be specified for every barrier.
+	struct RHIAccessInfo final {
+		RHIStage  m_Stage;
+		RHIAccess m_Access;
+	};
+
 	ENUM_CLASS_32(RHIFormat) {
 		Undefined = 0,
 
@@ -120,6 +127,10 @@ namespace Spectra::RHI::Utils {
 		Error   = 2,
 		Fatal   = 3,
 	};
+
+	// Callback type for backend-issued debug messages. Routes Vulkan validation and OptiX logs through a single sink.
+	// Fatal severity triggers SPEC_RHI_ASSERT in debug builds; the device is unusable after a Fatal message.
+	using RHIDebugCallback = void(*)(RHIDebugSeverity, const char*, void*);
 
 	ENUM_CLASS_32(RHIShaderStage) {
 		None       = 0,
