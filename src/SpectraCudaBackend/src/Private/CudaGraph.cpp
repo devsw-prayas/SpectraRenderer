@@ -129,7 +129,7 @@ namespace Spectra::Cuda::Graphs {
 		return GpuGraphNode{};
 	}
 
-	void DeviceGraphs::addDependencies(GpuGraph& ro_Graph, const GpuGraphNode* p_From, const GpuGraphNode* p_To, uint32_t v_Count) {
+	void DeviceGraphs::addDependencies(GpuGraph& ro_Graph, const GpuGraphNode* p_From, const GpuGraphNode* p_To, uint32_t v_Count, const GpuGraphEdgeData* p_Data) {
 		SPEC_CUDA_BK_ASSERT(ro_Graph.isValid());
 		SPEC_CUDA_BK_ASSERT(p_From != nullptr);
 		SPEC_CUDA_BK_ASSERT(p_To != nullptr);
@@ -139,13 +139,20 @@ namespace Spectra::Cuda::Graphs {
 		CUgraphNode toBuf[MAX_GRAPH_DEPS];
 		for (uint32_t i = 0; i < v_Count; ++i) {
 			fromBuf[i] = static_cast<CUgraphNode>(p_From[i].m_NodeHandle);
-			toBuf[i]   = static_cast<CUgraphNode>(p_To[i].m_NodeHandle);
+			toBuf[i] = static_cast<CUgraphNode>(p_To[i].m_NodeHandle);
 		}
 
+		CUgraphEdgeData data{};
+		if (p_Data) {
+			data.from_port = p_Data->m_FromPort;
+			data.to_port = p_Data->m_ToPort;
+			data.type = p_Data->m_Type;
+		}
 		const CUresult result = cuGraphAddDependencies(
 			static_cast<CUgraph>(ro_Graph.m_GraphHandle),
 			fromBuf,
 			toBuf,
+			static_cast<const CUgraphEdgeData*>(&data),
 			static_cast<size_t>(v_Count)
 		);
 

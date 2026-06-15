@@ -23,7 +23,7 @@ namespace Spectra::Cuda::Graphs {
 
 		// Explicit dependency edges between already-added nodes.
 		// p_From[i] must complete before p_To[i] begins. v_Count <= MAX_GRAPH_DEPS.
-		static void addDependencies(GpuGraph& ro_Graph, const GpuGraphNode* p_From, const GpuGraphNode* p_To, uint32_t v_Count);
+		static void addDependencies(GpuGraph& ro_Graph, const GpuGraphNode* p_From, const GpuGraphNode* p_To, uint32_t v_Count, const GpuGraphEdgeData* p_Data = nullptr);
 
 		// Compilation & execution
 		static GpuGraphExec instantiate(const GpuGraph& ro_Graph);

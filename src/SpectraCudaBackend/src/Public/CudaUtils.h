@@ -45,6 +45,40 @@ namespace Spectra::Cuda::Utils {
 		LMEM_RESIZE_TO_MAX
 	};
 
+	enum class SPEC_CUDA_BK_RUNTIME_API ExecAffinityType final : uint8_t {
+		SM_COUNT = 0
+	};
+
+	struct SPEC_CUDA_BK_RUNTIME_API ExecAffinitySmCount final {
+		uint32_t m_Val = 0;
+	};
+
+	SPEC_CUDA_BK_STATIC_ASSERT(sizeof(ExecAffinitySmCount) == 4,                         "ExecAffinitySmCount must be 4 bytes");
+	SPEC_CUDA_BK_STATIC_ASSERT(std::is_standard_layout_v<ExecAffinitySmCount>,           "ExecAffinitySmCount must maintain standard layout");
+	SPEC_CUDA_BK_STATIC_ASSERT(std::is_trivially_copyable_v<ExecAffinitySmCount>,        "ExecAffinitySmCount must be trivially copyable");
+	SPEC_CUDA_BK_STATIC_ASSERT(std::is_trivially_move_assignable_v<ExecAffinitySmCount>, "ExecAffinitySmCount must be trivially move assignable");
+
+	struct SPEC_CUDA_BK_RUNTIME_API ExecAffinityParam final {
+		ExecAffinityType    m_Type;
+		ExecAffinitySmCount m_SmCount;
+	};
+
+	SPEC_CUDA_BK_STATIC_ASSERT(std::is_standard_layout_v<ExecAffinityParam>,           "ExecAffinityParam must maintain standard layout");
+	SPEC_CUDA_BK_STATIC_ASSERT(std::is_trivially_copyable_v<ExecAffinityParam>,        "ExecAffinityParam must be trivially copyable");
+	SPEC_CUDA_BK_STATIC_ASSERT(std::is_trivially_move_assignable_v<ExecAffinityParam>, "ExecAffinityParam must be trivially move assignable");
+
+	// CIG (CUDA in Graphics) params are opaque at this abstraction level.
+	// Cast to CUctxCigParam* at the call site when needed.
+	struct SPEC_CUDA_BK_RUNTIME_API CtxCreateParams final {
+		ExecAffinityParam* m_ExecAffinityParams    = nullptr;
+		int                m_NumExecAffinityParams = 0;
+		void*              m_CigParams             = nullptr;
+	};
+
+	SPEC_CUDA_BK_STATIC_ASSERT(std::is_standard_layout_v<CtxCreateParams>,           "CtxCreateParams must maintain standard layout");
+	SPEC_CUDA_BK_STATIC_ASSERT(std::is_trivially_copyable_v<CtxCreateParams>,        "CtxCreateParams must be trivially copyable");
+	SPEC_CUDA_BK_STATIC_ASSERT(std::is_trivially_move_assignable_v<CtxCreateParams>, "CtxCreateParams must be trivially move assignable");
+
 	enum class SPEC_CUDA_BK_RUNTIME_API HostAllocFlags final : uint8_t {
 		ALLOC_PORTABLE,
 		ALLOC_DEVICE_MAP,
@@ -769,6 +803,22 @@ namespace Spectra::Cuda::Utils {
 	SPEC_CUDA_BK_STATIC_ASSERT(std::is_standard_layout_v<GpuGraphNode>, "GpuGraphNode must maintain standard layout");
 	SPEC_CUDA_BK_STATIC_ASSERT(std::is_trivially_copyable_v<GpuGraphNode>, "GpuGraphNode must be trivially copyable");
 	SPEC_CUDA_BK_STATIC_ASSERT(std::is_trivially_move_assignable_v<GpuGraphNode>, "GpuGraphNode must be trivially move assignable");
+
+
+	struct SPEC_CUDA_BK_RUNTIME_API SPEC_CUDA_BK_ALIGNAS(8) GpuGraphEdgeData final {
+		unsigned char m_FromPort = 0;
+		unsigned char m_ToPort = 0;
+		unsigned char m_Type = 0;
+
+		GpuGraphEdgeData() = default;
+		~GpuGraphEdgeData() = default;
+
+		GpuGraphEdgeData(const GpuGraphEdgeData&) = default;
+		GpuGraphEdgeData& operator=(const GpuGraphEdgeData&) = default;
+
+		GpuGraphEdgeData(GpuGraphEdgeData&&) noexcept = default;
+		GpuGraphEdgeData& operator=(GpuGraphEdgeData&&) noexcept = default;
+	};
 
 	// Params for cuGraphAddKernelNode. m_Function must be a valid CUfunction handle obtained from a loaded module.
 	struct SPEC_CUDA_BK_RUNTIME_API KernelNodeParams final {
