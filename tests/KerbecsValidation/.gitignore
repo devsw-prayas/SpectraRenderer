@@ -1,9 +1,0 @@
-build/
-bin/
-.cache/
-CMakeFiles/
-CMakeCache.txt
-cmake_install.cmake
-*.pdb
-*.ilk
-*.exp

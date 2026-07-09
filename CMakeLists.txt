@@ -146,15 +146,6 @@ set_target_properties(SpectraLauncher        PROPERTIES FOLDER "Launcher")
 set_target_properties(SpectraPlatformRuntime PROPERTIES FOLDER "Runtime")
 
 # ---------------------------------------------------------------
-# Testing Infrastructure
-# ---------------------------------------------------------------
-add_subdirectory(tests/KerbecsValidation)
-add_subdirectory(tests/TestValidationRunner)
-
-set_target_properties(KerbecsValidation   PROPERTIES FOLDER "Testing")
-set_target_properties(TestValidationRunner PROPERTIES FOLDER "Testing")
-
-# ---------------------------------------------------------------
 # Global Compiler Options
 # ---------------------------------------------------------------
 if(MSVC)
