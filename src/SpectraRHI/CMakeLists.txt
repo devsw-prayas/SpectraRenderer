@@ -14,6 +14,13 @@ add_library(SpectraRHI SHARED
     ${SpectraRHI_SOURCE}
     ${SpectraRHI_INL}
 )
+
+source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES
+    ${SpectraRHI_HEADERS}
+    ${SpectraRHI_SOURCE}
+    ${SpectraRHI_INL}
+)
+
 target_compile_definitions(SpectraRHI PRIVATE SpectraRHI_EXPORTS)
 
 target_include_directories(SpectraRHI PUBLIC

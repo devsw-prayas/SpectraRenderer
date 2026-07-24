@@ -13,7 +13,8 @@ namespace Spectra::RHI::Utils {
 		DeviceLost,
 		OutOfMemory,
 		InvalidUsage,
-		Unsupported
+		Unsupported,
+		Timeout
 	};
 
 	ENUM_CLASS_8(RHIQueueType) {
@@ -100,6 +101,7 @@ namespace Spectra::RHI::Utils {
 		RGB10A2_UNORM,
 		B10GR11_UFLOAT,
 		E5B9G9R9_UFLOAT,
+		R11G11B10_UFLOAT,
 
 		// Depth / stencil
 		D16_UNORM,
@@ -213,5 +215,39 @@ namespace Spectra::RHI::Utils {
 		PreferFastBuild = 1 << 1,
 		AllowCompaction = 1 << 2,
 		AllowUpdate     = 1 << 3,
+	};
+
+	ENUM_CLASS_8(RHIIndexType) {
+		UInt16,
+		UInt32
+	};
+
+	ENUM_CLASS_8(RHIFilterMode) {
+		Nearest,
+		Linear
+	};
+
+	ENUM_CLASS_8(RHIAddressMode) {
+		Repeat,
+		MirroredRepeat,
+		ClampToEdge,
+		ClampToBorder
+	};
+
+	ENUM_CLASS_8(RHIBorderColor) {
+		TransparentBlack,
+		OpaqueBlack,
+		OpaqueWhite
+	};
+
+	ENUM_CLASS_8(RHILoadOp) {
+		Load,
+		Clear,
+		DontCare
+	};
+
+	ENUM_CLASS_8(RHIStoreOp) {
+		Store,
+		DontCare
 	};
 }

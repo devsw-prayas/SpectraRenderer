@@ -6,10 +6,6 @@
 	path = common/Kerbecs
 	url = https://github.com/devsw-prayas/Kerbecs.git
 	branch = bleeding-edge
-[submodule "common/Stratum"]
-	path = common/Stratum
-	url = https://github.com/devsw-prayas/Stratum.git
-	branch = bleeding-edge
 [submodule "common/StormSTL"]
 	path = common/StormSTL
 	url = https://github.com/devsw-prayas/StormSTL.git

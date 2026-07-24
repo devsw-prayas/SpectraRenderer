@@ -3,21 +3,29 @@
 #include "SpecRHICompiler.h"
 
 namespace Spectra::RHI {
+	class IRHIObject;
 	class IRHIResource;
+	class IRHIBuffer;
+	class IRHITexture;
+	class IRHISampler;
 	class IRHIBindingLayout;
+	class IRHIPipeline;
 	class IRHIAccelerationStructure;
+	class IRHIShaderBindingTable;
 	class IRHIFence;
 
 	// Describes a GPU buffer allocation. location controls memory placement; flags control optional features.
 	// DeviceAddress flag is required for bindless access and buffer device address usage.
 	struct SPEC_RHI_ALIGNAS(8) RHIBufferDesc final {
 		uint64_t                 m_Size;
-		Utils::RHIMemoryLocation m_Location = Utils::RHIMemoryLocation::Device;
-		Utils::RHIMemoryFlags    m_Flags    = Utils::RHIMemoryFlags::None;
+		Utils::RHIMemoryLocation m_Location  = Utils::RHIMemoryLocation::Device;
+		Utils::RHIMemoryFlags    m_Flags     = Utils::RHIMemoryFlags::None;
+		const char*              m_DebugName = nullptr;
 	};
 
 	// Describes a typed image resource. renderTarget and depthStencil are mutually exclusive.
 	// depth must be 1 for 2D textures; arrayLayers must be 1 unless a texture array is explicitly required.
+	// externalHandle is a Win32 HANDLE for imported textures (RHIResourceOrigin::Imported); null = normal internal allocation.
 	struct SPEC_RHI_ALIGNAS(8) RHITextureDesc final {
 		uint32_t              m_Width;
 		uint32_t              m_Height;
@@ -29,25 +37,40 @@ namespace Spectra::RHI {
 		bool                  m_RenderTarget    = false;
 		bool                  m_DepthStencil    = false;
 		bool                  m_UnorderedAccess = false;
+		bool                  m_Sampled         = false;
+		bool                  m_TransferSrc     = false;
+		bool                  m_TransferDst     = false;
+	private:
+		uint16_t              m_Pad             = 0;
+	public:
+		void*                 m_ExternalHandle  = nullptr;
+		const char*           m_DebugName       = nullptr;
 	};
 
 	// Describes a resource pipeline barrier using the access-intent model (Stage + Access pairs on both sides).
 	// Set srcQueue and dstQueue to trigger a queue family ownership transfer; leave both as None for a regular barrier.
+	// Subresource range fields default to the whole resource; a *Count of ~0u means "all remaining".
 	struct SPEC_RHI_ALIGNAS(8) RHIBarrierDesc final {
 		IRHIResource*         m_Resource;
 		Utils::RHIAccessInfo  m_SrcAccess;
 		Utils::RHIAccessInfo  m_DstAccess;
-		Utils::RHIQueueType   m_SrcQueue = Utils::RHIQueueType::None;
-		Utils::RHIQueueType   m_DstQueue = Utils::RHIQueueType::None;
+		Utils::RHIQueueType   m_SrcQueue        = Utils::RHIQueueType::None;
+		Utils::RHIQueueType   m_DstQueue        = Utils::RHIQueueType::None;
+		uint32_t              m_BaseMipLevel    = 0;
+		uint32_t              m_MipLevelCount   = ~0u;
+		uint32_t              m_BaseArrayLayer  = 0;
+		uint32_t              m_ArrayLayerCount = ~0u;
 	};
 
 	// Describes a single binding slot within a binding layout. stageVisibility is ignored by the CUDA backend.
-	// count enables array bindings and defaults to 1 for scalar slots.
+	// count enables array bindings and defaults to 1 for scalar slots. bindless is ignored on CUDA (flat index array
+	// has no concept of bounded/unbounded binding); on Vulkan it maps to PARTIALLY_BOUND_BIT + UPDATE_AFTER_BIND_BIT.
 	struct RHIBindingLayoutItem final {
 		uint32_t              m_Slot;
 		Utils::RHIBindingType m_Type;
 		Utils::RHIShaderStage m_StageVisibility;
-		uint32_t              m_Count = 1;
+		uint32_t              m_Count    = 1;
+		bool                  m_Bindless = false;
 	};
 
 	// Describes the full set of binding slots for a pipeline, with optional push constant configuration.
@@ -60,10 +83,36 @@ namespace Spectra::RHI {
 	};
 
 	// Associates a GPU resource with a numbered binding slot for a single UpdateBindings call.
-	// resource must match the RHIBindingType declared in the layout at the given slot position.
+	// resource is IRHIObject* rather than IRHIResource* because IRHIAccelerationStructure derives from IRHIObject
+	// directly; the backend impl validates the concrete type against the declared RHIBindingType at bind time.
+	// offset/range describe a buffer sub-range (0/0 = whole resource); sampler pairs a sampled image with a
+	// standalone sampler for split sampler/texture binding models.
 	struct SPEC_RHI_ALIGNAS(8) RHIBinding final {
-		IRHIResource* m_Resource;
-		uint32_t      m_Slot;
+		IRHIObject*  m_Resource;
+		uint32_t     m_Slot;
+	private:
+		uint32_t     m_Pad = 0;
+	public:
+		uint64_t     m_Offset  = 0;
+		uint64_t     m_Range   = 0;
+		IRHISampler* m_Sampler = nullptr;
+	};
+
+	// Describes sampler state: filtering, addressing, anisotropy, border color, and LOD clamp range.
+	struct SPEC_RHI_ALIGNAS(8) RHISamplerDesc final {
+		Utils::RHIFilterMode  m_MinFilter   = Utils::RHIFilterMode::Linear;
+		Utils::RHIFilterMode  m_MagFilter   = Utils::RHIFilterMode::Linear;
+		Utils::RHIFilterMode  m_MipFilter   = Utils::RHIFilterMode::Linear;
+		Utils::RHIAddressMode m_AddressU    = Utils::RHIAddressMode::Repeat;
+		Utils::RHIAddressMode m_AddressV    = Utils::RHIAddressMode::Repeat;
+		Utils::RHIAddressMode m_AddressW    = Utils::RHIAddressMode::Repeat;
+		Utils::RHIBorderColor m_BorderColor = Utils::RHIBorderColor::TransparentBlack;
+	private:
+		uint8_t               m_Pad         = 0;
+	public:
+		float                 m_MaxAnisotropy = 1.0f;
+		float                 m_MinLod        = 0.0f;
+		float                 m_MaxLod        = 1000.0f;
 	};
 
 	// Carries a single specialization constant for a graphics or compute shader stage.
@@ -176,6 +225,26 @@ namespace Spectra::RHI {
 		IRHIBindingLayout*       m_BindingLayout        = nullptr;
 	};
 
+	// Describes one render target attachment for a BeginRendering/EndRendering scope: the texture to render into,
+	// and its load/store behavior. clearValue is only consulted when loadOp == RHILoadOp::Clear.
+	struct SPEC_RHI_ALIGNAS(8) RHIRenderAttachment final {
+		IRHITexture*      m_Texture;
+		Utils::RHILoadOp  m_LoadOp        = Utils::RHILoadOp::Load;
+		Utils::RHIStoreOp m_StoreOp       = Utils::RHIStoreOp::Store;
+	private:
+		uint8_t           m_Pad[6]        = {};
+	public:
+		float             m_ClearValue[4] = { 0.f, 0.f, 0.f, 0.f };
+	};
+
+	// Describes the full set of live attachments bound for a BeginRendering/EndRendering scope. depthAttachment may be null.
+	// RHIRenderingLayout (pipeline creation) describes formats only, for compatibility matching; this binds live textures.
+	struct SPEC_RHI_ALIGNAS(8) RHIRenderingInfo final {
+		const RHIRenderAttachment* m_ColorAttachments;
+		uint32_t                   m_ColorCount;
+		const RHIRenderAttachment* m_DepthAttachment = nullptr;
+	};
+
 	// Describes a compute or PTX kernel pipeline. Valid on both Vulkan and CUDA backends.
 	// On CUDA, shader.bytecode points to a compiled PTX module and entryPoint names the kernel function.
 	struct SPEC_RHI_ALIGNAS(8) RHIComputePipelineDesc final {
@@ -207,7 +276,7 @@ namespace Spectra::RHI {
 		uint32_t                m_MaxRecursionDepth;
 	};
 
-	// Describes an acceleration structure allocation. sizeHint must come from GetAccelerationStructureBuildSizes.
+	// Describes an acceleration structure allocation. sizeHint must come from IRHIDevice::getAccelerationStructureBuildSizes.
 	// AllowCompaction and AllowUpdate flags must be set at creation time; they cannot be added after build.
 	struct SPEC_RHI_ALIGNAS(8) RHIASDesc final {
 		uint64_t               m_SizeHint;
@@ -218,11 +287,83 @@ namespace Spectra::RHI {
 	public:
 	};
 
-	// Describes a ray trace dispatch with launch dimensions and a backend-specific extension block.
-	// backendExt carries the SBT descriptor on Vulkan or the OptiX parameter block on CUDA; cast at the call site.
+	// Describes build-time geometry for one acceleration structure build. A BLAS build reads the vertex/index buffer
+	// fields; a TLAS build reads instanceBuffer, which must contain RHIASInstance-formatted data. Only one path is
+	// populated per geometry entry.
+	struct SPEC_RHI_ALIGNAS(8) RHIASGeometryDesc final {
+		IRHIBuffer*          m_VertexBuffer  = nullptr;
+		uint64_t             m_VertexOffset  = 0;
+		uint32_t             m_VertexCount   = 0;
+		uint32_t             m_VertexStride  = 0;
+		Utils::RHIFormat     m_VertexFormat  = Utils::RHIFormat::RGB32_SFLOAT;
+		IRHIBuffer*          m_IndexBuffer   = nullptr;
+		uint64_t             m_IndexOffset   = 0;
+		uint32_t             m_TriangleCount = 0;
+		Utils::RHIIndexType  m_IndexType;
+		IRHIBuffer*          m_InstanceBuffer = nullptr;
+		uint32_t             m_InstanceCount  = 0;
+	private:
+		uint32_t             m_Pad = 0;
+	public:
+	};
+
+	// One TLAS instance record in the RHI's unified cross-backend format — resolves the abstraction break where the
+	// instance buffer was an untyped IRHIBuffer* requiring hand-constructed, backend-specific memory layouts.
+	// transform is row-major 3x4. blasAddress comes from the referenced BLAS's IRHIAccelerationStructure::getTraversalAddress().
+	struct SPEC_RHI_ALIGNAS(8) RHIASInstance final {
+		float    m_Transform[12];
+		uint32_t m_InstanceId;
+		uint32_t m_InstanceMask = 0xFF;
+		uint32_t m_SbtOffset    = 0;
+		uint32_t m_Flags        = 0;
+		uint64_t m_BlasAddress;
+	};
+
+	// Describes one acceleration structure build or refit. update=false is a full build (source ignored).
+	// update=true with source==target performs an in-place refit; update=true with source!=target refits into a
+	// distinct AS, leaving source intact. update=true with source==nullptr is RHIResult::InvalidUsage.
+	// target must have been created with RHIASBuildFlags::AllowUpdate to be eligible for any update=true build.
+	struct SPEC_RHI_ALIGNAS(8) RHIASBuildDesc final {
+		IRHIAccelerationStructure* m_Target;
+		IRHIAccelerationStructure* m_Source = nullptr;
+		const RHIASGeometryDesc*   m_Geometries;
+		uint32_t                   m_GeometryCount;
+		bool                       m_Update = false;
+	private:
+		uint8_t                    m_Pad[3] = {};
+	public:
+		IRHIBuffer*                m_ScratchBuffer;
+	};
+
+	// One shader binding table record. inlineData/inlineDataSize supply per-record shader arguments; every record in
+	// a given category (raygen/miss/hit/callable) is padded to the max inlineDataSize seen in that category.
+	struct SPEC_RHI_ALIGNAS(8) RHISBTRecord final {
+		uint32_t    m_GroupIndex;
+		uint32_t    m_InlineDataSize = 0;
+		const void* m_InlineData     = nullptr;
+	};
+
+	// Describes a full shader binding table build. rayTypeCount is the authoritative stride used at hit-group lookup
+	// time (hitRecordIndex = instance.sbtOffset + geometryIndex * rayTypeCount + rayTypeIndex) and must match the
+	// ray-type count assumed when the corresponding RHIASInstance::sbtOffset values were computed at TLAS build time.
+	// A mismatch produces incorrect hit-record lookups with no error — silently wrong shading.
+	struct SPEC_RHI_ALIGNAS(8) RHISBTDesc final {
+		IRHIPipeline*       m_Pipeline; // must be IRHIPipeline::Kind::RayTracing
+		const RHISBTRecord* m_RaygenRecords;
+		uint32_t            m_RaygenCount;
+		const RHISBTRecord* m_MissRecords;
+		uint32_t            m_MissCount;
+		const RHISBTRecord* m_HitRecords;
+		uint32_t            m_HitCount;
+		uint32_t            m_RayTypeCount;
+		const RHISBTRecord* m_CallableRecords = nullptr;
+		uint32_t            m_CallableCount   = 0;
+	};
+
+	// Describes a ray trace dispatch with launch dimensions and a prebuilt shader binding table.
 	struct SPEC_RHI_ALIGNAS(8) RHITraceRaysDesc final {
 		IRHIAccelerationStructure* m_AS;
-		void*                      m_BackendExt;
+		IRHIShaderBindingTable*    m_SBT;
 		uint32_t                   m_Width;
 		uint32_t                   m_Height;
 		uint32_t                   m_Depth;
@@ -231,13 +372,16 @@ namespace Spectra::RHI {
 	public:
 	};
 
-	// Describes a command list submission with timeline fence wait and signal values.
-	// waitFence and signalFence must not be null; passing null is a validation error caught in debug builds.
+	// Describes a queue submission with array-based wait/signal timeline fences, mirroring vkQueueSubmit2's
+	// VkSubmitInfo2 array semantics. The common case (one wait, one signal) is a trivial construction with
+	// waitCount = signalCount = 1.
 	struct SPEC_RHI_ALIGNAS(8) RHISubmitDesc final {
-		IRHIFence* m_WaitFence;
-		uint64_t   m_WaitValue;
-		IRHIFence* m_SignalFence;
-		uint64_t   m_SignalValue;
+		const IRHIFence* const* m_WaitFences;
+		uint32_t                m_WaitCount;
+		const uint64_t*         m_WaitValues;
+		const IRHIFence* const* m_SignalFences;
+		uint32_t                m_SignalCount;
+		const uint64_t*         m_SignalValues;
 	};
 
 	// Carries per-frame synchronization context. frameIndex monotonically increases each frame.
