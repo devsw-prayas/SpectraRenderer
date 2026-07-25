@@ -1,0 +1,20 @@
+{
+  "buildDir": "build",
+  "binDir": "bin",
+  "cmakeGenerator": "Visual Studio 17 2022",
+  "defaultConfig": "Release_win64",
+  "runTarget": "SpectraLauncher",
+  "buildConfigurations": [
+    "Debug_win64",
+    "Release_win64",
+    "ReleaseNoOpt_win64",
+    "Release_Kerbecs_NS_win64",
+    "Release_Kerbecs_ES_win64",
+    "Debug_Kerbecs_NS_win64",
+    "Debug_Kerbecs_ES_win64"
+  ],
+  "cudaCompilerExe": "nvcc",
+  "cudaInstallerScript": "scripts/cuda.bat",
+  "vulkanHeaderRelPath": "Include/vulkan/vulkan.h",
+  "vulkanInstallerScript": "scripts/vulkan.bat"
+}

@@ -99,6 +99,6 @@ Makefile
 *.bak
 *.backup
 
-# Claude 
+# Claude
 .claude/
 .production/
