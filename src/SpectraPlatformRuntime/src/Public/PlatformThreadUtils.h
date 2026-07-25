@@ -3,6 +3,10 @@
 #include "PlatformAtomics.h"
 
 namespace Spectra::Platform::Runtime::Thread {
+	namespace Internal {
+		struct PlatformThreadLaunchHelper;
+	}
+
 	using Dword = uint32_t;
 
 	using Flag = bool;
@@ -32,6 +36,7 @@ namespace Spectra::Platform::Runtime::Thread {
 	// [Payload]: 25B [sizeof]: 32B
 	struct alignas(32) SPECTRA_RUNTIME_API ThreadHandle final {
 		friend class PlatformThread;
+		friend struct Internal::PlatformThreadLaunchHelper;
 	private:
 		size_t m_ThreadID;
 		size_t m_Generation;
@@ -125,7 +130,7 @@ namespace Spectra::Platform::Runtime::Thread {
 
 	void SPECTRA_RUNTIME_API priorityBoosting(ThreadLaunchExecDesc& ro_Desc, Flag v_Permission);
 	void SPECTRA_RUNTIME_API basePriority(ThreadLaunchExecDesc& ro_Desc, Priority v_BasePriority);
-	void SPECTRA_RUNTIME_API allowDetachable(ThreadLaunchDesc& ro_Desc, Flag v_Permission);
+	void SPECTRA_RUNTIME_API allowDetachable(ThreadLaunchExecDesc& ro_Desc, Flag v_Permission);
 
 	bool SPECTRA_RUNTIME_API validateLaunchExecDesc(const ThreadLaunchExecDesc& ro_Desc);
 

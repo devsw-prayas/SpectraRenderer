@@ -1,5 +1,5 @@
 #include "SpectraPlatformRuntime.h"
-#include "ThreadUtils.h"
+#include "PlatformThreadUtils.h"
 
 namespace Spectra::Platform::Runtime::Thread {
 	ThreadState ThreadHandle::expectedState() const {
@@ -45,6 +45,7 @@ namespace Spectra::Platform::Runtime::Thread {
 		ro_Desc.m_ReserveSize = 0;
 		ro_Desc.m_SupportsIdealProcessor = Allow;
 		ro_Desc.m_SupportsThreadGroup = Allow;
+		ro_Desc.m_CanDetach = Disallow;
 	}
 
 	void SPECTRA_RUNTIME_API commitStackSize(ThreadLaunchExecDesc& ro_Desc, Bytes v_Size) {

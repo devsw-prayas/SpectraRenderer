@@ -1,5 +1,5 @@
 #pragma once
-#include "SpectraInternalDiagonostics.h"
+#include "SpectraDiagnostics.h"
 #include "SpectraPlatformRuntime.h"
 
 namespace Spectra::Platform::Runtime::File {

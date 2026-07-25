@@ -40,7 +40,7 @@ namespace Spectra::Platform::Runtime::Chrono {
 
 	Duration Timestamp::operator-(const Timestamp& r) const {
 		if (m_Domain != r.m_Domain) {
-			Environment::PlatformTermination::terminate("Chrono domain mismatch", __FILE__, __LINE__);
+			Environment::PlatformTermination::terminate();
 		}
 
 		return Duration(m_Value - r.m_Value);

@@ -3,7 +3,7 @@
 #include "SpectraSyscalls.h"
 #include "PlatformMemory.h"
 
-#include "SpectraInternalDiagonostics.h"
+#include "SpectraDiagnostics.h"
 
 namespace Spectra::Platform::Runtime::Memory {
 	namespace {

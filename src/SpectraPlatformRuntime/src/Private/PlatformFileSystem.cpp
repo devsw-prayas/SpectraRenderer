@@ -4,7 +4,7 @@
 #include "SpectraSyscalls.h"
 #include "PlatformFileSystem.h"
 #include "ProcessEnvironment.h"
-#include "SpectraInternalDiagonostics.h"
+#include "SpectraDiagnostics.h"
 
 namespace Spectra::Platform::Runtime::File {
 	namespace {
@@ -17,7 +17,7 @@ namespace Spectra::Platform::Runtime::File {
 		wchar_t* toWide(const char* p_Utf8, wchar_t* p_StackBuf, int v_StackLen, int& ro_OutLen) {
 			ro_OutLen = MultiByteToWideChar(CP_UTF8, 0, p_Utf8, -1, nullptr, 0);
 			if (ro_OutLen <= 0)
-				Environment::PlatformTermination::terminate("UTF-8 path conversion failed", __FILE__, __LINE__);
+				Environment::PlatformTermination::terminate();
 
 			if (ro_OutLen <= v_StackLen) {
 				MultiByteToWideChar(CP_UTF8, 0, p_Utf8, -1, p_StackBuf, ro_OutLen);
@@ -111,7 +111,7 @@ namespace Spectra::Platform::Runtime::File {
 	void initializeAsyncHandler(AsyncFileHandler& ro_Handler) noexcept {
 		HANDLE ev = CreateEventW(nullptr, TRUE, FALSE, nullptr); // manual-reset, initially unsignaled
 		if (ev == nullptr || ev == INVALID_HANDLE_VALUE)
-			Environment::PlatformTermination::terminate("initializeAsyncHandler: CreateEvent failed", __FILE__, __LINE__);
+			Environment::PlatformTermination::terminate();
 
 		ro_Handler.m_EventHandle = ev;
 		ro_Handler.m_Offset = 0;
@@ -133,9 +133,9 @@ namespace Spectra::Platform::Runtime::File {
 	void validateMappingRange(uint64_t v_Offset, size_t v_Size) noexcept {
 		SPECTRA_ASSERT(g_IsFileSystemInitialized);
 		if (!isMappingAligned(v_Offset))
-			Environment::PlatformTermination::terminate("validateMappingRange: offset not granularity-aligned", __FILE__, __LINE__);
+			Environment::PlatformTermination::terminate();
 		if (v_Size == 0)
-			Environment::PlatformTermination::terminate("validateMappingRange: size is zero", __FILE__, __LINE__);
+			Environment::PlatformTermination::terminate();
 	}
 
 	void Files::init() {
@@ -167,7 +167,7 @@ namespace Spectra::Platform::Runtime::File {
 		freeWide(wide, stackBuf);
 
 		if (!ok)
-			Environment::PlatformTermination::terminate("Files::deleteFile: DeleteFileW failed", __FILE__, __LINE__);
+			Environment::PlatformTermination::terminate();
 	}
 
 	void Files::renameFile(const char* p_OldPath, const char* p_NewPath) {
@@ -186,7 +186,7 @@ namespace Spectra::Platform::Runtime::File {
 		freeWide(newWide, newStack);
 
 		if (!ok)
-			Environment::PlatformTermination::terminate("Files::renameFile: MoveFileExW failed", __FILE__, __LINE__);
+			Environment::PlatformTermination::terminate();
 	}
 
 	FileHandle Files::open(const FileStreamDesc& ro_Desc) {
@@ -209,7 +209,7 @@ namespace Spectra::Platform::Runtime::File {
 		freeWide(wide, stackBuf);
 
 		if (h == INVALID_HANDLE_VALUE)
-			Environment::PlatformTermination::terminate("Files::open: CreateFileW failed", __FILE__, __LINE__);
+			Environment::PlatformTermination::terminate();
 
 		FileHandle handle;
 		handle.m_NativeHandle = h;
@@ -219,7 +219,7 @@ namespace Spectra::Platform::Runtime::File {
 
 	void Files::close(FileHandle& ro_Handle) {
 		if (!isValidHandle(ro_Handle))
-			Environment::PlatformTermination::terminate("Files::close: invalid handle", __FILE__, __LINE__);
+			Environment::PlatformTermination::terminate();
 
 		CloseHandle(static_cast<HANDLE>(ro_Handle.m_NativeHandle));
 		ro_Handle.m_NativeHandle = nullptr;
@@ -227,9 +227,9 @@ namespace Spectra::Platform::Runtime::File {
 
 	size_t Files::read(const FileHandle& ro_Handle, void* p_Buffer, size_t v_BytesToRead) {
 		if (!isValidHandle(ro_Handle))
-			Environment::PlatformTermination::terminate("Files::read: invalid handle", __FILE__, __LINE__);
+			Environment::PlatformTermination::terminate();
 		if (ro_Handle.m_Mode != FileIOMode::SEQUENTIAL)
-			Environment::PlatformTermination::terminate("Files::read: handle not in sequential mode", __FILE__, __LINE__);
+			Environment::PlatformTermination::terminate();
 		SPECTRA_ASSERT(p_Buffer != nullptr);
 
 		DWORD bytesRead = 0;
@@ -237,16 +237,16 @@ namespace Spectra::Platform::Runtime::File {
 						   p_Buffer, static_cast<DWORD>(v_BytesToRead), &bytesRead, nullptr);
 
 		if (!ok)
-			Environment::PlatformTermination::terminate("Files::read: ReadFile failed", __FILE__, __LINE__);
+			Environment::PlatformTermination::terminate();
 
 		return static_cast<size_t>(bytesRead);
 	}
 
 	size_t Files::write(const FileHandle& ro_Handle, const void* p_Buffer, size_t v_BytesToWrite) {
 		if (!isValidHandle(ro_Handle))
-			Environment::PlatformTermination::terminate("Files::write: invalid handle", __FILE__, __LINE__);
+			Environment::PlatformTermination::terminate();
 		if (ro_Handle.m_Mode != FileIOMode::SEQUENTIAL)
-			Environment::PlatformTermination::terminate("Files::write: handle not in sequential mode", __FILE__, __LINE__);
+			Environment::PlatformTermination::terminate();
 		SPECTRA_ASSERT(p_Buffer != nullptr);
 
 		DWORD bytesWritten = 0;
@@ -254,16 +254,16 @@ namespace Spectra::Platform::Runtime::File {
 							p_Buffer, static_cast<DWORD>(v_BytesToWrite), &bytesWritten, nullptr);
 
 		if (!ok)
-			Environment::PlatformTermination::terminate("Files::write: WriteFile failed", __FILE__, __LINE__);
+			Environment::PlatformTermination::terminate();
 
 		return static_cast<size_t>(bytesWritten);
 	}
 
 	void Files::seek(const FileHandle& ro_Handle, int64_t v_Offset, FileSeekOrigin v_Origin) {
 		if (!isValidHandle(ro_Handle))
-			Environment::PlatformTermination::terminate("Files::seek: invalid handle", __FILE__, __LINE__);
+			Environment::PlatformTermination::terminate();
 		if (ro_Handle.m_Mode != FileIOMode::SEQUENTIAL)
-			Environment::PlatformTermination::terminate("Files::seek: handle not in sequential mode", __FILE__, __LINE__);
+			Environment::PlatformTermination::terminate();
 
 		LARGE_INTEGER li;
 		li.QuadPart = v_Offset;
@@ -272,28 +272,28 @@ namespace Spectra::Platform::Runtime::File {
 								   li, nullptr, toWin32SeekMethod(v_Origin));
 
 		if (!ok)
-			Environment::PlatformTermination::terminate("Files::seek: SetFilePointerEx failed", __FILE__, __LINE__);
+			Environment::PlatformTermination::terminate();
 	}
 
 	void Files::flush(FileHandle& ro_Handle) {
 		if (!isValidHandle(ro_Handle))
-			Environment::PlatformTermination::terminate("Files::flush: invalid handle", __FILE__, __LINE__);
+			Environment::PlatformTermination::terminate();
 		if (ro_Handle.m_Mode != FileIOMode::SEQUENTIAL)
-			Environment::PlatformTermination::terminate("Files::flush: handle not in sequential mode", __FILE__, __LINE__);
+			Environment::PlatformTermination::terminate();
 
 		BOOL ok = FlushFileBuffers(static_cast<HANDLE>(ro_Handle.m_NativeHandle));
 		if (!ok)
-			Environment::PlatformTermination::terminate("Files::flush: FlushFileBuffers failed", __FILE__, __LINE__);
+			Environment::PlatformTermination::terminate();
 	}
 
 	size_t Files::getFileSize(FileHandle& ro_Handle) {
 		if (!isValidHandle(ro_Handle))
-			Environment::PlatformTermination::terminate("Files::getFileSize: invalid handle", __FILE__, __LINE__);
+			Environment::PlatformTermination::terminate();
 
 		LARGE_INTEGER size{};
 		BOOL ok = GetFileSizeEx(static_cast<HANDLE>(ro_Handle.m_NativeHandle), &size);
 		if (!ok)
-			Environment::PlatformTermination::terminate("Files::getFileSize: GetFileSizeEx failed", __FILE__, __LINE__);
+			Environment::PlatformTermination::terminate();
 
 		return static_cast<size_t>(size.QuadPart);
 	}
@@ -301,11 +301,11 @@ namespace Spectra::Platform::Runtime::File {
 	void Files::readAsync(FileHandle& ro_Handle, AsyncFileHandler& ro_Handler,
 						  void* p_Buffer, size_t v_BytesToRead, uint64_t v_Offset) {
 		if (!isValidHandle(ro_Handle))
-			Environment::PlatformTermination::terminate("Files::readAsync: invalid handle", __FILE__, __LINE__);
+			Environment::PlatformTermination::terminate();
 		if (ro_Handle.m_Mode != FileIOMode::ASYNCHRONOUS)
-			Environment::PlatformTermination::terminate("Files::readAsync: handle not in async mode", __FILE__, __LINE__);
+			Environment::PlatformTermination::terminate();
 		if (ro_Handler.m_EventHandle == nullptr)
-			Environment::PlatformTermination::terminate("Files::readAsync: handler not initialized", __FILE__, __LINE__);
+			Environment::PlatformTermination::terminate();
 		SPECTRA_ASSERT(p_Buffer != nullptr);
 
 		ro_Handler.m_Offset = v_Offset;
@@ -322,17 +322,17 @@ namespace Spectra::Platform::Runtime::File {
 						   p_Buffer, static_cast<DWORD>(v_BytesToRead), nullptr, &ov);
 
 		if (!ok && GetLastError() != ERROR_IO_PENDING)
-			Environment::PlatformTermination::terminate("Files::readAsync: ReadFile failed", __FILE__, __LINE__);
+			Environment::PlatformTermination::terminate();
 	}
 
 	void Files::writeAsync(FileHandle& ro_Handle, AsyncFileHandler& ro_Handler,
 						   const void* p_Buffer, size_t v_BytesToWrite, uint64_t v_Offset) {
 		if (!isValidHandle(ro_Handle))
-			Environment::PlatformTermination::terminate("Files::writeAsync: invalid handle", __FILE__, __LINE__);
+			Environment::PlatformTermination::terminate();
 		if (ro_Handle.m_Mode != FileIOMode::ASYNCHRONOUS)
-			Environment::PlatformTermination::terminate("Files::writeAsync: handle not in async mode", __FILE__, __LINE__);
+			Environment::PlatformTermination::terminate();
 		if (ro_Handler.m_EventHandle == nullptr)
-			Environment::PlatformTermination::terminate("Files::writeAsync: handler not initialized", __FILE__, __LINE__);
+			Environment::PlatformTermination::terminate();
 		SPECTRA_ASSERT(p_Buffer != nullptr);
 
 		ro_Handler.m_Offset = v_Offset;
@@ -349,15 +349,15 @@ namespace Spectra::Platform::Runtime::File {
 							p_Buffer, static_cast<DWORD>(v_BytesToWrite), nullptr, &ov);
 
 		if (!ok && GetLastError() != ERROR_IO_PENDING)
-			Environment::PlatformTermination::terminate("Files::writeAsync: WriteFile failed", __FILE__, __LINE__);
+			Environment::PlatformTermination::terminate();
 	}
 
 	size_t Files::getOverlappedResult(FileHandle& ro_Handle,
 									  AsyncFileHandler& ro_Handler, bool v_Wait) {
 		if (!isValidHandle(ro_Handle))
-			Environment::PlatformTermination::terminate("Files::getOverlappedResult: invalid handle", __FILE__, __LINE__);
+			Environment::PlatformTermination::terminate();
 		if (ro_Handler.m_EventHandle == nullptr)
-			Environment::PlatformTermination::terminate("Files::getOverlappedResult: handler not initialized", __FILE__, __LINE__);
+			Environment::PlatformTermination::terminate();
 
 		OVERLAPPED ov{};
 		ov.hEvent = static_cast<HANDLE>(ro_Handler.m_EventHandle);
@@ -372,7 +372,7 @@ namespace Spectra::Platform::Runtime::File {
 			DWORD err = GetLastError();
 			if (!v_Wait && err == ERROR_IO_INCOMPLETE)
 				return 0; // still in-flight, polling caller
-			Environment::PlatformTermination::terminate("Files::getOverlappedResult: GetOverlappedResult failed", __FILE__, __LINE__);
+			Environment::PlatformTermination::terminate();
 		}
 
 		ro_Handler.m_BytesTransferred = static_cast<size_t>(transferred);
@@ -416,7 +416,7 @@ namespace Spectra::Platform::Runtime::File {
 		int filterLen = static_cast<int>(strlen(filter));
 
 		if (pathLen + 1 + filterLen + 1 > MAX_PATH * 2)
-			Environment::PlatformTermination::terminate("beginEnumeration: path too long", __FILE__, __LINE__);
+			Environment::PlatformTermination::terminate();
 
 		memcpy(composed, ro_Desc.m_Path, pathLen);
 		composed[pathLen] = '\\';
@@ -428,7 +428,7 @@ namespace Spectra::Platform::Runtime::File {
 
 		WIN32_FIND_DATAW* pending = static_cast<WIN32_FIND_DATAW*>(std::malloc(sizeof(WIN32_FIND_DATAW)));
 		if (!pending)
-			Environment::PlatformTermination::terminate("beginEnumeration: out of memory", __FILE__, __LINE__);
+			Environment::PlatformTermination::terminate();
 		*pending = {};
 
 		HANDLE h = FindFirstFileExW(wide, FindExInfoBasic, pending,
@@ -437,14 +437,14 @@ namespace Spectra::Platform::Runtime::File {
 
 		if (h == INVALID_HANDLE_VALUE) {
 			std::free(pending);
-			Environment::PlatformTermination::terminate("Files::beginEnumeration: FindFirstFileExW failed", __FILE__, __LINE__);
+			Environment::PlatformTermination::terminate();
 		}
 
 		DirEnumState* state = static_cast<DirEnumState*>(std::malloc(sizeof(DirEnumState)));
 		if (!state) {
 			FindClose(h);
 			std::free(pending);
-			Environment::PlatformTermination::terminate("beginEnumeration: out of memory", __FILE__, __LINE__);
+			Environment::PlatformTermination::terminate();
 		}
 
 		state->m_FindHandle  = h;
@@ -459,7 +459,7 @@ namespace Spectra::Platform::Runtime::File {
 
 	bool Files::next(DirectoryEnumHandle& ro_Handle, FileInfo& ro_OutInfo) {
 		if (!isValidEnumHandle(ro_Handle))
-			Environment::PlatformTermination::terminate("Files::next: invalid enum handle", __FILE__, __LINE__);
+			Environment::PlatformTermination::terminate();
 
 		DirEnumState* state = static_cast<DirEnumState*>(ro_Handle.m_NativeHandle);
 
@@ -484,7 +484,7 @@ namespace Spectra::Platform::Runtime::File {
 			if (!ok) {
 				if (GetLastError() == ERROR_NO_MORE_FILES)
 					return false;
-				Environment::PlatformTermination::terminate("Files::next: FindNextFileW failed", __FILE__, __LINE__);
+				Environment::PlatformTermination::terminate();
 			}
 
 			if (findData.cFileName[0] == L'.' &&
@@ -499,7 +499,7 @@ namespace Spectra::Platform::Runtime::File {
 
 	void Files::closeEnumeration(DirectoryEnumHandle& ro_Handle) {
 		if (!isValidEnumHandle(ro_Handle))
-			Environment::PlatformTermination::terminate("Files::closeEnumeration: invalid handle", __FILE__, __LINE__);
+			Environment::PlatformTermination::terminate();
 
 		DirEnumState* state = static_cast<DirEnumState*>(ro_Handle.m_NativeHandle);
 		FindClose(static_cast<HANDLE>(state->m_FindHandle));
@@ -512,7 +512,7 @@ namespace Spectra::Platform::Runtime::File {
 
 	FileMappingHandle Files::createMapping(FileHandle& ro_Handle, FileAccess v_Access, size_t v_MaxSize) {
 		if (!isValidHandle(ro_Handle))
-			Environment::PlatformTermination::terminate("Files::createMapping: invalid handle", __FILE__, __LINE__);
+			Environment::PlatformTermination::terminate();
 
 		DWORD protect = toWin32MappingProtect(v_Access);
 		DWORD sizeHigh = static_cast<DWORD>(v_MaxSize >> 32);
@@ -521,7 +521,7 @@ namespace Spectra::Platform::Runtime::File {
 		HANDLE h = CreateFileMappingW(static_cast<HANDLE>(ro_Handle.m_NativeHandle), nullptr, protect, sizeHigh, sizeLow, nullptr);
 
 		if (h == nullptr || h == INVALID_HANDLE_VALUE)
-			Environment::PlatformTermination::terminate("Files::createMapping: CreateFileMappingW failed", __FILE__, __LINE__);
+			Environment::PlatformTermination::terminate();
 
 		FileMappingHandle mapping;
 		mapping.m_NativeHandle = h;
@@ -531,7 +531,7 @@ namespace Spectra::Platform::Runtime::File {
 
 	void* Files::mapView(FileMappingHandle& ro_Mapping, uint64_t v_Offset, size_t v_Size, FileAccess v_Access) {
 		if (!isValidMappingHandle(ro_Mapping))
-			Environment::PlatformTermination::terminate("Files::mapView: invalid mapping handle", __FILE__, __LINE__);
+			Environment::PlatformTermination::terminate();
 
 		validateMappingRange(v_Offset, v_Size);
 
@@ -542,7 +542,7 @@ namespace Spectra::Platform::Runtime::File {
 		void* view = MapViewOfFile(static_cast<HANDLE>(ro_Mapping.m_NativeHandle), access, offsetHigh, offsetLow, v_Size);
 
 		if (view == nullptr)
-			Environment::PlatformTermination::terminate("Files::mapView: MapViewOfFile failed", __FILE__, __LINE__);
+			Environment::PlatformTermination::terminate();
 
 		return view;
 	}
@@ -552,12 +552,12 @@ namespace Spectra::Platform::Runtime::File {
 
 		BOOL ok = UnmapViewOfFile(p_BaseAddress);
 		if (!ok)
-			Environment::PlatformTermination::terminate("Files::unmapView: UnmapViewOfFile failed", __FILE__, __LINE__);
+			Environment::PlatformTermination::terminate();
 	}
 
 	void Files::closeMapping(FileMappingHandle& ro_Mapping) {
 		if (!isValidMappingHandle(ro_Mapping))
-			Environment::PlatformTermination::terminate("Files::closeMapping: invalid mapping handle", __FILE__, __LINE__);
+			Environment::PlatformTermination::terminate();
 
 		CloseHandle(static_cast<HANDLE>(ro_Mapping.m_NativeHandle));
 		ro_Mapping.m_NativeHandle = nullptr;

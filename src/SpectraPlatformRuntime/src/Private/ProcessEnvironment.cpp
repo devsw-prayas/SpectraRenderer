@@ -2,7 +2,7 @@
 #include "ProcessEnvironment.h"
 
 #define ALLOW_SYSCALL
-#include "SpectraInternalDiagonostics.h"
+#include "SpectraDiagnostics.h"
 #include "SpectraIntrin.h"
 #include "SpectraSyscalls.h"
 
@@ -203,7 +203,7 @@ namespace Spectra::Platform::Runtime::Environment {
         return SetEnvironmentVariableA(p_Name, p_Value);
     }
 
-    void PlatformTermination::terminate(const char* p_Reason, const char* p_FileName, int line) {
+    void PlatformTermination::terminate() {
         TerminateProcess(GetCurrentProcess(), EXIT_FAILURE);
         SPECTRA_UNREACHABLE();
     }

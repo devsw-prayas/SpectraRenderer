@@ -104,6 +104,26 @@ namespace Spectra::Platform::Runtime::Atomic {
 				Intrinsic::MemoryOrder v_Ordering = Intrinsic::MemoryOrder::SEQ_CST) noexcept {
 			return Intrinsic::atomicClear<Valid>(&m_Value, bit, v_Ordering);
 		}
+
+		SPECTRA_FORCEINLINE
+			Valid* data() noexcept {
+			return &m_Value;
+		}
+
+		SPECTRA_FORCEINLINE
+			const Valid* data() const noexcept {
+			return &m_Value;
+		}
+
+		SPECTRA_FORCEINLINE
+			Valid* address() noexcept {
+			return data();
+		}
+
+		SPECTRA_FORCEINLINE
+			const Valid* address() const noexcept {
+			return data();
+		}
 	};
 
 	template<typename T>

@@ -29,7 +29,7 @@
 #pragma once
 #include <SpectraPlatformRuntime.h>
 #include <SpectraIntrin.h>
-#include "SpectraInternalDiagonostics.h"
+#include "SpectraDiagnostics.h"
 
 namespace Spectra::Platform::Runtime::Intrinsic {
 	template<typename T>

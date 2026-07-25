@@ -74,7 +74,7 @@ namespace Spectra::Platform::Runtime::Environment {
 
 	class SPECTRA_RUNTIME_API PlatformTermination final {
 	public:
-		SPECTRA_NORETURN static void terminate(const char* p_Reason, const char* p_FileName, int line);
+		SPECTRA_NORETURN static void terminate();
 	};
 
 }

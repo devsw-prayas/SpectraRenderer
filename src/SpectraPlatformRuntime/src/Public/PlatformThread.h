@@ -1,10 +1,13 @@
 #pragma once
 #include "SpectraPlatformRuntime.h"
-#include "ThreadUtils.h"
+#include "PlatformThreadUtils.h"
 
 namespace Spectra::Platform::Runtime::Thread {
 
 	class SPECTRA_RUNTIME_API PlatformThread final {
+		static bool isValidHandle(const ThreadHandle& ro_Handle) noexcept;
+
+	public:
 		static ThreadHandle createThread(
 			const ThreadLaunchDesc& ro_LaunchDesc, const ThreadLaunchExecDesc& ro_ExecDesc) noexcept;
 		static bool detachThread(ThreadHandle v_Handle) noexcept;
@@ -23,9 +26,6 @@ namespace Spectra::Platform::Runtime::Thread {
 		static void wakeOnAddress(ParkHandle& ro_Permit) noexcept;
 		static void wakeAllOnAddress(ParkHandle& ro_Permit) noexcept;
 
-		template<typename T>
-		static void waitOnAddressFor(ParkHandle& ro_Handle, T&& u_Duration) noexcept {
-			
-		}
+		static void waitOnAddressFor(ParkHandle& ro_Permit, uint32_t v_TimeoutMs) noexcept;
 	};
 }
