@@ -19,6 +19,13 @@ add_library(SpectraVulkanBackend SHARED
     ${SpectraVulkanBackend_INTERNAL_HEADERS}
 )
 
+source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES
+    ${SpectraVulkanBackend_HEADERS}
+    ${SpectraVulkanBackend_SOURCES}
+    ${SpectraVulkanBackend_INL}
+    ${SpectraVulkanBackend_INTERNAL_HEADERS}
+)
+
 target_include_directories(SpectraVulkanBackend
     PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}/src/Public

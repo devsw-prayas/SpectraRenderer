@@ -13,6 +13,11 @@ add_library(SpectraMaterials SHARED
     ${SpectraMaterials_SOURCE}
 )
 
+source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES
+    ${SpectraMaterials_HEADERS}
+    ${SpectraMaterials_SOURCE}
+)
+
 target_include_directories(SpectraMaterials PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/src/Public
 )

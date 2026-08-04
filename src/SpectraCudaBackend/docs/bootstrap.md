@@ -14,7 +14,7 @@ bool ok = CudaDriver::initCuda();
 // ok == false means no CUDA driver present
 
 uint32_t version = CudaDriver::getCudaDriverVersion();
-// e.g. 12040 for CUDA 12.4
+// e.g. 13020 for CUDA 13.2
 ```
 
 ## CudaDeviceManager (Spectra::Cuda::Bootstrap)

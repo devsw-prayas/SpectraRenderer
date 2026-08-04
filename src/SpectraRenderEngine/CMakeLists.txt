@@ -13,6 +13,11 @@ add_library(SpectraRenderEngine SHARED
     ${SpectraRenderEngine_SOURCE}
 )
 
+source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES
+    ${SpectraRenderEngine_HEADERS}
+    ${SpectraRenderEngine_SOURCE}
+)
+
 target_include_directories(SpectraRenderEngine PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/src/Public
 )

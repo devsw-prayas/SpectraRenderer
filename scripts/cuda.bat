@@ -1,7 +1,6 @@
 @echo off
 setlocal EnableDelayedExpansion
 
-:: Welcome to the CUDA Auto-Installer 3000 - Now with Smart Pre-Checks!
 echo Let's get CUDA installed so your render engine can flex on the GPU...
 
 :: Step 0: Check for NVIDIA GPU (Because CUDA Needs One)
@@ -95,11 +94,11 @@ if not exist "%TEMP_DIR%" (
     )
 )
 
-:: Step 3: Download CUDA Toolkit 12.4 (Windows, x86_64)
+:: Step 3: Download CUDA Toolkit 13.2 (Windows, x86_64)
 :: URL might change - check NVIDIA's site if this breaks (https://developer.nvidia.com/cuda-downloads)
-set "CUDA_URL=https://developer.download.nvidia.com/compute/cuda/12.4.0/local_installers/cuda_12.4.0_551.61_windows.exe"
-set "CUDA_INSTALLER=%TEMP_DIR%\cuda_12.4.0_windows.exe"
-echo Downloading CUDA Toolkit 12.4 - this is ~3 GB, so grab a coffee if your internet's powered by hamsters...
+set "CUDA_URL=https://developer.download.nvidia.com/compute/cuda/13.2.1/local_installers/cuda_13.2.1_windows.exe"
+set "CUDA_INSTALLER=%TEMP_DIR%\cuda_13.2.1_windows.exe"
+echo Downloading CUDA Toolkit 13.2 - this is ~3 GB, so grab a coffee if your internet's powered by hamsters...
 powershell -Command "Invoke-WebRequest -Uri '%CUDA_URL%' -OutFile '%CUDA_INSTALLER%'"
 if not exist "%CUDA_INSTALLER%" (
     echo ERROR: Download failed - either NVIDIA moved the file or your internet's a potato!
@@ -108,7 +107,7 @@ if not exist "%CUDA_INSTALLER%" (
 )
 
 :: Step 4: Silently Install CUDA
-echo Installing CUDA Toolkit 12.4 - sit tight, this might take a minute...
+echo Installing CUDA Toolkit 13.2 - sit tight, this might take a minute...
 start /wait "" "%CUDA_INSTALLER%" -s -n
 if !errorlevel! neq 0 (
     echo ERROR: CUDA installation failed - maybe your GPU driver is outdated?
@@ -119,7 +118,7 @@ if !errorlevel! neq 0 (
 
 :: Step 5: Set Environment Variables
 echo Setting up environment variables - because CMake won't find CUDA without a map...
-set "CUDA_PATH=C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.4"
+set "CUDA_PATH=C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v13.2"
 setx CUDA_PATH "%CUDA_PATH%" /M
 setx PATH "%PATH%;%CUDA_PATH%\bin" /M
 if !errorlevel! neq 0 (
@@ -149,7 +148,7 @@ if exist "%CUDA_INSTALLER%" (
 )
 
 :: Step 8: Victory Lap
-echo SUCCESS: CUDA 12.4 is installed and ready to roll!
+echo SUCCESS: CUDA 13.2 is installed and ready to roll!
 echo Your NVIDIA GPU is now CUDA-enabled. Check your exact model with:
 echo nvidia-smi
 echo Current CUDA version: 

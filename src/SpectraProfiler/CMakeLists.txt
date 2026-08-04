@@ -15,6 +15,12 @@ add_library(SpectraProfiler SHARED
     ${SpectraProfiler_INL}
 )
 
+source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES
+    ${SpectraProfiler_HEADERS}
+    ${SpectraProfiler_SOURCE}
+    ${SpectraProfiler_INL}
+)
+
 target_compile_definitions(SpectraProfiler PRIVATE
     SPECTRA_PROFILER_SHARED
     SPECTRA_BUILDING_RUNTIME

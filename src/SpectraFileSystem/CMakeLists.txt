@@ -15,6 +15,12 @@ add_library(SpectraFileSystem SHARED
     ${SpectraFileSystem_INL}
 )
 
+source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES
+    ${SpectraFileSystem_HEADERS}
+    ${SpectraFileSystem_SOURCE}
+    ${SpectraFileSystem_INL}
+)
+
 target_compile_definitions(SpectraFileSystem PRIVATE 
     SPECTRA_FILESYSTEM_SHARED
     SPECTRA_FILESYSTEM_EXPORTS

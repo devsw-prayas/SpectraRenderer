@@ -13,6 +13,11 @@ add_library(SpectraEditor SHARED
     ${SpectraEditor_SOURCE}
 )
 
+source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES
+    ${SpectraEditor_HEADERS}
+    ${SpectraEditor_SOURCE}
+)
+
 target_include_directories(SpectraEditor PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/src/Public
 )

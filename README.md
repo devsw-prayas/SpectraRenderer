@@ -115,6 +115,7 @@ driver.bat <command> [options]
 |---|---|
 | `help`, `-h`, `--help` | Show the command list |
 | `cmake-init [-f] [-preq]` | Configure cmake (`-f` deletes `CMakeCache.txt` first; `-preq` checks CMake/VS2022 are present first) |
+| `submodule-update [--remote]` | `git submodule update --init --recursive` (`--remote` also pulls the latest commit on each submodule's tracked branch) |
 | `module-gen -lib\|-dll\|-exe -cpp17\|-cpp20\|-cpp23 -n "Name" -dir <location>` | Scaffold a new module |
 | `cu-check [-d]` | Check for the CUDA toolkit (`-d` installs via `scripts/cuda.bat` if missing) |
 | `vk-check [-d]` | Check for the Vulkan SDK (`-d` installs via `scripts/vulkan.bat` if missing) |

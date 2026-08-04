@@ -13,6 +13,11 @@ add_library(SpectraCore SHARED
     ${SpectraCore_SOURCE}
 )
 
+source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES
+    ${SpectraCore_HEADERS}
+    ${SpectraCore_SOURCE}
+)
+
 target_compile_definitions(SpectraCore PRIVATE
     SPECTRA_CORE_SHARED
     SPECTRA_BUILDING_RUNTIME

@@ -124,7 +124,7 @@ namespace Spectra::Vulkan {
 		if (result == VK_SUCCESS)              return Utils::SwapchainStatus::OK;
 		if (result == VK_SUBOPTIMAL_KHR)       return Utils::SwapchainStatus::SUBOPTIMAL;
 		if (result == VK_ERROR_OUT_OF_DATE_KHR) return Utils::SwapchainStatus::OUT_OF_DATE;
-		return Utils::SwapchainStatus::ERROR;
+		return Utils::SwapchainStatus::FAILED;
 	}
 
 	Utils::SwapchainStatus VulkanSwapchain::present(Utils::QueueType v_Queue,
@@ -146,6 +146,7 @@ namespace Spectra::Vulkan {
 		if (result == VK_SUCCESS)               return Utils::SwapchainStatus::OK;
 		if (result == VK_SUBOPTIMAL_KHR)        return Utils::SwapchainStatus::SUBOPTIMAL;
 		if (result == VK_ERROR_OUT_OF_DATE_KHR) return Utils::SwapchainStatus::OUT_OF_DATE;
-		return Utils::SwapchainStatus::ERROR;
+		return Utils::SwapchainStatus::FAILED;
 	}
 }
+

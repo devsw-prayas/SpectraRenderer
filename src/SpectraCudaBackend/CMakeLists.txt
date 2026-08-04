@@ -19,6 +19,13 @@ add_library(SpectraCudaBackend SHARED
     ${SpectraCudaBackend_INTERNAL_HEADERS}
 )
 
+source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES
+    ${SpectraCudaBackend_HEADERS}
+    ${SpectraCudaBackend_SOURCES}
+    ${SpectraCudaBackend_INL}
+    ${SpectraCudaBackend_INTERNAL_HEADERS}
+)
+
 target_include_directories(SpectraCudaBackend
     PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}/src/Public

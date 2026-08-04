@@ -72,7 +72,7 @@ namespace Spectra::Vulkan {
 			dst.loadOp      = static_cast<VkAttachmentLoadOp>(src.m_LoadOp);
 			dst.storeOp     = static_cast<VkAttachmentStoreOp>(src.m_StoreOp);
 			static_assert(sizeof(dst.clearValue) == sizeof(src.m_ClearValue));
-			__builtin_memcpy(&dst.clearValue, &src.m_ClearValue, sizeof(dst.clearValue));
+			memcpy(&dst.clearValue, &src.m_ClearValue, sizeof(dst.clearValue));
 		}
 
 		VkRenderingAttachmentInfo depthAttachment{};
@@ -83,7 +83,7 @@ namespace Spectra::Vulkan {
 			depthAttachment.imageLayout = static_cast<VkImageLayout>(src.m_Layout);
 			depthAttachment.loadOp      = static_cast<VkAttachmentLoadOp>(src.m_LoadOp);
 			depthAttachment.storeOp     = static_cast<VkAttachmentStoreOp>(src.m_StoreOp);
-			__builtin_memcpy(&depthAttachment.clearValue, &src.m_ClearValue, sizeof(depthAttachment.clearValue));
+			memcpy(&depthAttachment.clearValue, &src.m_ClearValue, sizeof(depthAttachment.clearValue));
 		}
 
 		auto ri                        = Internal::vkInit<VkRenderingInfo>();

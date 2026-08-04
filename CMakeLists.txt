@@ -1,5 +1,13 @@
 cmake_minimum_required(VERSION 3.20)
 
+if(CMAKE_SOURCE_DIR STREQUAL CMAKE_BINARY_DIR)
+    message(WARNING
+        "In-source build detected (configuring directly in the repo root). "
+        "This scatters generated project files across every module directory "
+        "and risks accidentally committing build artifacts. Prefer an "
+        "out-of-source build: cmake -S . -B build")
+endif()
+
 project(Spectra)
 
 set(CMAKE_CXX_STANDARD 20)
@@ -12,14 +20,8 @@ set(CMAKE_CONFIGURATION_TYPES
     "ReleaseNoOpt_win64"
     "Release_Kerbecs_NS_win64"
     "Release_Kerbecs_ES_win64"
-    "Release_Stratum_win64"
-    "Release_Kerbecs_NS_Stratum_win64"
-    "Release_Kerbecs_ES_Stratum_win64"
     "Debug_Kerbecs_NS_win64"
     "Debug_Kerbecs_ES_win64"
-    "Debug_Stratum_win64"
-    "Debug_Kerbecs_NS_Stratum_win64"
-    "Debug_Kerbecs_ES_Stratum_win64"
     CACHE STRING "Available build configurations" FORCE
 )
 
@@ -42,16 +44,10 @@ if(MSVC)
     spectra_release_config(RELEASENOOPT_WIN64                   "/Od")
     spectra_release_config(RELEASE_KERBECS_NS_WIN64             "/O2")
     spectra_release_config(RELEASE_KERBECS_ES_WIN64             "/O2")
-    spectra_release_config(RELEASE_STRATUM_WIN64                "/O2")
-    spectra_release_config(RELEASE_KERBECS_NS_STRATUM_WIN64     "/O2")
-    spectra_release_config(RELEASE_KERBECS_ES_STRATUM_WIN64     "/O2")
 
     spectra_debug_config(DEBUG_WIN64                        "/Od")
     spectra_debug_config(DEBUG_KERBECS_NS_WIN64             "/Od")
     spectra_debug_config(DEBUG_KERBECS_ES_WIN64             "/Od")
-    spectra_debug_config(DEBUG_STRATUM_WIN64                "/Od")
-    spectra_debug_config(DEBUG_KERBECS_NS_STRATUM_WIN64     "/Od")
-    spectra_debug_config(DEBUG_KERBECS_ES_STRATUM_WIN64     "/Od")
 else()
     macro(spectra_config NAME OPT)
         set(CMAKE_CXX_FLAGS_${NAME} "${OPT} -DNDEBUG" CACHE STRING "" FORCE)
@@ -65,27 +61,20 @@ else()
     spectra_config(RELEASENOOPT_WIN64                   "-O0")
     spectra_config(RELEASE_KERBECS_NS_WIN64             "-O3")
     spectra_config(RELEASE_KERBECS_ES_WIN64             "-O3")
-    spectra_config(RELEASE_STRATUM_WIN64                "-O3")
-    spectra_config(RELEASE_KERBECS_NS_STRATUM_WIN64     "-O3")
-    spectra_config(RELEASE_KERBECS_ES_STRATUM_WIN64     "-O3")
 
     spectra_debug_config(DEBUG_WIN64                        "-O0")
     spectra_debug_config(DEBUG_KERBECS_NS_WIN64             "-O0")
     spectra_debug_config(DEBUG_KERBECS_ES_WIN64             "-O0")
-    spectra_debug_config(DEBUG_STRATUM_WIN64                "-O0")
-    spectra_debug_config(DEBUG_KERBECS_NS_STRATUM_WIN64     "-O0")
-    spectra_debug_config(DEBUG_KERBECS_ES_STRATUM_WIN64     "-O0")
 endif()
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin/$<CONFIG>)
 
-add_subdirectory(common/Stratum)
 add_subdirectory(common/Corium)
 add_subdirectory(common/StormSTL)
 add_subdirectory(common/Kerbecs)
 add_subdirectory(common/Leibniz)
 add_subdirectory(common/Hades-Benchmark)
-add_subdirectory(src/SpectraValidationKit)
+add_subdirectory(common/Valhalla)
 
 add_compile_definitions(
     # Kerbecs only
@@ -93,16 +82,6 @@ add_compile_definitions(
     $<$<CONFIG:Release_Kerbecs_ES_win64>:KERBECS_SHADOW_ENHANCED>
     $<$<CONFIG:Debug_Kerbecs_NS_win64>:KERBECS_SHADOW_NORMAL>
     $<$<CONFIG:Debug_Kerbecs_ES_win64>:KERBECS_SHADOW_ENHANCED>
-
-    # Stratum only
-    $<$<CONFIG:Release_Stratum_win64>:STRATUM_ENABLED>
-    $<$<CONFIG:Debug_Stratum_win64>:STRATUM_ENABLED>
-
-    # Kerbecs + Stratum
-    $<$<CONFIG:Release_Kerbecs_NS_Stratum_win64>:KERBECS_SHADOW_NORMAL;STRATUM_ENABLED>
-    $<$<CONFIG:Release_Kerbecs_ES_Stratum_win64>:KERBECS_SHADOW_ENHANCED;STRATUM_ENABLED>
-    $<$<CONFIG:Debug_Kerbecs_NS_Stratum_win64>:KERBECS_SHADOW_NORMAL;STRATUM_ENABLED>
-    $<$<CONFIG:Debug_Kerbecs_ES_Stratum_win64>:KERBECS_SHADOW_ENHANCED;STRATUM_ENABLED>
 )
 
 add_subdirectory(src/SpectraVulkanBackend)
@@ -118,9 +97,17 @@ add_subdirectory(src/SpectraMemory)
 add_subdirectory(src/SpectraFileSystem)
 add_subdirectory(src/SpectraProfiler)
 add_subdirectory(src/SpectraRHI)
+add_subdirectory(src/SpectraInstrumentation)
 
-foreach(target Corium StormSTL Stratum Leibniz)
+foreach(target Corium StormSTL Leibniz)
     set_target_properties(${target} PROPERTIES FOLDER "Common")
+endforeach()
+
+foreach(target SpectraVulkanBackend SpectraCudaBackend SpectraCore SpectraEditor
+               SpectraLauncher SpectraMaterials SpectraRenderEngine SpectraRenderPipeline
+               SpectraPlatformRuntime SpectraMemory SpectraFileSystem SpectraProfiler
+               SpectraRHI SpectraInstrumentation)
+    add_dependencies(${target} ValhallaCodegen)
 endforeach()
 
 foreach(target SpectraCore SpectraRenderEngine SpectraRenderPipeline
@@ -132,7 +119,7 @@ foreach(target SpectraVulkanBackend SpectraCudaBackend)
         set_target_properties(${target} PROPERTIES FOLDER "Backend")
 endforeach()
 
-foreach(target Kerbecs Hades SpectraProfiler)
+foreach(target Kerbecs Hades-Core Hades-Codegen Hades-Driver SpectraProfiler)
     set_target_properties(${target} PROPERTIES FOLDER "Tools")
 endforeach()
 
@@ -140,10 +127,13 @@ foreach(target SpectraMemory SpectraFileSystem SpectraRHI)
     set_target_properties(${target} PROPERTIES FOLDER "Engine")
 endforeach()
 
+set_target_properties(SpectraInstrumentation PROPERTIES FOLDER "Tools")
+
 
 set_target_properties(SpectraEditor          PROPERTIES FOLDER "Editor")
 set_target_properties(SpectraLauncher        PROPERTIES FOLDER "Launcher")
 set_target_properties(SpectraPlatformRuntime PROPERTIES FOLDER "Runtime")
+
 
 # ---------------------------------------------------------------
 # Global Compiler Options

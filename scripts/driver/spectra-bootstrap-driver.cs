@@ -27,6 +27,7 @@ var rest = args[1..];
 return command switch
 {
     "cmake-init" => CmakeInit(rootDir, config, rest),
+    "submodule-update" => SubmoduleUpdate(rootDir, rest),
     "module-gen" => ModuleGen(rest),
     "cu-check" => CuCheck(rootDir, config, rest),
     "vk-check" => VkCheck(rootDir, config, rest),
@@ -47,6 +48,7 @@ void PrintUsage()
     Console.WriteLine("Commands:");
     Console.WriteLine("  help, -h, --help                                       Show this message");
     Console.WriteLine("  cmake-init [-f] [-preq]                                Configure cmake (-f: delete CMakeCache.txt first, -preq: check cmake/VS2022 first)");
+    Console.WriteLine("  submodule-update [--remote]                            git submodule update --init --recursive (--remote: also pull latest tracked branch)");
     Console.WriteLine("  module-gen -lib|-dll|-exe -cpp17|-cpp20|-cpp23 -n \"Name\" -dir <location>   Scaffold a new module");
     Console.WriteLine("  cu-check [-d]                                          Check for CUDA toolkit (-d: install if missing)");
     Console.WriteLine("  vk-check [-d]                                          Check for Vulkan SDK (-d: install if missing)");
@@ -85,9 +87,22 @@ int CmakeInit(string p_RootDir, Config p_Config, string[] p_Rest)
         }
     }
 
-    Console.WriteLine($"[INFO] Configuring build in {buildDir}...");
+    Console.WriteLine($"[INFO] Configuring build in {buildDir}... \n");
     var exitCode = Run("cmake", $"-S \"{p_RootDir}\" -B \"{buildDir}\" -G \"{p_Config.CmakeGenerator}\"");
     Console.WriteLine(exitCode == 0 ? "[OK] CMake configured." : "[ERROR] CMake configure failed.");
+    return exitCode;
+}
+
+// submodule-update
+
+int SubmoduleUpdate(string p_RootDir, string[] p_Rest)
+{
+    var remote = p_Rest.Contains("--remote");
+    var args = "submodule update --init --recursive" + (remote ? " --remote" : "");
+
+    Console.WriteLine("[INFO] Updating submodules... \n");
+    var exitCode = Run("git", $"-C \"{p_RootDir}\" {args}");
+    Console.WriteLine(exitCode == 0 ? "[OK] Submodules up to date." : "[ERROR] Submodule update failed.");
     return exitCode;
 }
 
@@ -99,7 +114,7 @@ int BuildConfig(string p_RootDir, Config p_Config, string[] p_Rest)
     if (cfg is null) return 1;
 
     var buildDir = Path.Combine(p_RootDir, p_Config.BuildDir);
-    Console.WriteLine($"[INFO] Building configuration: {cfg}");
+    Console.WriteLine($"[INFO] Building configuration: {cfg} \n");
     var exitCode = Run("cmake", $"--build \"{buildDir}\" --config {cfg}");
     Console.WriteLine(exitCode == 0 ? "[OK] Build succeeded." : $"[ERROR] Build failed for configuration {cfg}.");
     return exitCode;
@@ -111,7 +126,7 @@ int RebuildConfig(string p_RootDir, Config p_Config, string[] p_Rest)
     if (cfg is null) return 1;
 
     var buildDir = Path.Combine(p_RootDir, p_Config.BuildDir);
-    Console.WriteLine($"[INFO] Rebuilding configuration: {cfg}");
+    Console.WriteLine($"[INFO] Rebuilding configuration: {cfg} \n");
     var exitCode = Run("cmake", $"--build \"{buildDir}\" --config {cfg} --clean-first");
     Console.WriteLine(exitCode == 0 ? "[OK] Rebuild succeeded." : $"[ERROR] Rebuild failed for configuration {cfg}.");
     return exitCode;

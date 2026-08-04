@@ -13,11 +13,16 @@ add_executable(SpectraLauncher
     ${SpectraLauncher_SOURCE}
 )
 
+source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES
+    ${SpectraLauncher_HEADERS}
+    ${SpectraLauncher_SOURCE}
+)
+
 target_include_directories(SpectraLauncher PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/src/Public
 )
 
-target_link_libraries(SpectraLauncher SpectraPlatformRuntime Hades Leibniz Kerbecs Corium SpectraCudaBackend Stratum)
+target_link_libraries(SpectraLauncher SpectraPlatformRuntime Hades-Core Leibniz Kerbecs)
 
 target_precompile_headers(SpectraLauncher PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src/Public/SpectraLauncher.h)
 

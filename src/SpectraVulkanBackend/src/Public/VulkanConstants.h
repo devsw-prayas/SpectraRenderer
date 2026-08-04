@@ -422,7 +422,7 @@ namespace Spectra::Vulkan::Utils {
 		OK          = 0,
 		SUBOPTIMAL  = 1,
 		OUT_OF_DATE = 2,
-		ERROR       = 3,
+		FAILED      = 3,
 	};
 
 	// Values match VkAccelerationStructureTypeKHR — impl casts directly.
