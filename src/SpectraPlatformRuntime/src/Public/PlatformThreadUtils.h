@@ -33,6 +33,22 @@ namespace Spectra::Platform::Runtime::Thread {
 		CREATED, RUNNING, SEALED, REAPED
 	};
 
+	struct alignas(8) SPECTRA_RUNTIME_API AffinityDesc final {
+		Mask m_AffMask;
+		Dword m_GroupId;
+
+		AffinityDesc() = default;
+		~AffinityDesc() = default;
+
+		AffinityDesc(const AffinityDesc&) = default;
+		AffinityDesc(AffinityDesc&&) noexcept = default;
+		AffinityDesc& operator=(const AffinityDesc&) = default;
+		AffinityDesc& operator=(AffinityDesc&&) noexcept = default;
+	};
+
+	void SPECTRA_RUNTIME_API setAffinityMask(AffinityDesc& ro_Desc, Mask v_Mask) noexcept;
+	void SPECTRA_RUNTIME_API setGroupId(AffinityDesc& ro_Desc, Dword v_GroupId) noexcept;
+
 	// [Payload]: 25B [sizeof]: 32B
 	struct alignas(32) SPECTRA_RUNTIME_API ThreadHandle final {
 		friend class PlatformThread;
@@ -83,9 +99,7 @@ namespace Spectra::Platform::Runtime::Thread {
 
 	// [Payload]: 40B [sizeof]: 64B
 	struct SPECTRA_RUNTIME_API alignas(32) ThreadLaunchExecDesc final {
-		// TODO Missing Detachable behavior
-		ProcessorIdx m_AffinityMask;
-		Dword        m_GroupID;
+		AffinityDesc m_Desc;
 
 		Bytes        m_CommitSize;
 		Bytes        m_ReserveSize;

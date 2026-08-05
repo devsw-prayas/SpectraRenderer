@@ -6,6 +6,14 @@
 #define NOMINMAX
 #include <windows.h>
 
+#ifdef WINDOW_BUILDER
+#include <windowsx.h>
+#include <ole2.h>
+#include <shellapi.h>
+#include <ShellScalingApi.h>
+#include <hidusage.h>
+#endif
+
 #elif defined(__linux__)
 #include <sys/mman.h>
 #include <unistd.h>

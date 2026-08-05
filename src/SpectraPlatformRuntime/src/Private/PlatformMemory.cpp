@@ -4,6 +4,7 @@
 #include "PlatformMemory.h"
 
 #include "SpectraDiagnostics.h"
+#include "InternalUtils.h"
 
 namespace Spectra::Platform::Runtime::Memory {
 	namespace {
@@ -325,20 +326,7 @@ namespace Spectra::Platform::Runtime::Memory {
 			// TODO
 		}
 
-		DWORD protect = PAGE_READWRITE;
-		switch (ro_Desc.m_Protect) {
-		case MemoryProtect::NO_ACCESS:           protect = PAGE_NOACCESS; break;
-		case MemoryProtect::READ_ONLY:           protect = PAGE_READONLY; break;
-		case MemoryProtect::READ_WRITE:          protect = PAGE_READWRITE; break;
-		case MemoryProtect::EXECUTE:             protect = PAGE_EXECUTE; break;
-		case MemoryProtect::EXECUTE_READ:        protect = PAGE_EXECUTE_READ; break;
-		case MemoryProtect::EXECUTE_READ_WRITE:  protect = PAGE_EXECUTE_READWRITE; break;
-		case MemoryProtect::GUARD:               protect = PAGE_GUARD; break;
-		default:
-			{
-				// TODO
-			}
-		}
+		DWORD protect = Internal::toWin32Protect(ro_Desc.m_Protect);
 
 		void* result = VirtualAlloc(
 			ro_Desc.m_TargetAddress,
@@ -442,21 +430,7 @@ namespace Spectra::Platform::Runtime::Memory {
 		if (target < base || target + ro_Desc.m_Size > base + ro_Handle.m_TotalSize) {
 		}
 
-		DWORD protect = 0;
-
-		switch (ro_Desc.m_Protect) {
-		case MemoryProtect::NO_ACCESS:           protect = PAGE_NOACCESS; break;
-		case MemoryProtect::READ_ONLY:           protect = PAGE_READONLY; break;
-		case MemoryProtect::READ_WRITE:          protect = PAGE_READWRITE; break;
-		case MemoryProtect::EXECUTE:             protect = PAGE_EXECUTE; break;
-		case MemoryProtect::EXECUTE_READ:        protect = PAGE_EXECUTE_READ; break;
-		case MemoryProtect::EXECUTE_READ_WRITE:  protect = PAGE_EXECUTE_READWRITE; break;
-		case MemoryProtect::GUARD:               protect = PAGE_READWRITE | PAGE_GUARD; break;
-		default:
-			{
-				// TODO
-			}
-		}
+		DWORD protect = Internal::toWin32Protect(ro_Desc.m_Protect);
 
 		DWORD oldProtect = 0;
 
@@ -500,44 +474,8 @@ namespace Spectra::Platform::Runtime::Memory {
 		info.m_PageBaseAddr = mbi.BaseAddress;
 		info.m_RegionSize = mbi.RegionSize;
 
-		switch (mbi.State) {
-		case MEM_FREE:
-			info.m_State = MemoryState::UNINITIALIZED;
-			break;
-
-		case MEM_RESERVE:
-			info.m_State = MemoryState::RESERVE;
-			break;
-
-		case MEM_COMMIT:
-			info.m_State = MemoryState::COMMIT;
-			break;
-
-		default:
-			{
-				// TODO
-			}
-		}
-
-		DWORD protect = mbi.Protect;
-
-		if (protect & PAGE_NOACCESS) {
-			info.m_Protect = MemoryProtect::NO_ACCESS;
-		} else if (protect & PAGE_READONLY) {
-			info.m_Protect = MemoryProtect::READ_ONLY;
-		} else if (protect & PAGE_READWRITE) {
-			info.m_Protect = MemoryProtect::READ_WRITE;
-		} else if (protect & PAGE_EXECUTE) {
-			info.m_Protect = MemoryProtect::EXECUTE;
-		} else if (protect & PAGE_EXECUTE_READ) {
-			info.m_Protect = MemoryProtect::EXECUTE_READ;
-		} else if (protect & PAGE_EXECUTE_READWRITE) {
-			info.m_Protect = MemoryProtect::EXECUTE_READ_WRITE;
-		} else if (protect & PAGE_GUARD) {
-			info.m_Protect = MemoryProtect::GUARD;
-		} else {
-			info.m_Protect = MemoryProtect::NO_ACCESS;
-		}
+		info.m_State = Internal::fromWin32MemState(mbi.State);
+		info.m_Protect = Internal::fromWin32Protect(mbi.Protect);
 
 		info.m_NumaNode = 0;
 

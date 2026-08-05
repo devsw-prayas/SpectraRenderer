@@ -5,6 +5,7 @@
 #include "PlatformFileSystem.h"
 #include "ProcessEnvironment.h"
 #include "SpectraDiagnostics.h"
+#include "InternalUtils.h"
 
 namespace Spectra::Platform::Runtime::File {
 	namespace {
@@ -32,63 +33,6 @@ namespace Spectra::Platform::Runtime::File {
 		void freeWide(const wchar_t* p_Buf, const wchar_t* p_StackBuf) {
 			if (p_Buf != p_StackBuf)
 				delete[] p_Buf;
-		}
-
-		DWORD toWin32Access(FileAccess v_Access) {
-			switch (v_Access) {
-			case FileAccess::READ:       return GENERIC_READ;
-			case FileAccess::WRITE:      return GENERIC_WRITE;
-			case FileAccess::READ_WRITE: return GENERIC_READ | GENERIC_WRITE;
-			}
-			SPECTRA_UNREACHABLE();
-		}
-
-		DWORD toWin32ShareMode(FileShareMode v_Share) {
-			switch (v_Share) {
-			case FileShareMode::NONE:   return 0;
-			case FileShareMode::READ:   return FILE_SHARE_READ;
-			case FileShareMode::WRITE:  return FILE_SHARE_WRITE;
-			case FileShareMode::REMOVE: return FILE_SHARE_DELETE;
-			}
-			SPECTRA_UNREACHABLE();
-		}
-
-		DWORD toWin32CreationDisposition(FileOpenMode v_OpenMode) {
-			switch (v_OpenMode) {
-			case FileOpenMode::CREATE_NEW_FILE:        return CREATE_NEW;
-			case FileOpenMode::CREATE_ALWAYS_FILE:     return CREATE_ALWAYS;
-			case FileOpenMode::OPEN_EXISTING_FILE:     return OPEN_EXISTING;
-			case FileOpenMode::OPEN_ALWAYS_FILE:       return OPEN_ALWAYS;
-			case FileOpenMode::TRUNCATE_EXISTING_FILE: return TRUNCATE_EXISTING;
-			}
-			SPECTRA_UNREACHABLE();
-		}
-
-		DWORD toWin32MappingProtect(FileAccess v_Access) {
-			switch (v_Access) {
-			case FileAccess::READ:       return PAGE_READONLY;
-			case FileAccess::WRITE:
-			case FileAccess::READ_WRITE: return PAGE_READWRITE;
-			}
-			SPECTRA_UNREACHABLE();
-		}
-
-		DWORD toWin32MapViewAccess(FileAccess v_Access) {
-			switch (v_Access) {
-			case FileAccess::READ:       return FILE_MAP_READ;
-			case FileAccess::WRITE:      return FILE_MAP_WRITE;
-			case FileAccess::READ_WRITE: return FILE_MAP_ALL_ACCESS;
-			}
-			SPECTRA_UNREACHABLE();
-		}
-
-		DWORD toWin32SeekMethod(FileSeekOrigin v_Origin) {
-			switch (v_Origin) {
-			case FileSeekOrigin::BEGIN:   return FILE_BEGIN;
-			case FileSeekOrigin::CURRENT: return FILE_CURRENT;
-			case FileSeekOrigin::END:     return FILE_END;
-			}
-			SPECTRA_UNREACHABLE();
 		}
 
 		bool isValidHandle(const FileHandle& ro_Handle) {
@@ -197,9 +141,9 @@ namespace Spectra::Platform::Runtime::File {
 		int len = 0;
 		wchar_t* wide = toWide(ro_Desc.m_Path, stackBuf, MAX_PATH, len);
 
-		DWORD access = toWin32Access(ro_Desc.m_Access);
-		DWORD shareMode = toWin32ShareMode(ro_Desc.m_ShareMode);
-		DWORD disposition = toWin32CreationDisposition(ro_Desc.m_OpenMode);
+		DWORD access = Internal::toWin32Access(ro_Desc.m_Access);
+		DWORD shareMode = Internal::toWin32ShareMode(ro_Desc.m_ShareMode);
+		DWORD disposition = Internal::toWin32CreationDisposition(ro_Desc.m_OpenMode);
 		DWORD flags = FILE_ATTRIBUTE_NORMAL;
 
 		if (ro_Desc.m_Mode == FileIOMode::ASYNCHRONOUS)
@@ -269,7 +213,7 @@ namespace Spectra::Platform::Runtime::File {
 		li.QuadPart = v_Offset;
 
 		BOOL ok = SetFilePointerEx(static_cast<HANDLE>(ro_Handle.m_NativeHandle),
-								   li, nullptr, toWin32SeekMethod(v_Origin));
+								   li, nullptr, Internal::toWin32SeekMethod(v_Origin));
 
 		if (!ok)
 			Environment::PlatformTermination::terminate();
@@ -514,7 +458,7 @@ namespace Spectra::Platform::Runtime::File {
 		if (!isValidHandle(ro_Handle))
 			Environment::PlatformTermination::terminate();
 
-		DWORD protect = toWin32MappingProtect(v_Access);
+		DWORD protect = Internal::toWin32MappingProtect(v_Access);
 		DWORD sizeHigh = static_cast<DWORD>(v_MaxSize >> 32);
 		DWORD sizeLow = static_cast<DWORD>(v_MaxSize & 0xFFFFFFFF);
 
@@ -535,7 +479,7 @@ namespace Spectra::Platform::Runtime::File {
 
 		validateMappingRange(v_Offset, v_Size);
 
-		DWORD access = toWin32MapViewAccess(v_Access);
+		DWORD access = Internal::toWin32MapViewAccess(v_Access);
 		DWORD offsetHigh = static_cast<DWORD>(v_Offset >> 32);
 		DWORD offsetLow = static_cast<DWORD>(v_Offset & 0xFFFFFFFF);
 

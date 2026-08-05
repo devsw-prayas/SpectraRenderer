@@ -37,6 +37,15 @@ target_include_directories(SpectraPlatformRuntime
 
 target_precompile_headers(SpectraPlatformRuntime PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src/Public/SpectraPlatformRuntime.h)
 
+if(WIN32)
+    target_link_libraries(SpectraPlatformRuntime PRIVATE
+        Synchronization.lib
+        Shcore.lib
+        Ole32.lib
+        Shell32.lib
+    )
+endif()
+
 target_compile_options(SpectraPlatformRuntime PRIVATE
     $<$<AND:$<COMPILE_LANGUAGE:CXX>,$<CXX_COMPILER_ID:MSVC>>:/arch:AVX2 /W4 /permissive->
     $<$<AND:$<COMPILE_LANGUAGE:CXX>,$<NOT:$<CXX_COMPILER_ID:MSVC>>>:-mavx2 -Wall -Wextra -Wpedantic>

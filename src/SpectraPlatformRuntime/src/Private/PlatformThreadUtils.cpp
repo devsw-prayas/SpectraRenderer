@@ -10,7 +10,6 @@ namespace Spectra::Platform::Runtime::Thread {
 		return this->m_ThreadID;
 	}
 
-
 	void ThreadLaunchDesc::launchFunction(Entry p_Launch, void* p_Ctx) {
 		this->m_StartEntry = p_Launch;
 		this->m_StartContext = p_Ctx;
@@ -34,11 +33,11 @@ namespace Spectra::Platform::Runtime::Thread {
 
 	// ------ ThreadLaunchExecDesc -------- (It's confusing to say the least, okay!)
 
-	void SPECTRA_RUNTIME_API initLaunchExecDesc(ThreadLaunchExecDesc& ro_Desc) {
-		ro_Desc.m_AffinityMask = 0;
+	void initLaunchExecDesc(ThreadLaunchExecDesc& ro_Desc) {
+		ro_Desc.m_Desc.m_AffMask = 0;
 		ro_Desc.m_BasePriority = Priority::PRIORITY_NORMAL;
 		ro_Desc.m_CommitSize = 0;
-		ro_Desc.m_GroupID = 0;
+		ro_Desc.m_Desc.m_GroupId = 0;
 		ro_Desc.m_GuardsEnabled = Allow;
 		ro_Desc.m_IdealProcessor = 0;
 		ro_Desc.m_PriorityBoost = Disallow;
@@ -48,63 +47,71 @@ namespace Spectra::Platform::Runtime::Thread {
 		ro_Desc.m_CanDetach = Disallow;
 	}
 
-	void SPECTRA_RUNTIME_API commitStackSize(ThreadLaunchExecDesc& ro_Desc, Bytes v_Size) {
+	void commitStackSize(ThreadLaunchExecDesc& ro_Desc, Bytes v_Size) {
 		ro_Desc.m_CommitSize = v_Size;
 		ro_Desc.m_ReserveSize = 0;
 	}
 
-	void SPECTRA_RUNTIME_API reserveStackSize(ThreadLaunchExecDesc& ro_Desc, Bytes v_Size) {
+	void reserveStackSize(ThreadLaunchExecDesc& ro_Desc, Bytes v_Size) {
 		ro_Desc.m_ReserveSize = v_Size;
 		ro_Desc.m_CommitSize = 0;
 	}
 
-	void SPECTRA_RUNTIME_API enableGuardPage(ThreadLaunchExecDesc& ro_Desc, Flag v_Permission) {
+	void enableGuardPage(ThreadLaunchExecDesc& ro_Desc, Flag v_Permission) {
 		ro_Desc.m_GuardsEnabled = v_Permission;
 	}
 
-	void SPECTRA_RUNTIME_API supportIdealProcessor(ThreadLaunchExecDesc& ro_Desc, Flag v_Permission) {
+	void supportIdealProcessor(ThreadLaunchExecDesc& ro_Desc, Flag v_Permission) {
 		ro_Desc.m_SupportsIdealProcessor = v_Permission;
 	}
 
-	void SPECTRA_RUNTIME_API idealProcessor(ThreadLaunchExecDesc& ro_Desc, Dword v_Processor) {
+	void idealProcessor(ThreadLaunchExecDesc& ro_Desc, Dword v_Processor) {
 		ro_Desc.m_IdealProcessor = v_Processor;
 	}
 
-	void SPECTRA_RUNTIME_API supportProcessorGroups(ThreadLaunchExecDesc& ro_Desc, Flag v_Permission) {
+	void supportProcessorGroups(ThreadLaunchExecDesc& ro_Desc, Flag v_Permission) {
 		ro_Desc.m_SupportsThreadGroup = v_Permission;
 	}
 
-	void SPECTRA_RUNTIME_API groupID(ThreadLaunchExecDesc& ro_Desc, Dword v_GroupID) {
-		ro_Desc.m_GroupID = v_GroupID;
+	void groupID(ThreadLaunchExecDesc& ro_Desc, Dword v_GroupID) {
+		ro_Desc.m_Desc.m_GroupId = v_GroupID;
 	}
 
-	void SPECTRA_RUNTIME_API affinityMask(ThreadLaunchExecDesc& ro_Desc, ProcessorIdx v_Mask) {
-		ro_Desc.m_AffinityMask = v_Mask;
+	void affinityMask(ThreadLaunchExecDesc& ro_Desc, ProcessorIdx v_Mask) {
+		ro_Desc.m_Desc.m_AffMask = v_Mask;
 	}
 
-	void SPECTRA_RUNTIME_API priorityBoosting(ThreadLaunchExecDesc& ro_Desc, Flag v_Permission) {
+	void priorityBoosting(ThreadLaunchExecDesc& ro_Desc, Flag v_Permission) {
 		ro_Desc.m_PriorityBoost = v_Permission;
 	}
 
-	void SPECTRA_RUNTIME_API basePriority(ThreadLaunchExecDesc& ro_Desc, Priority v_BasePriority) {
+	void basePriority(ThreadLaunchExecDesc& ro_Desc, Priority v_BasePriority) {
 		ro_Desc.m_BasePriority = v_BasePriority;
 	}
 
-	void SPECTRA_RUNTIME_API	allowDetachable(ThreadLaunchExecDesc& ro_Desc, Flag v_Permission) {
+	void	allowDetachable(ThreadLaunchExecDesc& ro_Desc, Flag v_Permission) {
 		ro_Desc.m_CanDetach = v_Permission;
 	}
 
-	bool SPECTRA_RUNTIME_API validateLaunchExecDesc(const ThreadLaunchExecDesc& ro_Desc) {
+	bool validateLaunchExecDesc(const ThreadLaunchExecDesc& ro_Desc) {
 		if (ro_Desc.m_CommitSize != 0 && ro_Desc.m_ReserveSize != 0) return false;
 		if (ro_Desc.m_IdealProcessor && !ro_Desc.m_SupportsIdealProcessor) return  false;
-		if (ro_Desc.m_GroupID && !ro_Desc.m_SupportsThreadGroup) return false;
-		if (ro_Desc.m_BasePriority == Priority::PRIORITY_TIME_CRITICAL 
+		if (ro_Desc.m_Desc.m_GroupId && !ro_Desc.m_SupportsThreadGroup) return false;
+		if (ro_Desc.m_BasePriority == Priority::PRIORITY_TIME_CRITICAL
 			&& ro_Desc.m_PriorityBoost) return false;
-		if (!ro_Desc.m_AffinityMask) return false;
+		if (!ro_Desc.m_Desc.m_AffMask) return false;
 		if (ro_Desc.m_IdealProcessor)
-			if (!(ro_Desc.m_AffinityMask & 
+			if (!(ro_Desc.m_Desc.m_AffMask &
 				(static_cast<ProcessorIdx>(1) << ro_Desc.m_IdealProcessor))) return false;
 		if (ro_Desc.m_GuardsEnabled && ro_Desc.m_CommitSize) return false;
 		return true;
+	}
+
+	void setAffinityMask(AffinityDesc& ro_Desc, Mask v_Mask) noexcept {
+		ro_Desc.m_AffMask = v_Mask;
+	}
+
+	void setGroupId(AffinityDesc& ro_Desc, Dword v_GroupId) noexcept {
+		ro_Desc.m_GroupId = v_GroupId;
 	}
 }

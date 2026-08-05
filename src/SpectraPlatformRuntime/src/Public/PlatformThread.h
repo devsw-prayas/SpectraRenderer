@@ -22,6 +22,15 @@ namespace Spectra::Platform::Runtime::Thread {
 		static bool terminateThread(ThreadHandle v_Handle) noexcept;
 		static bool joinThread(ThreadHandle v_Handle) noexcept;
 
+		static bool setPriority(ThreadHandle v_Handle, Priority v_Priority) noexcept;
+		static Priority getPriority(ThreadHandle v_Handle) noexcept;
+
+		static bool setPriorityBoost(ThreadHandle v_Handle, Flag v_Permission) noexcept;
+		static Flag getPriorityBoost(ThreadHandle v_Handle) noexcept;
+
+		static bool setAffinity(ThreadHandle v_Handle, AffinityDesc& ro_Desc);
+		static AffinityDesc getAffinity(ThreadHandle v_Handle);
+
 		static void waitOnAddress(ParkHandle& ro_Permit) noexcept;
 		static void wakeOnAddress(ParkHandle& ro_Permit) noexcept;
 		static void wakeAllOnAddress(ParkHandle& ro_Permit) noexcept;
