@@ -223,7 +223,7 @@ namespace Spectra::Platform::Runtime::Thread {
 			return ThreadHandle::getInvalidHandle();
 		}
 
-		int v_WinPriority = Spectra::Platform::Runtime::Internal::toWin32Priority(ro_ExecDesc.m_BasePriority);
+		int v_WinPriority = Spectra::Platform::Runtime::Internal::ThreadMappings::toWin32Priority(ro_ExecDesc.m_BasePriority);
 		SetThreadPriority(v_OsHandle, v_WinPriority);
 		if (!ro_ExecDesc.m_PriorityBoost) SetThreadPriorityBoost(v_OsHandle, TRUE);
 
@@ -404,7 +404,7 @@ namespace Spectra::Platform::Runtime::Thread {
 		const HANDLE v_OsHandle = g_Registry[v_Handle.m_ThreadID].m_OsHandle;
 		if (v_OsHandle == INVALID_HANDLE_VALUE) return false;
 
-		GROUP_AFFINITY v_Affinity = Spectra::Platform::Runtime::Internal::fromAffinityDesc(ro_Desc);
+		GROUP_AFFINITY v_Affinity = Spectra::Platform::Runtime::Internal::ThreadMappings::fromAffinityDesc(ro_Desc);
 		return ::SetThreadGroupAffinity(v_OsHandle, &v_Affinity, nullptr) != FALSE;
 #else
 		(void)v_Handle;
@@ -422,7 +422,8 @@ namespace Spectra::Platform::Runtime::Thread {
 
 		GROUP_AFFINITY v_Affinity{};
 		if (!::GetThreadGroupAffinity(v_OsHandle, &v_Affinity)) return v_Desc;
-		return Spectra::Platform::Runtime::Internal::toAffinityDesc(v_Affinity);
+		v_Desc = Runtime::Internal::ThreadMappings::toAffinityDesc(v_Affinity);
+		return v_Desc;
 #else
 		(void)v_Handle;
 		return v_Desc;
@@ -435,7 +436,7 @@ namespace Spectra::Platform::Runtime::Thread {
 		const HANDLE v_OsHandle = g_Registry[v_Handle.m_ThreadID].m_OsHandle;
 		if (v_OsHandle == INVALID_HANDLE_VALUE) return false;
 
-		const int v_WinPriority = Spectra::Platform::Runtime::Internal::toWin32Priority(v_Priority);
+		const int v_WinPriority = Spectra::Platform::Runtime::Internal::ThreadMappings::toWin32Priority(v_Priority);
 		return ::SetThreadPriority(v_OsHandle, v_WinPriority) != FALSE;
 #else
 		(void)v_Handle;
@@ -452,7 +453,7 @@ namespace Spectra::Platform::Runtime::Thread {
 
 		const int v_WinPriority = ::GetThreadPriority(v_OsHandle);
 		if (v_WinPriority == THREAD_PRIORITY_ERROR_RETURN) return Priority::PRIORITY_NORMAL;
-		return Spectra::Platform::Runtime::Internal::fromWin32Priority(v_WinPriority);
+		return Spectra::Platform::Runtime::Internal::ThreadMappings::fromWin32Priority(v_WinPriority);
 #else
 		(void)v_Handle;
 		return Priority::PRIORITY_NORMAL;

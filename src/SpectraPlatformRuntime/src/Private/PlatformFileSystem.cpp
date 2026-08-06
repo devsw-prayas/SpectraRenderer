@@ -141,9 +141,9 @@ namespace Spectra::Platform::Runtime::File {
 		int len = 0;
 		wchar_t* wide = toWide(ro_Desc.m_Path, stackBuf, MAX_PATH, len);
 
-		DWORD access = Internal::toWin32Access(ro_Desc.m_Access);
-		DWORD shareMode = Internal::toWin32ShareMode(ro_Desc.m_ShareMode);
-		DWORD disposition = Internal::toWin32CreationDisposition(ro_Desc.m_OpenMode);
+		DWORD access = Internal::FileMappings::toWin32Access(ro_Desc.m_Access);
+		DWORD shareMode = Internal::FileMappings::toWin32ShareMode(ro_Desc.m_ShareMode);
+		DWORD disposition = Internal::FileMappings::toWin32CreationDisposition(ro_Desc.m_OpenMode);
 		DWORD flags = FILE_ATTRIBUTE_NORMAL;
 
 		if (ro_Desc.m_Mode == FileIOMode::ASYNCHRONOUS)
@@ -213,7 +213,7 @@ namespace Spectra::Platform::Runtime::File {
 		li.QuadPart = v_Offset;
 
 		BOOL ok = SetFilePointerEx(static_cast<HANDLE>(ro_Handle.m_NativeHandle),
-								   li, nullptr, Internal::toWin32SeekMethod(v_Origin));
+								   li, nullptr, Internal::FileMappings::toWin32SeekMethod(v_Origin));
 
 		if (!ok)
 			Environment::PlatformTermination::terminate();
@@ -458,7 +458,7 @@ namespace Spectra::Platform::Runtime::File {
 		if (!isValidHandle(ro_Handle))
 			Environment::PlatformTermination::terminate();
 
-		DWORD protect = Internal::toWin32MappingProtect(v_Access);
+		DWORD protect = Internal::FileMappings::toWin32MappingProtect(v_Access);
 		DWORD sizeHigh = static_cast<DWORD>(v_MaxSize >> 32);
 		DWORD sizeLow = static_cast<DWORD>(v_MaxSize & 0xFFFFFFFF);
 
@@ -479,7 +479,7 @@ namespace Spectra::Platform::Runtime::File {
 
 		validateMappingRange(v_Offset, v_Size);
 
-		DWORD access = Internal::toWin32MapViewAccess(v_Access);
+		DWORD access = Internal::FileMappings::toWin32MapViewAccess(v_Access);
 		DWORD offsetHigh = static_cast<DWORD>(v_Offset >> 32);
 		DWORD offsetLow = static_cast<DWORD>(v_Offset & 0xFFFFFFFF);
 

@@ -326,7 +326,7 @@ namespace Spectra::Platform::Runtime::Memory {
 			// TODO
 		}
 
-		DWORD protect = Internal::toWin32Protect(ro_Desc.m_Protect);
+		DWORD protect = Internal::MemMappings::toWin32Protect(ro_Desc.m_Protect);
 
 		void* result = VirtualAlloc(
 			ro_Desc.m_TargetAddress,
@@ -430,7 +430,7 @@ namespace Spectra::Platform::Runtime::Memory {
 		if (target < base || target + ro_Desc.m_Size > base + ro_Handle.m_TotalSize) {
 		}
 
-		DWORD protect = Internal::toWin32Protect(ro_Desc.m_Protect);
+		DWORD protect = Internal::MemMappings::toWin32Protect(ro_Desc.m_Protect);
 
 		DWORD oldProtect = 0;
 
@@ -474,8 +474,8 @@ namespace Spectra::Platform::Runtime::Memory {
 		info.m_PageBaseAddr = mbi.BaseAddress;
 		info.m_RegionSize = mbi.RegionSize;
 
-		info.m_State = Internal::fromWin32MemState(mbi.State);
-		info.m_Protect = Internal::fromWin32Protect(mbi.Protect);
+		info.m_State = Internal::MemMappings::fromWin32MemState(mbi.State);
+		info.m_Protect = Internal::MemMappings::fromWin32Protect(mbi.Protect);
 
 		info.m_NumaNode = 0;
 
