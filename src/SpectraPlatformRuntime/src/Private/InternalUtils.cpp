@@ -141,11 +141,13 @@ namespace Spectra::Platform::Runtime::Internal {
 
 	uint32_t WindowMappings::toWin32Style(Windows::WindowStyleFlags v_Flags) {
 		using F = Windows::WindowStyleFlags;
-		uint32_t style = 0;
+		// WS_OVERLAPPED/WS_CAPTION/WS_SYSMENU are unconditional base bits, kept
+		// even for UNDECORATED windows (chrome is hidden at paint level via
+		// WM_NCCALCSIZE/WM_NCPAINT/WM_NCACTIVATE, not by stripping style bits).
+		uint32_t style = WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU;
 		if (static_cast<uint32_t>(v_Flags) & static_cast<uint32_t>(F::RESIZABLE))   style |= WS_THICKFRAME;
 		if (static_cast<uint32_t>(v_Flags) & static_cast<uint32_t>(F::MINIMIZABLE)) style |= WS_MINIMIZEBOX;
 		if (static_cast<uint32_t>(v_Flags) & static_cast<uint32_t>(F::MAXIMIZABLE)) style |= WS_MAXIMIZEBOX;
-		// UNDECORATED has no creation-time style bit; it is handled via WM_NCCALCSIZE / WM_NCPAINT / WM_NCACTIVATE.
 		return style;
 	}
 

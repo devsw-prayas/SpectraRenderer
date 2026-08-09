@@ -12,6 +12,7 @@
 #include <shellapi.h>
 #include <ShellScalingApi.h>
 #include <hidusage.h>
+#include <wrl/client.h>
 #endif
 
 #elif defined(__linux__)

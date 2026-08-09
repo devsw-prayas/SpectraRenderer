@@ -58,6 +58,9 @@ namespace Spectra::Platform::Runtime::Environment {
 
             case RelationNumaNode:
                 {
+                    const auto& numa = entry->NumaNode;
+                    if (numa.NodeNumber < SPECTRA_PLATFORM_MAX_NUMA)
+                        g_CpuInfo.m_NumaNodeMasks[numa.NodeNumber] = numa.GroupMask.Mask;
                     g_CpuInfo.m_NumaNodeCount++;
                     break;
                 }

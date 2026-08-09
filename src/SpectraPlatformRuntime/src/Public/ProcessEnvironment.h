@@ -11,6 +11,10 @@ namespace Spectra::Platform::Runtime::Environment {
 		uint32_t m_L3CacheSize;
 		uint32_t m_CachedLineSize;
 
+		// Per-node processor affinity mask (KAFFINITY), indexed by NUMA node
+		// number. Only entries below m_NumaNodeCount are meaningful.
+		uint64_t m_NumaNodeMasks[SPECTRA_PLATFORM_MAX_NUMA];
+
 		CpuInfo() = default;
 		~CpuInfo() = default;
 

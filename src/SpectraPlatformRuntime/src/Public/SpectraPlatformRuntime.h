@@ -22,3 +22,4 @@
 
 #include <cstdint>
 #include <functional>
+#include <bit>

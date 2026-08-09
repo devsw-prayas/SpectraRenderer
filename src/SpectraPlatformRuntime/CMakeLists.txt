@@ -22,11 +22,15 @@ source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES
 )
 
 set(SPECTRA_MAX_THREADS 1024)
-target_compile_definitions(SpectraPlatformRuntime PRIVATE 
+set(SPECTRA_MAX_WINDOWS 10)
+target_compile_definitions(SpectraPlatformRuntime PRIVATE
     SPECTRA_PLATFORM_MAX_THREADS=${SPECTRA_MAX_THREADS}
+    SPECTRA_PLATFORM_MAX_WINDOWS=${SPECTRA_MAX_WINDOWS}
     SPECTRA_SHARED
     SPECTRA_BUILDING_RUNTIME
 )
+
+target_compile_definitions(SpectraPlatformRuntime PUBLIC SPECTRA_PLATFORM_MAX_NUMA=4)
 
 target_include_directories(SpectraPlatformRuntime
     PUBLIC
