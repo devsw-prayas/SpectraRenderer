@@ -16,5 +16,8 @@
   "cudaCompilerExe": "nvcc",
   "cudaInstallerScript": "scripts/cuda.bat",
   "vulkanHeaderRelPath": "Include/vulkan/vulkan.h",
-  "vulkanInstallerScript": "scripts/vulkan.bat"
+  "vulkanInstallerScript": "scripts/vulkan.bat",
+  "testsDir": "tests",
+  "testConfigFile": "test.config",
+  "hadesDriverTarget": "Hades-Driver"
 }

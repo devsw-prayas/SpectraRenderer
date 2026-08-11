@@ -3,13 +3,11 @@
 An unbiased, GPU-accelerated spectral path tracer built from scratch.  
 Developed by [Prayas Bharadwaj](https://www.linkedin.com/in/prayas-bharadwaj-053886323/)
 
-
 ## What it is
 
 Spectra operates entirely in the wavelength domain — no RGB approximations. Every system above the syscall and driver boundary is implemented in-house. No external runtime frameworks. The goal is brute-force physical correctness in spectral light transport, with no compromises on determinism or performance.
 
 The default compute backend is CUDA/OptiX (Ampere, SM 80–86). Vulkan is the graphics layer.
-
 
 ## Architecture
 
@@ -120,15 +118,17 @@ driver.bat <command> [options]
 | `cu-check [-d]` | Check for the CUDA toolkit (`-d` installs via `scripts/cuda.bat` if missing) |
 | `vk-check [-d]` | Check for the Vulkan SDK (`-d` installs via `scripts/vulkan.bat` if missing) |
 | `header-gen -p <Prefix> -np <Namespace> -dir <path>` | Generate a module's `Compiler.h`/`Diagnostic.h` pair |
-| `build -c <Configuration>` | `cmake --build` for an already-configured tree |
-| `rebuild -c <Configuration>` | Same, with `--clean-first` |
+| `build -c <Configuration> [-t <Target>]` | `cmake --build` for an already-configured tree; `-t` restricts it to a single CMake target (e.g. a `common/` submodule like `Kerbecs` or `Corium`, or any `src/` module) instead of the whole solution |
+| `rebuild -c <Configuration> [-t <Target>]` | Same, with `--clean-first` |
 | `run -c <Configuration>` | Launch the configured run target (default `SpectraLauncher`) from `bin/<Configuration>/` |
+| `test [-c <Configuration>] [--fbt=<pattern>] [-ls]` | Run every Hades suite listed in `tests/test.config` (`-ls` lists suites/tests instead of running them) |
+| `hades [-c <Configuration>] <args...>` | Passthrough to `Hades-Driver.exe` (`init-suite`/`find-suite`/`new-test`/`run`/`validate`) |
 
-Every path, tool name, and default — build dir, bin dir, cmake generator, default config, run target, valid `-c` configuration names, the CUDA compiler exe name, the Vulkan header check path, and the CUDA/Vulkan installer script paths — lives in the tracked `scripts/driver/config/config.json`, not hardcoded in the driver itself. A missing field fails loudly rather than silently falling back. `build`/`rebuild`/`run` validate `-c` against `buildConfigurations` and list the valid names if it doesn't match.
+Every path, tool name, and default — build dir, bin dir, cmake generator, default config, run target, valid `-c` configuration names, the CUDA compiler exe name, the Vulkan header check path, the CUDA/Vulkan installer script paths, and the `tests/`/`test.config`/Hades-Driver target names — lives in the tracked `scripts/driver/config/config.json`, not hardcoded in the driver itself. A missing field fails loudly rather than silently falling back. `build`/`rebuild`/`run`/`test`/`hades` validate `-c` against `buildConfigurations` and list the valid names if it doesn't match.
 
 ### Build Configurations
 
-Also listed in `scripts/driver/config/config.json`'s `buildConfigurations`, which `driver.bat build`/`rebuild`/`run` validate `-c` against.
+Also listed in `scripts/driver/config/config.json`'s `buildConfigurations`, which `driver.bat build`/`rebuild`/`run`/`test`/`hades` validate `-c` against.
 
 | Configuration | Purpose |
 |---|---|
@@ -144,7 +144,6 @@ Also listed in `scripts/driver/config/config.json`'s `buildConfigurations`, whic
 | `main` | Stable releases |
 | `bleeding-edge-daily` | Active development — no build guarantees |
 | `bleeding-edge` | Experimental features |
-
 
 ## License
 

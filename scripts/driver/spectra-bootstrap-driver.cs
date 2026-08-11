@@ -35,6 +35,8 @@ return command switch
     "build" => BuildConfig(rootDir, config, rest),
     "rebuild" => RebuildConfig(rootDir, config, rest),
     "run" => RunTarget(rootDir, config, rest),
+    "test" => TestSuites(rootDir, config, rest),
+    "hades" => HadesPassthrough(rootDir, config, rest),
     _ => UnknownCommand(command)
 };
 
@@ -53,9 +55,11 @@ void PrintUsage()
     Console.WriteLine("  cu-check [-d]                                          Check for CUDA toolkit (-d: install if missing)");
     Console.WriteLine("  vk-check [-d]                                          Check for Vulkan SDK (-d: install if missing)");
     Console.WriteLine("  header-gen -p <Prefix> -np <Namespace> -dir <path>     Generate Compiler.h/Diagnostic.h pair");
-    Console.WriteLine("  build -c <Configuration>                               cmake --build");
-    Console.WriteLine("  rebuild -c <Configuration>                             cmake --build --clean-first");
+    Console.WriteLine("  build -c <Configuration> [-t <Target>]                 cmake --build (optionally a single target/submodule)");
+    Console.WriteLine("  rebuild -c <Configuration> [-t <Target>]               cmake --build --clean-first (optionally a single target/submodule)");
     Console.WriteLine("  run -c <Configuration>                                 Launch the configured run target");
+    Console.WriteLine("  test [-c <Configuration>] [--fbt=<pattern>] [-ls]     Run every Hades suite listed in tests/test.config (-ls: list suites/tests instead)");
+    Console.WriteLine("  hades [-c <Configuration>] <args...>                   Passthrough to Hades-Driver.exe (init-suite/find-suite/new-test/run/validate/...)");
 }
 
 int UnknownCommand(string name)
@@ -112,10 +116,12 @@ int BuildConfig(string p_RootDir, Config p_Config, string[] p_Rest)
 {
     var cfg = ResolveConfiguration(p_Config, p_Rest);
     if (cfg is null) return 1;
+    var target = GetFlagValue(p_Rest, "-t");
 
     var buildDir = Path.Combine(p_RootDir, p_Config.BuildDir);
-    Console.WriteLine($"[INFO] Building configuration: {cfg} \n");
-    var exitCode = Run("cmake", $"--build \"{buildDir}\" --config {cfg}");
+    var targetArgs = target is null ? "" : $" --target {target}";
+    Console.WriteLine($"[INFO] Building configuration: {cfg}{(target is null ? "" : $" (target: {target})")} \n");
+    var exitCode = Run("cmake", $"--build \"{buildDir}\" --config {cfg}{targetArgs}");
     Console.WriteLine(exitCode == 0 ? "[OK] Build succeeded." : $"[ERROR] Build failed for configuration {cfg}.");
     return exitCode;
 }
@@ -124,10 +130,12 @@ int RebuildConfig(string p_RootDir, Config p_Config, string[] p_Rest)
 {
     var cfg = ResolveConfiguration(p_Config, p_Rest);
     if (cfg is null) return 1;
+    var target = GetFlagValue(p_Rest, "-t");
 
     var buildDir = Path.Combine(p_RootDir, p_Config.BuildDir);
-    Console.WriteLine($"[INFO] Rebuilding configuration: {cfg} \n");
-    var exitCode = Run("cmake", $"--build \"{buildDir}\" --config {cfg} --clean-first");
+    var targetArgs = target is null ? "" : $" --target {target}";
+    Console.WriteLine($"[INFO] Rebuilding configuration: {cfg}{(target is null ? "" : $" (target: {target})")} \n");
+    var exitCode = Run("cmake", $"--build \"{buildDir}\" --config {cfg}{targetArgs} --clean-first");
     Console.WriteLine(exitCode == 0 ? "[OK] Rebuild succeeded." : $"[ERROR] Rebuild failed for configuration {cfg}.");
     return exitCode;
 }
@@ -149,6 +157,153 @@ int RunTarget(string p_RootDir, Config p_Config, string[] p_Rest)
 
     Console.WriteLine($"[INFO] Launching {exePath}...");
     var psi = new ProcessStartInfo(exePath) { UseShellExecute = false };
+    using var process = Process.Start(psi);
+    process!.WaitForExit();
+    return process.ExitCode;
+}
+
+// hades
+
+int HadesPassthrough(string p_RootDir, Config p_Config, string[] p_Rest)
+{
+    var cfg = ResolveConfiguration(p_Config, p_Rest);
+    if (cfg is null) return 1;
+
+    var hadesDriverExe = Path.Combine(p_RootDir, p_Config.BinDir, cfg, p_Config.HadesDriverTarget + ".exe");
+    if (!File.Exists(hadesDriverExe))
+    {
+        Console.WriteLine($"[ERROR] {hadesDriverExe} not found. Build it first: driver.bat build -c {cfg} -t {p_Config.HadesDriverTarget}");
+        return 1;
+    }
+
+    // Strip our own "-c <value>" pair, if present - everything else forwards
+    // verbatim to Hades-Driver, which owns its own flag grammar entirely.
+    // driver.bat has no opinion on what Hades' subcommands are or do.
+    var forwardArgs = new List<string>();
+    for (var i = 0; i < p_Rest.Length; i++)
+    {
+        if (p_Rest[i] == "-c") { i++; continue; }
+        forwardArgs.Add(p_Rest[i]);
+    }
+
+    var psi = new ProcessStartInfo(hadesDriverExe) { UseShellExecute = false };
+    foreach (var arg in forwardArgs) psi.ArgumentList.Add(arg);
+
+    using var process = Process.Start(psi);
+    process!.WaitForExit();
+    return process.ExitCode;
+}
+
+// test
+
+int TestSuites(string p_RootDir, Config p_Config, string[] p_Rest)
+{
+    var testsDir = Path.Combine(p_RootDir, p_Config.TestsDir);
+    var configPath = Path.Combine(testsDir, p_Config.TestConfigFile);
+    if (!File.Exists(configPath))
+    {
+        Console.WriteLine($"[ERROR] {configPath} not found.");
+        return 1;
+    }
+
+    var suiteNames = File.ReadAllLines(configPath)
+        .Select(l => l.Trim())
+        .Where(l => l.Length > 0 && !l.StartsWith("#"))
+        .ToArray();
+
+    if (suiteNames.Length == 0)
+    {
+        Console.WriteLine($"[INFO] No suites listed in {configPath}.");
+        return 0;
+    }
+
+    if (p_Rest.Contains("-ls"))
+        return ListSuites(testsDir, suiteNames);
+
+    var cfg = ResolveConfiguration(p_Config, p_Rest);
+    if (cfg is null) return 1;
+
+    var hadesDriverExe = Path.Combine(p_RootDir, p_Config.BinDir, cfg, p_Config.HadesDriverTarget + ".exe");
+    if (!File.Exists(hadesDriverExe))
+    {
+        Console.WriteLine($"[ERROR] {hadesDriverExe} not found. Build it first: driver.bat build -c {cfg} -t {p_Config.HadesDriverTarget}");
+        return 1;
+    }
+
+    var fbt = GetFlagValue(p_Rest, "--fbt");
+    var runArgs = "run" + (fbt is null ? "" : $" --fbt={fbt}");
+
+    var failures = new List<string>();
+    foreach (var suiteName in suiteNames)
+    {
+        var suiteDir = Path.Combine(testsDir, suiteName);
+        if (!File.Exists(Path.Combine(suiteDir, "suite.toml")))
+        {
+            Console.WriteLine($"[WARN] {suiteName}: no suite.toml under {suiteDir}, skipping.");
+            failures.Add(suiteName);
+            continue;
+        }
+
+        Console.WriteLine($"[INFO] === {suiteName} ===");
+        if (RunAt(hadesDriverExe, "find-suite .", suiteDir) != 0 || RunAt(hadesDriverExe, runArgs, suiteDir) != 0)
+            failures.Add(suiteName);
+    }
+
+    Console.WriteLine();
+    if (failures.Count == 0)
+    {
+        Console.WriteLine($"[OK] All {suiteNames.Length} suite(s) passed.");
+        return 0;
+    }
+
+    Console.WriteLine($"[ERROR] {failures.Count}/{suiteNames.Length} suite(s) failed: {string.Join(", ", failures)}");
+    return 1;
+}
+
+int ListSuites(string p_TestsDir, string[] p_SuiteNames)
+{
+    foreach (var suiteName in p_SuiteNames)
+    {
+        Console.WriteLine(suiteName);
+
+        var suiteTomlPath = Path.Combine(p_TestsDir, suiteName, "suite.toml");
+        if (!File.Exists(suiteTomlPath))
+        {
+            Console.WriteLine("    [WARN] suite.toml not found");
+            continue;
+        }
+
+        var testIds = ExtractTestIds(File.ReadAllLines(suiteTomlPath));
+        if (testIds.Count == 0)
+        {
+            Console.WriteLine("    (no tests)");
+            continue;
+        }
+        foreach (var id in testIds)
+            Console.WriteLine($"    - {id}");
+    }
+    return 0;
+}
+
+// suite.toml's grammar is a flat "key = value" list per [[test]] block (see
+// Hades-Benchmark's TomlIO.h) - a full parse isn't needed just to list ids,
+// so this only ever looks for a top-level "id = ..." key.
+List<string> ExtractTestIds(string[] p_Lines)
+{
+    var ids = new List<string>();
+    foreach (var rawLine in p_Lines)
+    {
+        var line = rawLine.Trim();
+        var eq = line.IndexOf('=');
+        if (eq < 0 || line[..eq].Trim() != "id") continue;
+        ids.Add(line[(eq + 1)..].Trim().Trim('"'));
+    }
+    return ids;
+}
+
+int RunAt(string p_Exe, string p_Arguments, string p_WorkingDirectory)
+{
+    var psi = new ProcessStartInfo(p_Exe, p_Arguments) { UseShellExecute = false, WorkingDirectory = p_WorkingDirectory };
     using var process = Process.Start(psi);
     process!.WaitForExit();
     return process.ExitCode;
@@ -850,7 +1005,10 @@ Config LoadConfig(string p_RootDir)
         GetString("cudaCompilerExe"),
         GetString("cudaInstallerScript"),
         GetString("vulkanHeaderRelPath"),
-        GetString("vulkanInstallerScript"));
+        GetString("vulkanInstallerScript"),
+        GetString("testsDir"),
+        GetString("testConfigFile"),
+        GetString("hadesDriverTarget"));
 }
 
 string? ResolveConfiguration(Config p_Config, string[] p_Rest)
@@ -875,4 +1033,7 @@ record Config(
     string CudaCompilerExe,
     string CudaInstallerScript,
     string VulkanHeaderRelPath,
-    string VulkanInstallerScript);
+    string VulkanInstallerScript,
+    string TestsDir,
+    string TestConfigFile,
+    string HadesDriverTarget);

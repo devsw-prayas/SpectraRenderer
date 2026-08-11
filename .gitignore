@@ -99,6 +99,9 @@ Makefile
 *.bak
 *.backup
 
+# Hades suite build output (driver.bat test / hades-driver run)
+tests/*/generated/
+
 # Claude
 .claude/
 .production/

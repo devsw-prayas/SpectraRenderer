@@ -103,6 +103,10 @@ foreach(target Corium StormSTL Leibniz)
     set_target_properties(${target} PROPERTIES FOLDER "Common")
 endforeach()
 
+foreach(target ValhallaCore Valhalla-Gen ValhallaCodegen)
+    set_target_properties(${target} PROPERTIES FOLDER "Reflection")
+endforeach()
+
 foreach(target SpectraVulkanBackend SpectraCudaBackend SpectraCore SpectraEditor
                SpectraLauncher SpectraMaterials SpectraRenderEngine SpectraRenderPipeline
                SpectraPlatformRuntime SpectraMemory SpectraFileSystem SpectraProfiler
