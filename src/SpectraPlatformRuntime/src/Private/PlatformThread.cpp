@@ -33,40 +33,40 @@ namespace Spectra::Platform::Runtime::Thread {
 
 		size_t allocateToken() noexcept {
 			for (;;) {
-				uint64_t v_Mask = m_TokenMask.load(Intrinsic::MemoryOrder::RELAXED);
-				uint64_t v_Free = ~v_Mask;
-				if (v_Free == 0u) return INVALID_THREAD_SLOT;
+				uint64_t mask = m_TokenMask.load(Intrinsic::MemoryOrder::RELAXED);
+				uint64_t freeMask = ~mask;
+				if (freeMask == 0u) return INVALID_THREAD_SLOT;
 
-				unsigned long v_Bit = 0;
+				unsigned long bit = 0;
 #if defined(SPECTRA_COMPILER_MSVC)
-				_BitScanForward64(&v_Bit, v_Free);
+				_BitScanForward64(&bit, freeMask);
 #else
 				return INVALID_THREAD_SLOT;
 #endif
 
-				uint64_t v_Expected = v_Mask;
-				uint64_t v_Desired = v_Mask | (1ull << v_Bit);
+				uint64_t expected = mask;
+				uint64_t desired = mask | (1ull << bit);
 				m_TokenMask.compareExchange(
-					&v_Expected,
-					v_Desired,
+					&expected,
+					desired,
 					Intrinsic::MemoryOrder::ACQ_REL,
 					Intrinsic::MemoryOrder::ACQUIRE);
-				if (v_Expected == v_Mask) return static_cast<size_t>(v_Bit);
+				if (expected == mask) return static_cast<size_t>(bit);
 			}
 		}
 
 		void releaseToken(size_t v_Token) noexcept {
-			uint64_t v_Bit = 1ull << v_Token;
+			uint64_t bit = 1ull << v_Token;
 			for (;;) {
-				uint64_t v_Mask = m_TokenMask.load(Intrinsic::MemoryOrder::RELAXED);
-				uint64_t v_Expected = v_Mask;
-				uint64_t v_Desired = v_Mask & ~v_Bit;
+				uint64_t mask = m_TokenMask.load(Intrinsic::MemoryOrder::RELAXED);
+				uint64_t expected = mask;
+				uint64_t desired = mask & ~bit;
 				m_TokenMask.compareExchange(
-					&v_Expected,
-					v_Desired,
+					&expected,
+					desired,
 					Intrinsic::MemoryOrder::ACQ_REL,
 					Intrinsic::MemoryOrder::ACQUIRE);
-				if (v_Expected == v_Mask) return;
+				if (expected == mask) return;
 			}
 		}
 
@@ -76,8 +76,8 @@ namespace Spectra::Platform::Runtime::Thread {
 
 		bool hasToken(size_t v_Token) const noexcept {
 			if (v_Token >= 64u) return false;
-			const uint64_t v_Bit = 1ull << v_Token;
-			return (m_TokenMask.load(Intrinsic::MemoryOrder::ACQUIRE) & v_Bit) != 0u;
+			const uint64_t bit = 1ull << v_Token;
+			return (m_TokenMask.load(Intrinsic::MemoryOrder::ACQUIRE) & bit) != 0u;
 		}
 
 		ThreadState state() const noexcept {
@@ -101,13 +101,13 @@ namespace Spectra::Platform::Runtime::Thread {
 	}
 
 	bool PlatformThread::isValidHandle(const ThreadHandle& ro_Handle) noexcept {
-		const size_t v_Slot = ro_Handle.m_ThreadID;
-		if (v_Slot >= SPECTRA_PLATFORM_MAX_THREADS) return false;
+		const size_t slot = ro_Handle.m_ThreadID;
+		if (slot >= SPECTRA_PLATFORM_MAX_THREADS) return false;
 
-		const RegistryEntry& ro_Entry = g_Registry[v_Slot];
-		if (ro_Entry.m_Generation != ro_Handle.m_Generation) return false;
-		if (ro_Entry.state() == ThreadState::REAPED) return false;
-		if (!ro_Entry.hasToken(ro_Handle.m_AccessToken)) return false;
+		const RegistryEntry& entry = g_Registry[slot];
+		if (entry.m_Generation != ro_Handle.m_Generation) return false;
+		if (entry.state() == ThreadState::REAPED) return false;
+		if (!entry.hasToken(ro_Handle.m_AccessToken)) return false;
 		return true;
 	}
 
@@ -123,23 +123,23 @@ namespace Spectra::Platform::Runtime::Thread {
 
 	DWORD WINAPI Internal::PlatformThreadLaunchHelper::winThreadThunk(void* p_Raw) noexcept {
 #if defined(SPECTRA_COMPILER_MSVC)
-		auto* p_Entry = static_cast<RegistryEntry*>(p_Raw);
-		const size_t v_Slot = static_cast<size_t>(p_Entry - g_Registry);
+		auto* entry = static_cast<RegistryEntry*>(p_Raw);
+		const size_t slot = static_cast<size_t>(entry - g_Registry);
 
-		p_Entry->setState(ThreadState::RUNNING);
+		entry->setState(ThreadState::RUNNING);
 
 		this_platform_thread::t_MyHandle = ThreadHandle(
-			v_Slot,
-			p_Entry->m_Generation,
+			slot,
+			entry->m_Generation,
 			0u,
 			ThreadState::RUNNING);
 		this_platform_thread::t_MyParkingPermit = ParkHandle{ 0u };
 
-		if (p_Entry->m_StartupEntry) p_Entry->m_StartupEntry(p_Entry->m_StartupContext);
-		if (p_Entry->m_StartEntry)   p_Entry->m_StartEntry(p_Entry->m_StartContext);
-		if (p_Entry->m_ShutdownEntry) p_Entry->m_ShutdownEntry(p_Entry->m_ShutdownContext);
+		if (entry->m_StartupEntry) entry->m_StartupEntry(entry->m_StartupContext);
+		if (entry->m_StartEntry)   entry->m_StartEntry(entry->m_StartContext);
+		if (entry->m_ShutdownEntry) entry->m_ShutdownEntry(entry->m_ShutdownContext);
 
-		p_Entry->setState(ThreadState::SEALED);
+		entry->setState(ThreadState::SEALED);
 		return 0;
 #else
 		(void)p_Raw;
@@ -152,114 +152,114 @@ namespace Spectra::Platform::Runtime::Thread {
 	ThreadHandle PlatformThread::createThread(const ThreadLaunchDesc& ro_LaunchDesc, const ThreadLaunchExecDesc& ro_ExecDesc) noexcept {
 		if (!validateLaunchExecDesc(ro_ExecDesc)) return ThreadHandle::getInvalidHandle();
 
-		const size_t v_Slot = findFreeSlot();
-		if (v_Slot == INVALID_THREAD_SLOT) return ThreadHandle::getInvalidHandle();
+		const size_t slot = findFreeSlot();
+		if (slot == INVALID_THREAD_SLOT) return ThreadHandle::getInvalidHandle();
 
-		RegistryEntry& r_Entry = g_Registry[v_Slot];
-		const size_t v_Token = r_Entry.allocateToken();
-		if (v_Token == INVALID_THREAD_SLOT) return ThreadHandle::getInvalidHandle();
+		RegistryEntry& entry = g_Registry[slot];
+		const size_t token = entry.allocateToken();
+		if (token == INVALID_THREAD_SLOT) return ThreadHandle::getInvalidHandle();
 
 #if defined(SPECTRA_COMPILER_MSVC)
-		const uint32_t v_AttrCount = (ro_ExecDesc.m_SupportsThreadGroup ? 1u : 0u)
+		const uint32_t attributeCount = (ro_ExecDesc.m_SupportsThreadGroup ? 1u : 0u)
 			+ (ro_ExecDesc.m_SupportsIdealProcessor ? 1u : 0u);
 
-		LPPROC_THREAD_ATTRIBUTE_LIST p_AttrList = nullptr;
-		LPVOID p_AttrListBuf = nullptr;
+		LPPROC_THREAD_ATTRIBUTE_LIST attributeList = nullptr;
+		LPVOID attributeListBuf = nullptr;
 
-		if (v_AttrCount > 0) {
-			SIZE_T v_AttrListSize = 0;
-			InitializeProcThreadAttributeList(nullptr, v_AttrCount, 0, &v_AttrListSize);
-			p_AttrListBuf = HeapAlloc(GetProcessHeap(), 0, v_AttrListSize);
-			if (!p_AttrListBuf) {
-				r_Entry.releaseToken(v_Token);
+		if (attributeCount > 0) {
+			SIZE_T attributeListSize = 0;
+			InitializeProcThreadAttributeList(nullptr, attributeCount, 0, &attributeListSize);
+			attributeListBuf = HeapAlloc(GetProcessHeap(), 0, attributeListSize);
+			if (!attributeListBuf) {
+				entry.releaseToken(token);
 				return ThreadHandle::getInvalidHandle();
 			}
-			p_AttrList = static_cast<LPPROC_THREAD_ATTRIBUTE_LIST>(p_AttrListBuf);
-			InitializeProcThreadAttributeList(p_AttrList, v_AttrCount, 0, &v_AttrListSize);
+			attributeList = static_cast<LPPROC_THREAD_ATTRIBUTE_LIST>(attributeListBuf);
+			InitializeProcThreadAttributeList(attributeList, attributeCount, 0, &attributeListSize);
 
 			if (ro_ExecDesc.m_SupportsThreadGroup) {
-				GROUP_AFFINITY v_GroupAffinity{};
-				v_GroupAffinity.Mask = static_cast<KAFFINITY>(ro_ExecDesc.m_Desc.m_AffMask);
-				v_GroupAffinity.Group = static_cast<WORD>(ro_ExecDesc.m_Desc.m_GroupId);
-				UpdateProcThreadAttribute(p_AttrList, 0, PROC_THREAD_ATTRIBUTE_GROUP_AFFINITY,
-					&v_GroupAffinity, sizeof(v_GroupAffinity), nullptr, nullptr);
+				GROUP_AFFINITY groupAffinity{};
+				groupAffinity.Mask = static_cast<KAFFINITY>(ro_ExecDesc.m_Desc.m_AffMask);
+				groupAffinity.Group = static_cast<WORD>(ro_ExecDesc.m_Desc.m_GroupId);
+				UpdateProcThreadAttribute(attributeList, 0, PROC_THREAD_ATTRIBUTE_GROUP_AFFINITY,
+					&groupAffinity, sizeof(groupAffinity), nullptr, nullptr);
 			}
 			if (ro_ExecDesc.m_SupportsIdealProcessor) {
-				PROCESSOR_NUMBER v_ProcNum{};
-				v_ProcNum.Group = static_cast<WORD>(ro_ExecDesc.m_Desc.m_GroupId);
-				v_ProcNum.Number = static_cast<BYTE>(ro_ExecDesc.m_IdealProcessor);
-				UpdateProcThreadAttribute(p_AttrList, 0, PROC_THREAD_ATTRIBUTE_IDEAL_PROCESSOR,
-					&v_ProcNum, sizeof(v_ProcNum), nullptr, nullptr);
+				PROCESSOR_NUMBER processorNumber{};
+				processorNumber.Group = static_cast<WORD>(ro_ExecDesc.m_Desc.m_GroupId);
+				processorNumber.Number = static_cast<BYTE>(ro_ExecDesc.m_IdealProcessor);
+				UpdateProcThreadAttribute(attributeList, 0, PROC_THREAD_ATTRIBUTE_IDEAL_PROCESSOR,
+					&processorNumber, sizeof(processorNumber), nullptr, nullptr);
 			}
 		}
 
-		DWORD v_CreateFlags = ro_LaunchDesc.m_StartsSuspended ? CREATE_SUSPENDED : 0u;
-		SIZE_T v_StackSize = 0;
+		DWORD createFlags = ro_LaunchDesc.m_StartsSuspended ? CREATE_SUSPENDED : 0u;
+		SIZE_T stackSize = 0;
 		if (ro_ExecDesc.m_ReserveSize != 0) {
-			v_StackSize = static_cast<SIZE_T>(ro_ExecDesc.m_ReserveSize);
-			v_CreateFlags |= STACK_SIZE_PARAM_IS_A_RESERVATION;
+			stackSize = static_cast<SIZE_T>(ro_ExecDesc.m_ReserveSize);
+			createFlags |= STACK_SIZE_PARAM_IS_A_RESERVATION;
 		} else if (ro_ExecDesc.m_CommitSize != 0) {
-			v_StackSize = static_cast<SIZE_T>(ro_ExecDesc.m_CommitSize);
+			stackSize = static_cast<SIZE_T>(ro_ExecDesc.m_CommitSize);
 		}
 
-		DWORD v_OsThreadId = 0;
-		HANDLE v_OsHandle = CreateRemoteThreadEx(
+		DWORD osThreadId = 0;
+		HANDLE osHandle = CreateRemoteThreadEx(
 			GetCurrentProcess(),
 			nullptr,
-			v_StackSize,
+			stackSize,
 			Internal::PlatformThreadLaunchHelper::winThreadThunk,
-			&r_Entry,
-			v_CreateFlags,
-			p_AttrList,
-			&v_OsThreadId);
+			&entry,
+			createFlags,
+			attributeList,
+			&osThreadId);
 
-		if (p_AttrList) {
-			DeleteProcThreadAttributeList(p_AttrList);
-			HeapFree(GetProcessHeap(), 0, p_AttrListBuf);
+		if (attributeList) {
+			DeleteProcThreadAttributeList(attributeList);
+			HeapFree(GetProcessHeap(), 0, attributeListBuf);
 		}
 
-		if (!v_OsHandle || v_OsHandle == INVALID_HANDLE_VALUE) {
-			r_Entry.releaseToken(v_Token);
+		if (!osHandle || osHandle == INVALID_HANDLE_VALUE) {
+			entry.releaseToken(token);
 			return ThreadHandle::getInvalidHandle();
 		}
 
-		int v_WinPriority = Spectra::Platform::Runtime::Internal::ThreadMappings::toWin32Priority(ro_ExecDesc.m_BasePriority);
-		SetThreadPriority(v_OsHandle, v_WinPriority);
-		if (!ro_ExecDesc.m_PriorityBoost) SetThreadPriorityBoost(v_OsHandle, TRUE);
+		int winPriority = Spectra::Platform::Runtime::Internal::ThreadMappings::toWin32Priority(ro_ExecDesc.m_BasePriority);
+		SetThreadPriority(osHandle, winPriority);
+		if (!ro_ExecDesc.m_PriorityBoost) SetThreadPriorityBoost(osHandle, TRUE);
 
-		r_Entry.m_OsHandle = v_OsHandle;
-		r_Entry.m_OsThreadId = v_OsThreadId;
-		r_Entry.m_StartContext = ro_LaunchDesc.m_StartContext;
-		r_Entry.m_StartEntry = ro_LaunchDesc.m_StartEntry;
-		r_Entry.m_StartupContext = ro_LaunchDesc.m_StartupContext;
-		r_Entry.m_StartupEntry = ro_LaunchDesc.m_StartupEntry;
-		r_Entry.m_ShutdownContext = ro_LaunchDesc.m_ShutdownContext;
-		r_Entry.m_ShutdownEntry = ro_LaunchDesc.m_ShutdownEntry;
-		r_Entry.m_CanDetach = ro_ExecDesc.m_CanDetach;
-		++r_Entry.m_Generation;
-		r_Entry.setState(ThreadState::CREATED);
+		entry.m_OsHandle = osHandle;
+		entry.m_OsThreadId = osThreadId;
+		entry.m_StartContext = ro_LaunchDesc.m_StartContext;
+		entry.m_StartEntry = ro_LaunchDesc.m_StartEntry;
+		entry.m_StartupContext = ro_LaunchDesc.m_StartupContext;
+		entry.m_StartupEntry = ro_LaunchDesc.m_StartupEntry;
+		entry.m_ShutdownContext = ro_LaunchDesc.m_ShutdownContext;
+		entry.m_ShutdownEntry = ro_LaunchDesc.m_ShutdownEntry;
+		entry.m_CanDetach = ro_ExecDesc.m_CanDetach;
+		++entry.m_Generation;
+		entry.setState(ThreadState::CREATED);
 
-		return ThreadHandle(v_Slot, r_Entry.m_Generation, v_Token, ThreadState::CREATED);
+		return ThreadHandle(slot, entry.m_Generation, token, ThreadState::CREATED);
 #else
 		(void)ro_LaunchDesc;
-		r_Entry.releaseToken(v_Token);
+		entry.releaseToken(token);
 		return ThreadHandle::getInvalidHandle();
 #endif
 	}
 
 	bool PlatformThread::detachThread(ThreadHandle v_Handle) noexcept {
 		if (!isValidHandle(v_Handle)) return false;
-		RegistryEntry& r_Entry = g_Registry[v_Handle.m_ThreadID];
-		if (!r_Entry.m_CanDetach) return false;
+		RegistryEntry& entry = g_Registry[v_Handle.m_ThreadID];
+		if (!entry.m_CanDetach) return false;
 
-		r_Entry.releaseToken(v_Handle.m_AccessToken);
+		entry.releaseToken(v_Handle.m_AccessToken);
 
-		if (!r_Entry.hasOutstandingTokens()) {
+		if (!entry.hasOutstandingTokens()) {
 #if defined(SPECTRA_COMPILER_MSVC)
-			if (r_Entry.m_OsHandle != INVALID_HANDLE_VALUE) {
-				CloseHandle(r_Entry.m_OsHandle);
-				r_Entry.m_OsHandle = INVALID_HANDLE_VALUE;
-				r_Entry.m_OsThreadId = 0;
+			if (entry.m_OsHandle != INVALID_HANDLE_VALUE) {
+				CloseHandle(entry.m_OsHandle);
+				entry.m_OsHandle = INVALID_HANDLE_VALUE;
+				entry.m_OsThreadId = 0;
 			}
 #endif
 		}
@@ -268,42 +268,42 @@ namespace Spectra::Platform::Runtime::Thread {
 
 	bool PlatformThread::closeHandle(ThreadHandle v_Handle) noexcept {
 		if (!isValidHandle(v_Handle)) return false;
-		RegistryEntry& r_Entry = g_Registry[v_Handle.m_ThreadID];
+		RegistryEntry& entry = g_Registry[v_Handle.m_ThreadID];
 
-		r_Entry.releaseToken(v_Handle.m_AccessToken);
+		entry.releaseToken(v_Handle.m_AccessToken);
 
-		if (!r_Entry.hasOutstandingTokens()) {
+		if (!entry.hasOutstandingTokens()) {
 #if defined(SPECTRA_COMPILER_MSVC)
-			if (r_Entry.m_OsHandle != INVALID_HANDLE_VALUE) {
-				CloseHandle(r_Entry.m_OsHandle);
-				r_Entry.m_OsHandle = INVALID_HANDLE_VALUE;
-				r_Entry.m_OsThreadId = 0;
+			if (entry.m_OsHandle != INVALID_HANDLE_VALUE) {
+				CloseHandle(entry.m_OsHandle);
+				entry.m_OsHandle = INVALID_HANDLE_VALUE;
+				entry.m_OsThreadId = 0;
 			}
 #endif
-			r_Entry.setState(ThreadState::REAPED);
+			entry.setState(ThreadState::REAPED);
 		}
 		return true;
 	}
 
 	ThreadHandle PlatformThread::duplicateHandle(ThreadHandle v_handle) noexcept {
 		if (!isValidHandle(v_handle)) return ThreadHandle::getInvalidHandle();
-		RegistryEntry& r_Entry = g_Registry[v_handle.m_ThreadID];
+		RegistryEntry& entry = g_Registry[v_handle.m_ThreadID];
 
-		const size_t v_NewToken = r_Entry.allocateToken();
-		if (v_NewToken == INVALID_THREAD_SLOT) return ThreadHandle::getInvalidHandle();
+		const size_t newToken = entry.allocateToken();
+		if (newToken == INVALID_THREAD_SLOT) return ThreadHandle::getInvalidHandle();
 
-		return ThreadHandle(v_handle.m_ThreadID, r_Entry.m_Generation, v_NewToken, r_Entry.state());
+		return ThreadHandle(v_handle.m_ThreadID, entry.m_Generation, newToken, entry.state());
 	}
 
 	bool PlatformThread::isAlive(ThreadHandle v_Handle) noexcept {
 		if (!isValidHandle(v_Handle)) return false;
 #if defined(SPECTRA_COMPILER_MSVC)
-		const RegistryEntry& ro_Entry = g_Registry[v_Handle.m_ThreadID];
-		if (ro_Entry.m_OsHandle == INVALID_HANDLE_VALUE) return false;
+		const RegistryEntry& entry = g_Registry[v_Handle.m_ThreadID];
+		if (entry.m_OsHandle == INVALID_HANDLE_VALUE) return false;
 
-		DWORD v_ExitCode = 0;
-		if (!GetExitCodeThread(ro_Entry.m_OsHandle, &v_ExitCode)) return false;
-		return v_ExitCode == STILL_ACTIVE;
+		DWORD exitCode = 0;
+		if (!GetExitCodeThread(entry.m_OsHandle, &exitCode)) return false;
+		return exitCode == STILL_ACTIVE;
 #else
 		return false;
 #endif
@@ -317,9 +317,9 @@ namespace Spectra::Platform::Runtime::Thread {
 	bool PlatformThread::suspendThread(ThreadHandle v_Handle) noexcept {
 		if (!isValidHandle(v_Handle)) return false;
 #if defined(SPECTRA_COMPILER_MSVC)
-		const HANDLE v_OsHandle = g_Registry[v_Handle.m_ThreadID].m_OsHandle;
-		if (v_OsHandle == INVALID_HANDLE_VALUE) return false;
-		return ::SuspendThread(v_OsHandle) != static_cast<DWORD>(-1);
+		const HANDLE osHandle = g_Registry[v_Handle.m_ThreadID].m_OsHandle;
+		if (osHandle == INVALID_HANDLE_VALUE) return false;
+		return ::SuspendThread(osHandle) != static_cast<DWORD>(-1);
 #else
 		return false;
 #endif
@@ -328,9 +328,9 @@ namespace Spectra::Platform::Runtime::Thread {
 	bool PlatformThread::resumeThread(ThreadHandle v_Handle) noexcept {
 		if (!isValidHandle(v_Handle)) return false;
 #if defined(SPECTRA_COMPILER_MSVC)
-		const HANDLE v_OsHandle = g_Registry[v_Handle.m_ThreadID].m_OsHandle;
-		if (v_OsHandle == INVALID_HANDLE_VALUE) return false;
-		return ::ResumeThread(v_OsHandle) != static_cast<DWORD>(-1);
+		const HANDLE osHandle = g_Registry[v_Handle.m_ThreadID].m_OsHandle;
+		if (osHandle == INVALID_HANDLE_VALUE) return false;
+		return ::ResumeThread(osHandle) != static_cast<DWORD>(-1);
 #else
 		return false;
 #endif
@@ -339,12 +339,12 @@ namespace Spectra::Platform::Runtime::Thread {
 	bool PlatformThread::terminateThread(ThreadHandle v_Handle) noexcept {
 		if (!isValidHandle(v_Handle)) return false;
 #if defined(SPECTRA_COMPILER_MSVC)
-		RegistryEntry& r_Entry = g_Registry[v_Handle.m_ThreadID];
-		if (r_Entry.m_OsHandle == INVALID_HANDLE_VALUE) return false;
+		RegistryEntry& entry = g_Registry[v_Handle.m_ThreadID];
+		if (entry.m_OsHandle == INVALID_HANDLE_VALUE) return false;
 
-		const bool v_Ok = TerminateThread(r_Entry.m_OsHandle, 0) != FALSE;
-		if (v_Ok) r_Entry.setState(ThreadState::SEALED);
-		return v_Ok;
+		const bool ok = TerminateThread(entry.m_OsHandle, 0) != FALSE;
+		if (ok) entry.setState(ThreadState::SEALED);
+		return ok;
 #else
 		return false;
 #endif
@@ -353,9 +353,9 @@ namespace Spectra::Platform::Runtime::Thread {
 	bool PlatformThread::joinThread(ThreadHandle v_Handle) noexcept {
 		if (!isValidHandle(v_Handle)) return false;
 #if defined(SPECTRA_COMPILER_MSVC)
-		const HANDLE v_OsHandle = g_Registry[v_Handle.m_ThreadID].m_OsHandle;
-		if (v_OsHandle == INVALID_HANDLE_VALUE) return false;
-		return WaitForSingleObject(v_OsHandle, INFINITE) == WAIT_OBJECT_0;
+		const HANDLE osHandle = g_Registry[v_Handle.m_ThreadID].m_OsHandle;
+		if (osHandle == INVALID_HANDLE_VALUE) return false;
+		return WaitForSingleObject(osHandle, INFINITE) == WAIT_OBJECT_0;
 #else
 		return false;
 #endif
@@ -363,8 +363,8 @@ namespace Spectra::Platform::Runtime::Thread {
 
 	void PlatformThread::waitOnAddress(ParkHandle& ro_Permit) noexcept {
 #if defined(SPECTRA_COMPILER_MSVC)
-		uint32_t v_Expected = 0u;
-		WaitOnAddress(ro_Permit.m_ParkingPermit.data(), &v_Expected, sizeof(uint32_t), INFINITE);
+		uint32_t expected = 0u;
+		WaitOnAddress(ro_Permit.m_ParkingPermit.data(), &expected, sizeof(uint32_t), INFINITE);
 #else
 		(void)ro_Permit;
 #endif
@@ -390,8 +390,8 @@ namespace Spectra::Platform::Runtime::Thread {
 
 	void PlatformThread::waitOnAddressFor(ParkHandle& ro_Permit, uint32_t v_TimeoutMs) noexcept {
 #if defined(SPECTRA_COMPILER_MSVC)
-		uint32_t v_Expected = 0u;
-		WaitOnAddress(ro_Permit.m_ParkingPermit.data(), &v_Expected, sizeof(uint32_t), static_cast<DWORD>(v_TimeoutMs));
+		uint32_t expected = 0u;
+		WaitOnAddress(ro_Permit.m_ParkingPermit.data(), &expected, sizeof(uint32_t), static_cast<DWORD>(v_TimeoutMs));
 #else
 		(void)ro_Permit;
 		(void)v_TimeoutMs;
@@ -401,11 +401,11 @@ namespace Spectra::Platform::Runtime::Thread {
 	bool PlatformThread::setAffinity(ThreadHandle v_Handle, AffinityDesc& ro_Desc) {
 #if defined(SPECTRA_COMPILER_MSVC)
 		if (!isValidHandle(v_Handle)) return false;
-		const HANDLE v_OsHandle = g_Registry[v_Handle.m_ThreadID].m_OsHandle;
-		if (v_OsHandle == INVALID_HANDLE_VALUE) return false;
+		const HANDLE osHandle = g_Registry[v_Handle.m_ThreadID].m_OsHandle;
+		if (osHandle == INVALID_HANDLE_VALUE) return false;
 
-		GROUP_AFFINITY v_Affinity = Spectra::Platform::Runtime::Internal::ThreadMappings::fromAffinityDesc(ro_Desc);
-		return ::SetThreadGroupAffinity(v_OsHandle, &v_Affinity, nullptr) != FALSE;
+		GROUP_AFFINITY affinity = Spectra::Platform::Runtime::Internal::ThreadMappings::fromAffinityDesc(ro_Desc);
+		return ::SetThreadGroupAffinity(osHandle, &affinity, nullptr) != FALSE;
 #else
 		(void)v_Handle;
 		(void)ro_Desc;
@@ -414,30 +414,30 @@ namespace Spectra::Platform::Runtime::Thread {
 	}
 
 	AffinityDesc PlatformThread::getAffinity(ThreadHandle v_Handle) {
-		AffinityDesc v_Desc{};
+		AffinityDesc desc{};
 #if defined(SPECTRA_COMPILER_MSVC)
-		if (!isValidHandle(v_Handle)) return v_Desc;
-		const HANDLE v_OsHandle = g_Registry[v_Handle.m_ThreadID].m_OsHandle;
-		if (v_OsHandle == INVALID_HANDLE_VALUE) return v_Desc;
+		if (!isValidHandle(v_Handle)) return desc;
+		const HANDLE osHandle = g_Registry[v_Handle.m_ThreadID].m_OsHandle;
+		if (osHandle == INVALID_HANDLE_VALUE) return desc;
 
-		GROUP_AFFINITY v_Affinity{};
-		if (!::GetThreadGroupAffinity(v_OsHandle, &v_Affinity)) return v_Desc;
-		v_Desc = Runtime::Internal::ThreadMappings::toAffinityDesc(v_Affinity);
-		return v_Desc;
+		GROUP_AFFINITY affinity{};
+		if (!::GetThreadGroupAffinity(osHandle, &affinity)) return desc;
+		desc = Runtime::Internal::ThreadMappings::toAffinityDesc(affinity);
+		return desc;
 #else
 		(void)v_Handle;
-		return v_Desc;
+		return desc;
 #endif
 	}
 
 	bool PlatformThread::setPriority(ThreadHandle v_Handle, Priority v_Priority) noexcept {
 #if defined(SPECTRA_COMPILER_MSVC)
 		if (!isValidHandle(v_Handle)) return false;
-		const HANDLE v_OsHandle = g_Registry[v_Handle.m_ThreadID].m_OsHandle;
-		if (v_OsHandle == INVALID_HANDLE_VALUE) return false;
+		const HANDLE osHandle = g_Registry[v_Handle.m_ThreadID].m_OsHandle;
+		if (osHandle == INVALID_HANDLE_VALUE) return false;
 
-		const int v_WinPriority = Spectra::Platform::Runtime::Internal::ThreadMappings::toWin32Priority(v_Priority);
-		return ::SetThreadPriority(v_OsHandle, v_WinPriority) != FALSE;
+		const int winPriority = Spectra::Platform::Runtime::Internal::ThreadMappings::toWin32Priority(v_Priority);
+		return ::SetThreadPriority(osHandle, winPriority) != FALSE;
 #else
 		(void)v_Handle;
 		(void)v_Priority;
@@ -448,12 +448,12 @@ namespace Spectra::Platform::Runtime::Thread {
 	Priority PlatformThread::getPriority(ThreadHandle v_Handle) noexcept {
 #if defined(SPECTRA_COMPILER_MSVC)
 		if (!isValidHandle(v_Handle)) return Priority::PRIORITY_NORMAL;
-		const HANDLE v_OsHandle = g_Registry[v_Handle.m_ThreadID].m_OsHandle;
-		if (v_OsHandle == INVALID_HANDLE_VALUE) return Priority::PRIORITY_NORMAL;
+		const HANDLE osHandle = g_Registry[v_Handle.m_ThreadID].m_OsHandle;
+		if (osHandle == INVALID_HANDLE_VALUE) return Priority::PRIORITY_NORMAL;
 
-		const int v_WinPriority = ::GetThreadPriority(v_OsHandle);
-		if (v_WinPriority == THREAD_PRIORITY_ERROR_RETURN) return Priority::PRIORITY_NORMAL;
-		return Spectra::Platform::Runtime::Internal::ThreadMappings::fromWin32Priority(v_WinPriority);
+		const int winPriority = ::GetThreadPriority(osHandle);
+		if (winPriority == THREAD_PRIORITY_ERROR_RETURN) return Priority::PRIORITY_NORMAL;
+		return Spectra::Platform::Runtime::Internal::ThreadMappings::fromWin32Priority(winPriority);
 #else
 		(void)v_Handle;
 		return Priority::PRIORITY_NORMAL;
@@ -463,11 +463,11 @@ namespace Spectra::Platform::Runtime::Thread {
 	bool PlatformThread::setPriorityBoost(ThreadHandle v_Handle, Flag v_Permission) noexcept {
 #if defined(SPECTRA_COMPILER_MSVC)
 		if (!isValidHandle(v_Handle)) return false;
-		const HANDLE v_OsHandle = g_Registry[v_Handle.m_ThreadID].m_OsHandle;
-		if (v_OsHandle == INVALID_HANDLE_VALUE) return false;
+		const HANDLE osHandle = g_Registry[v_Handle.m_ThreadID].m_OsHandle;
+		if (osHandle == INVALID_HANDLE_VALUE) return false;
 
 		// SetThreadPriorityBoost takes "disable" semantics - inverted from v_Permission.
-		return ::SetThreadPriorityBoost(v_OsHandle, v_Permission ? FALSE : TRUE) != FALSE;
+		return ::SetThreadPriorityBoost(osHandle, v_Permission ? FALSE : TRUE) != FALSE;
 #else
 		(void)v_Handle;
 		(void)v_Permission;
@@ -478,12 +478,12 @@ namespace Spectra::Platform::Runtime::Thread {
 	Flag PlatformThread::getPriorityBoost(ThreadHandle v_Handle) noexcept {
 #if defined(SPECTRA_COMPILER_MSVC)
 		if (!isValidHandle(v_Handle)) return Disallow;
-		const HANDLE v_OsHandle = g_Registry[v_Handle.m_ThreadID].m_OsHandle;
-		if (v_OsHandle == INVALID_HANDLE_VALUE) return Disallow;
+		const HANDLE osHandle = g_Registry[v_Handle.m_ThreadID].m_OsHandle;
+		if (osHandle == INVALID_HANDLE_VALUE) return Disallow;
 
-		BOOL v_Disabled = FALSE;
-		if (!::GetThreadPriorityBoost(v_OsHandle, &v_Disabled)) return Disallow;
-		return v_Disabled == FALSE;
+		BOOL disabled = FALSE;
+		if (!::GetThreadPriorityBoost(osHandle, &disabled)) return Disallow;
+		return disabled == FALSE;
 #else
 		(void)v_Handle;
 		return Disallow;

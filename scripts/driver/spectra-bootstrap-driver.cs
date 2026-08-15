@@ -49,15 +49,15 @@ void PrintUsage()
     Console.WriteLine();
     Console.WriteLine("Commands:");
     Console.WriteLine("  help, -h, --help                                       Show this message");
-    Console.WriteLine("  cmake-init [-f] [-preq]                                Configure cmake (-f: delete CMakeCache.txt first, -preq: check cmake/VS2022 first)");
+    Console.WriteLine("  cmake-init [-f] [-preq] [-clangcl]                     Configure cmake (-f: delete CMakeCache.txt first, -preq: check cmake/VS2022 first, -clangcl: configure a separate clang-cl build tree)");
     Console.WriteLine("  submodule-update [--remote]                            git submodule update --init --recursive (--remote: also pull latest tracked branch)");
     Console.WriteLine("  module-gen -lib|-dll|-exe -cpp17|-cpp20|-cpp23 -n \"Name\" -dir <location>   Scaffold a new module");
     Console.WriteLine("  cu-check [-d]                                          Check for CUDA toolkit (-d: install if missing)");
     Console.WriteLine("  vk-check [-d]                                          Check for Vulkan SDK (-d: install if missing)");
     Console.WriteLine("  header-gen -p <Prefix> -np <Namespace> -dir <path>     Generate Compiler.h/Diagnostic.h pair");
-    Console.WriteLine("  build -c <Configuration> [-t <Target>]                 cmake --build (optionally a single target/submodule)");
-    Console.WriteLine("  rebuild -c <Configuration> [-t <Target>]               cmake --build --clean-first (optionally a single target/submodule)");
-    Console.WriteLine("  run -c <Configuration>                                 Launch the configured run target");
+    Console.WriteLine("  build -c <Configuration> [-t <Target>] [-clangcl]      cmake --build (optionally a single target/submodule; -clangcl: build the clang-cl tree)");
+    Console.WriteLine("  rebuild -c <Configuration> [-t <Target>] [-clangcl]    cmake --build --clean-first (optionally a single target/submodule; -clangcl: rebuild the clang-cl tree)");
+    Console.WriteLine("  run -c <Configuration> [-clangcl]                      Launch the configured run target (-clangcl: from the clang-cl tree)");
     Console.WriteLine("  test [-c <Configuration>] [--fbt=<pattern>] [-ls]     Run every Hades suite listed in tests/test.config (-ls: list suites/tests instead)");
     Console.WriteLine("  hades [-c <Configuration>] <args...>                   Passthrough to Hades-Driver.exe (init-suite/find-suite/new-test/run/validate/...)");
 }
@@ -74,11 +74,12 @@ int UnknownCommand(string name)
 int CmakeInit(string p_RootDir, Config p_Config, string[] p_Rest)
 {
     var force = p_Rest.Contains("-f");
+    var clangCl = p_Rest.Contains("-clangcl");
 
     if (p_Rest.Contains("-preq") && !CheckPrereqs())
         return 1;
 
-    var buildDir = Path.Combine(p_RootDir, p_Config.BuildDir);
+    var buildDir = Path.Combine(p_RootDir, clangCl ? p_Config.ClangClBuildDir : p_Config.BuildDir);
     Directory.CreateDirectory(buildDir);
 
     if (force)
@@ -91,8 +92,16 @@ int CmakeInit(string p_RootDir, Config p_Config, string[] p_Rest)
         }
     }
 
-    Console.WriteLine($"[INFO] Configuring build in {buildDir}... \n");
-    var exitCode = Run("cmake", $"-S \"{p_RootDir}\" -B \"{buildDir}\" -G \"{p_Config.CmakeGenerator}\"");
+    // clang-cl is a separate toolset within the same VS-generator family, not
+    // a different generator - it gets its own build tree (a CMake cache can't
+    // switch toolsets in place) and its own SPECTRA_BIN_SUBDIR so its output
+    // never lands in the same bin/<Configuration> path as the default MSVC
+    // build.
+    var toolsetArgs = clangCl ? $" -T {p_Config.ClangClToolset}" : "";
+    var binSubdirArgs = clangCl ? $" -DSPECTRA_BIN_SUBDIR=\"{p_Config.ClangClBinDir}\"" : "";
+
+    Console.WriteLine($"[INFO] Configuring build in {buildDir}{(clangCl ? " (clang-cl)" : "")}... \n");
+    var exitCode = Run("cmake", $"-S \"{p_RootDir}\" -B \"{buildDir}\" -G \"{p_Config.CmakeGenerator}\"{toolsetArgs}{binSubdirArgs}");
     Console.WriteLine(exitCode == 0 ? "[OK] CMake configured." : "[ERROR] CMake configure failed.");
     return exitCode;
 }
@@ -117,10 +126,11 @@ int BuildConfig(string p_RootDir, Config p_Config, string[] p_Rest)
     var cfg = ResolveConfiguration(p_Config, p_Rest);
     if (cfg is null) return 1;
     var target = GetFlagValue(p_Rest, "-t");
+    var clangCl = p_Rest.Contains("-clangcl");
 
-    var buildDir = Path.Combine(p_RootDir, p_Config.BuildDir);
+    var buildDir = Path.Combine(p_RootDir, clangCl ? p_Config.ClangClBuildDir : p_Config.BuildDir);
     var targetArgs = target is null ? "" : $" --target {target}";
-    Console.WriteLine($"[INFO] Building configuration: {cfg}{(target is null ? "" : $" (target: {target})")} \n");
+    Console.WriteLine($"[INFO] Building configuration: {cfg}{(target is null ? "" : $" (target: {target})")}{(clangCl ? " (clang-cl)" : "")} \n");
     var exitCode = Run("cmake", $"--build \"{buildDir}\" --config {cfg}{targetArgs}");
     Console.WriteLine(exitCode == 0 ? "[OK] Build succeeded." : $"[ERROR] Build failed for configuration {cfg}.");
     return exitCode;
@@ -131,10 +141,11 @@ int RebuildConfig(string p_RootDir, Config p_Config, string[] p_Rest)
     var cfg = ResolveConfiguration(p_Config, p_Rest);
     if (cfg is null) return 1;
     var target = GetFlagValue(p_Rest, "-t");
+    var clangCl = p_Rest.Contains("-clangcl");
 
-    var buildDir = Path.Combine(p_RootDir, p_Config.BuildDir);
+    var buildDir = Path.Combine(p_RootDir, clangCl ? p_Config.ClangClBuildDir : p_Config.BuildDir);
     var targetArgs = target is null ? "" : $" --target {target}";
-    Console.WriteLine($"[INFO] Rebuilding configuration: {cfg}{(target is null ? "" : $" (target: {target})")} \n");
+    Console.WriteLine($"[INFO] Rebuilding configuration: {cfg}{(target is null ? "" : $" (target: {target})")}{(clangCl ? " (clang-cl)" : "")} \n");
     var exitCode = Run("cmake", $"--build \"{buildDir}\" --config {cfg}{targetArgs} --clean-first");
     Console.WriteLine(exitCode == 0 ? "[OK] Rebuild succeeded." : $"[ERROR] Rebuild failed for configuration {cfg}.");
     return exitCode;
@@ -146,8 +157,9 @@ int RunTarget(string p_RootDir, Config p_Config, string[] p_Rest)
 {
     var cfg = ResolveConfiguration(p_Config, p_Rest);
     if (cfg is null) return 1;
+    var clangCl = p_Rest.Contains("-clangcl");
 
-    var exePath = Path.Combine(p_RootDir, p_Config.BinDir, cfg, p_Config.RunTarget + ".exe");
+    var exePath = Path.Combine(p_RootDir, clangCl ? p_Config.ClangClBinDir : p_Config.BinDir, cfg, p_Config.RunTarget + ".exe");
 
     if (!File.Exists(exePath))
     {
@@ -998,7 +1010,10 @@ Config LoadConfig(string p_RootDir)
     return new Config(
         GetString("buildDir"),
         GetString("binDir"),
+        GetString("clangClBuildDir"),
+        GetString("clangClBinDir"),
         GetString("cmakeGenerator"),
+        GetString("clangClToolset"),
         GetString("defaultConfig"),
         GetString("runTarget"),
         GetStringArray("buildConfigurations"),
@@ -1026,7 +1041,10 @@ string? ResolveConfiguration(Config p_Config, string[] p_Rest)
 record Config(
     string BuildDir,
     string BinDir,
+    string ClangClBuildDir,
+    string ClangClBinDir,
     string CmakeGenerator,
+    string ClangClToolset,
     string DefaultConfig,
     string RunTarget,
     string[] BuildConfigurations,

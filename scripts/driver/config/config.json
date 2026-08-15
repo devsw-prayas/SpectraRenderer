@@ -1,7 +1,10 @@
 {
   "buildDir": "build",
   "binDir": "bin",
+  "clangClBuildDir": "build-clangcl",
+  "clangClBinDir": "bin-clangcl",
   "cmakeGenerator": "Visual Studio 17 2022",
+  "clangClToolset": "ClangCL",
   "defaultConfig": "Release_win64",
   "runTarget": "SpectraLauncher",
   "buildConfigurations": [

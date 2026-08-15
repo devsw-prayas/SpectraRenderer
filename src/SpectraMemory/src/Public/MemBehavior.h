@@ -35,48 +35,32 @@ namespace Spectra::Memory::Allocators {
 #endif
 
 	SPEC_MEM_TYPE(CPU, "CPU", "Host (CPU) paged/committed VA", 0)
-		SPEC_MEM_TYPE(GPU, "GPU", "GPU-mapped device memory", 1)
-		SPEC_MEM_TYPE(MemMapped, "MemMapped", "Memory-mapped file", 2)
+	SPEC_MEM_TYPE(GPU, "GPU", "GPU-mapped device memory", 1)
+	SPEC_MEM_TYPE(MemMapped, "MemMapped", "Memory-mapped file", 2)
 
 #undef SPEC_MEM_TYPE
+	// Allocator construction shape.
 
-		// AllocShape - allocator-shape category. Renamed from the original allocator
-		// design addendum's `MemType` enum (Raw/Typed/Header) specifically to avoid
-		// colliding with the substrate MemType<T> tag hierarchy above, which claimed
-		// the `MemType` name first in this file. Descriptive metadata only - doesn't
-		// change that construction still lives on the Typed tier only.
-
-		enum class AllocShape : std::uint8_t {
+	enum class AllocShape : std::uint8_t {
 		Raw,
 		Typed,
 		Header
 	};
-
-	// ArenaMetadata<Arena> - Tier 0 descriptive metadata. Primary template + macro
-	// only live here; specializations live next to each real Arena type (e.g.
-	// LinearArena.h), invoked locally via SPEC_ARENA_METADATA. Substrate-blind -
-	// carries no MemType<T> field, no cross-check against it.
-
+	// Tier 0 metadata for an arena type.
 	template<typename Arena>
 	struct ArenaMetadata final {
 		constexpr static auto  arenaDesc = "unknown";
 		constexpr static short arenaHash = INT16_MAX;   // sentinel = "unspecialized"
 		constexpr static auto  arenaNameStr = "unknown";
 	};
-
-	// Intentionally NOT #undef'd - must stay visible so every Arena header that
-	// includes MemBehavior.h can invoke it locally, next to the class it describes.
+	// Kept visible for use by individual arena headers.
 #define SPEC_ARENA_METADATA(ArenaType, Description, Hash, NameStr) \
 	template<> struct ArenaMetadata<ArenaType> final { \
 		constexpr static auto  arenaDesc    = Description; \
 		constexpr static short arenaHash    = Hash; \
 		constexpr static auto  arenaNameStr = NameStr; \
 	};
-
-	// AllocatorMetadata<T, Arena> - Tier 1 descriptive metadata. Same locality
-	// principle as ArenaMetadata. No `mechanism` field - explicitly dropped;
-	// the original addendum's tooling-only Mechanism tag is not part of this.
-
+	// Tier 1 metadata for an allocator and its arena.
 	template<typename T, typename Arena>
 	struct AllocatorMetadata final {
 		constexpr static auto       allocDesc = "unknown";
@@ -84,8 +68,7 @@ namespace Spectra::Memory::Allocators {
 		constexpr static auto       allocNameStr = "unknown";
 		constexpr static AllocShape allocShape = AllocShape::Raw;
 	};
-
-	// Intentionally NOT #undef'd, same reasoning as SPEC_ARENA_METADATA.
+	// Kept visible for use by allocator headers.
 #define SPEC_ALLOCATOR_METADATA(TType, ArenaType, Description, Hash, NameStr, Shape) \
 	template<> struct AllocatorMetadata<TType, ArenaType> final { \
 		constexpr static auto       allocDesc    = Description; \
@@ -127,17 +110,14 @@ namespace Spectra::Memory {
 		constexpr static short subsystemId  = Code; \
 	};
 #endif
-
-	// Seed list - extend as needed per subsystem. No central registry file requirement;
-	// each subsystem may declare its own tag(s) via SPEC_SUBSYSTEM in its own headers.
+	// Built-in subsystem tags.
 	SPEC_SUBSYSTEM(SpectraCudaTag, "SpectraCudaBackend", "CUDA backend allocations", 0)
-		SPEC_SUBSYSTEM(SpectraFileTag, "SpectraFileSystem", "File I/O staging", 1)
-		SPEC_SUBSYSTEM(LumosSceneTag, "LumosScene", "Scene graph allocations", 2)
+	SPEC_SUBSYSTEM(SpectraFileTag, "SpectraFileSystem", "File I/O staging", 1)
+	SPEC_SUBSYSTEM(LumosSceneTag, "LumosScene", "Scene graph allocations", 2)
 
 #undef SPEC_SUBSYSTEM
-
-		// Friendly aliases -- callers spell the real subsystem name, not its tag.
-		using SpectraCudaBackend = SpectraCudaTag;
+	// Public subsystem aliases.
+	using SpectraCudaBackend = SpectraCudaTag;
 	using SpectraFileSystem = SpectraFileTag;
 	using LumosScene = LumosSceneTag;
 }

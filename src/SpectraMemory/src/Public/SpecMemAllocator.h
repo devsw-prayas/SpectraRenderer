@@ -127,9 +127,9 @@ namespace Spectra::Memory::Allocators {
 		// Allocate + placement-construct in one call.
 		template<typename U, typename... Args>
 		U* emplace(Args&&... v_Args) requires std::is_void_v<T> {
-			void* p_Mem = static_cast<derived_*>(this)->allocateImpl(sizeof(U), alignof(U));
-			if (!p_Mem) return nullptr;
-			return ::new (p_Mem) U(std::forward<Args>(v_Args)...);
+			void* memory = static_cast<derived_*>(this)->allocateImpl(sizeof(U), alignof(U));
+			if (!memory) return nullptr;
+			return ::new (memory) U(std::forward<Args>(v_Args)...);
 		}
 
 		// Policy-defined: no-op for pure-bump derivations, real freelist reclaim

@@ -81,7 +81,7 @@ namespace Spectra::Cuda::Optix {
 		emitDesc.type = OPTIX_PROPERTY_TYPE_COMPACTED_SIZE;
 		emitDesc.result = static_cast<CUdeviceptr>(v_CompactedSizePropAddress);
 
-		const ::OptixAccelEmitDesc* p_EmitDesc = (v_CompactedSizePropAddress != 0) ? &emitDesc : nullptr;
+		const ::OptixAccelEmitDesc* emitDescPtr = (v_CompactedSizePropAddress != 0) ? &emitDesc : nullptr;
 		uint32_t numEmit = (v_CompactedSizePropAddress != 0) ? 1 : 0;
 
 		::OptixTraversableHandle nativeHandle = 0;
@@ -96,7 +96,7 @@ namespace Spectra::Cuda::Optix {
 			static_cast<CUdeviceptr>(v_OutputBufferAddress),
 			v_OutputBufferSize,
 			&nativeHandle,
-			p_EmitDesc,
+			emitDescPtr,
 			numEmit
 		));
 

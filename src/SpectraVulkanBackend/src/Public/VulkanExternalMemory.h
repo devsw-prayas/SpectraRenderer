@@ -4,16 +4,8 @@
 
 namespace Spectra::Vulkan {
 
-	// Vulkan-side external memory export.
-	// Creates buffers/images with dedicated VkDeviceMemory (bypassing VMA — required for export),
-	// then vends the Win32 HANDLE for handoff to another API (CUDA, D3D12, etc.).
-	//
-	// Handle layout for exportable resources:
-	//   m_Handle     = VkBuffer / VkImage   (as usual)
-	//   m_Allocation = VkDeviceMemory       (NOT VmaAllocation — destroy via this class only)
-	//
-	// Caller owns the void* returned by getMemoryWin32Handle and must close it
-	// with CloseHandle() when the interop session ends.
+	// Exportable Vulkan memory for CUDA/D3D12 interop.
+	// Handles returned by getMemoryWin32Handle() belong to the caller.
 
 	class SPEC_VK_BK_RUNTIME_API VulkanExternalMemory final {
 	public:

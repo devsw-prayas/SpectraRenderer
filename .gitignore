@@ -102,6 +102,13 @@ Makefile
 # Hades suite build output (driver.bat test / hades-driver run)
 tests/*/generated/
 
+# Adopted-suite marker (driver.bat hades find-suite/init-suite, written to cwd)
+.hades-suite
+
+# Standalone Ninja build tree (Linux cross-testing) and stray CTest output
+/build_ninja/
+/Testing/
+
 # Claude
 .claude/
 .production/

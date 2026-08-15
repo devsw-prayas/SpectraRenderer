@@ -67,7 +67,12 @@ else()
     spectra_debug_config(DEBUG_KERBECS_ES_WIN64             "-O0")
 endif()
 
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin/$<CONFIG>)
+# Overridable so a clang-cl configure (a separate build tree, since a single
+# CMake cache can't mix toolsets) can land in its own output directory instead
+# of silently overwriting the default MSVC build's binaries under the same
+# configuration names. See driver.bat's `cmake-init -clangcl`.
+set(SPECTRA_BIN_SUBDIR "bin" CACHE STRING "Top-level output directory name under the repo root")
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/${SPECTRA_BIN_SUBDIR}/$<CONFIG>)
 
 add_subdirectory(common/Corium)
 add_subdirectory(common/StormSTL)

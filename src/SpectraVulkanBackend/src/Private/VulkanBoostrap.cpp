@@ -4,18 +4,9 @@
 #include "VulkanInternalHelpers.h"
 
 
-// VulkanBootstrap.cpp
-// Spectra Vulkan Backend - Bootstrap & Initialization
-//
-// Initialization sequence (must follow this exact order):
-//   1. initializeVulkan()   - VkInstance, debug messenger, instance extensions
-//   2. selectPhysicalDevice() - GPU selection, feature/extension validation,
-//                               capability persistence into DeviceProperties
-//   3. createLogicalDevice() - VkDevice, queue retrieval, debug naming
-//   4. createAllocator()    - VMA allocator, buffer device address + budget
-//   5. createCommandPools() - One pool per unique queue family
-//
-// Shutdown: shutdownVulkan() - destroys in reverse order
+// Vulkan bootstrap and initialization.
+// Initialization order: instance, physical device, logical device, allocator, command pools.
+// Shutdown reverses this order.
 
 
 namespace Spectra::Vulkan {
