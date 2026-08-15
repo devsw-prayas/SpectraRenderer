@@ -1,0 +1,281 @@
+# Hades suite manifest
+[[test]]
+id = "sync-parkhandle-wait-wake-round-trip"
+fixture = "SyncPrimitivesParkHandleWaitWakeRoundTrip"
+kind = "correctness"
+
+[[test]]
+id = "semaphore-acquire-release-unparks-waiter"
+fixture = "SemaphoreAcquireReleaseUnparksWaiter"
+kind = "correctness"
+
+[[test]]
+id = "cyclicbarrier-await-releases-all-parties"
+fixture = "CyclicBarrierAwaitReleasesAllParties"
+kind = "correctness"
+
+[[test]]
+id = "atomicfetchadd32-accumulates-across-threads"
+fixture = "AtomicFetchAdd32AccumulatesAcrossThreads"
+kind = "correctness"
+
+[[test]]
+id = "atomicfetchadd64-accumulates-across-threads"
+fixture = "AtomicFetchAdd64AccumulatesAcrossThreads"
+kind = "correctness"
+
+[[test]]
+id = "memory-internal-init-respects-requested-node-count"
+fixture = "MemoryInternalInitRespectsRequestedNodeCount"
+kind = "correctness"
+
+[[test]]
+id = "allocatorregistry-initregistry-returns-false-on-reinit"
+fixture = "AllocatorRegistryInitRegistryReturnsFalseOnReinit"
+kind = "correctness"
+
+[[test]]
+id = "defaultthreadfactory-createandstart-launches-real-thread"
+fixture = "DefaultThreadFactoryCreateAndStartLaunchesRealThread"
+kind = "correctness"
+
+[[test]]
+id = "athreadfactory-createandstart-is-reusable-across-calls"
+fixture = "AThreadFactoryCreateAndStartIsReusableAcrossCalls"
+kind = "correctness"
+
+[[test]]
+id = "nativethread-createthread-requires-validated-descriptor"
+fixture = "NativeThreadCreateThreadRequiresValidatedDescriptor"
+kind = "correctness"
+
+[[test]]
+id = "countdownlatch-await-releases-after-zero"
+fixture = "CountDownLatchAwaitReleasesAfterZero"
+kind = "correctness"
+
+[[test]]
+id = "countdownlatch-getcount-decrements-per-call"
+fixture = "CountDownLatchGetCountDecrementsPerCall"
+kind = "correctness"
+
+[[test]]
+id = "countdownlatch-timed-await-expires-before-countdown"
+fixture = "CountDownLatchTimedAwaitExpiresBeforeCountDown"
+kind = "correctness"
+
+[[test]]
+id = "cyclicbarrier-reset-unblocks-waiters-as-broken"
+fixture = "CyclicBarrierResetUnblocksWaitersAsBroken"
+kind = "correctness"
+
+[[test]]
+id = "cyclicbarrier-getnumberwaiting-tracks-arrivals"
+fixture = "CyclicBarrierGetNumberWaitingTracksArrivals"
+kind = "correctness"
+
+[[test]]
+id = "cyclicbarrier-getparties-reflects-constructor-arg"
+fixture = "CyclicBarrierGetPartiesReflectsConstructorArg"
+kind = "correctness"
+
+[[test]]
+id = "semaphore-tryacquire-times-out-when-exhausted"
+fixture = "SemaphoreTryAcquireTimesOutWhenExhausted"
+kind = "correctness"
+
+[[test]]
+id = "semaphore-availablepermits-tracks-acquire-release"
+fixture = "SemaphoreAvailablePermitsTracksAcquireRelease"
+kind = "correctness"
+
+[[test]]
+id = "semaphore-tryacquire-succeeds-when-permits-available"
+fixture = "SemaphoreTryAcquireSucceedsWhenPermitsAvailable"
+kind = "correctness"
+
+[[test]]
+id = "criticalsection-trylock-fails-while-held-by-other-thread"
+fixture = "CriticalSectionTryLockFailsWhileHeldByOtherThread"
+kind = "correctness"
+
+[[test]]
+id = "criticalsection-is-recursive-on-same-thread"
+fixture = "CriticalSectionIsRecursiveOnSameThread"
+kind = "correctness"
+
+[[test]]
+id = "reentrantlock-holdcount-increments-on-reentry"
+fixture = "ReentrantLockHoldCountIncrementsOnReentry"
+kind = "correctness"
+
+[[test]]
+id = "reentrantlock-trylock-timed-fails-when-held-by-other-thread"
+fixture = "ReentrantLockTryLockTimedFailsWhenHeldByOtherThread"
+kind = "correctness"
+
+[[test]]
+id = "readwritelock-allows-concurrent-readers"
+fixture = "ReadWriteLockAllowsConcurrentReaders"
+kind = "correctness"
+
+[[test]]
+id = "readwritelock-writer-excludes-readers"
+fixture = "ReadWriteLockWriterExcludesReaders"
+kind = "correctness"
+
+[[test]]
+id = "readwritelock-writer-excludes-writers"
+fixture = "ReadWriteLockWriterExcludesWriters"
+kind = "correctness"
+
+[[test]]
+id = "stampedlock-validate-succeeds-with-no-intervening-writer"
+fixture = "StampedLockValidateSucceedsWithNoInterveningWriter"
+kind = "correctness"
+
+[[test]]
+id = "stampedlock-validate-fails-after-intervening-write"
+fixture = "StampedLockValidateFailsAfterInterveningWrite"
+kind = "correctness"
+
+[[test]]
+id = "stampedlock-tryconverttowritelock-succeeds-when-uncontended"
+fixture = "StampedLockTryConvertToWriteLockSucceedsWhenUncontended"
+kind = "correctness"
+
+[[test]]
+id = "phaser-arriveandawaitadvance-increments-phase"
+fixture = "PhaserArriveAndAwaitAdvanceIncrementsPhase"
+kind = "correctness"
+
+[[test]]
+id = "phaser-register-increases-registered-parties"
+fixture = "PhaserRegisterIncreasesRegisteredParties"
+kind = "correctness"
+
+[[test]]
+id = "phaser-child-advance-propagates-to-parent"
+fixture = "PhaserChildAdvancePropagatesToParent"
+kind = "correctness"
+
+[[test]]
+id = "phaser-forcetermination-sets-isterminated"
+fixture = "PhaserForceTerminationSetsIsTerminated"
+kind = "correctness"
+
+[[test]]
+id = "condition-signal-wakes-single-awaiting-thread"
+fixture = "ConditionSignalWakesSingleAwaitingThread"
+kind = "correctness"
+
+[[test]]
+id = "condition-timed-await-expires-without-signal"
+fixture = "ConditionTimedAwaitExpiresWithoutSignal"
+kind = "correctness"
+
+[[test]]
+id = "exchanger-two-party-exchange-swaps-values"
+fixture = "ExchangerTwoPartyExchangeSwapsValues"
+kind = "correctness"
+
+[[test]]
+id = "exchanger-timed-exchange-times-out-with-no-partner"
+fixture = "ExchangerTimedExchangeTimesOutWithNoPartner"
+kind = "correctness"
+
+[[test]]
+id = "exchanger-high-contention-throughput"
+fixture = "ExchangerHighContentionThroughput"
+kind = "performance"
+
+[[test]]
+id = "monotonicclock-now-is-non-decreasing"
+fixture = "MonotonicClockNowIsNonDecreasing"
+kind = "correctness"
+
+[[test]]
+id = "interval-arithmetic-add-subtract-round-trips"
+fixture = "IntervalArithmeticAddSubtractRoundTrips"
+kind = "correctness"
+
+[[test]]
+id = "interval-conversions-match-nanosecond-basis"
+fixture = "IntervalConversionsMatchNanosecondBasis"
+kind = "correctness"
+
+[[test]]
+id = "chrono-udls-produce-expected-nanosecond-counts"
+fixture = "ChronoUDLsProduceExpectedNanosecondCounts"
+kind = "correctness"
+
+[[test]]
+id = "chrono-until-produces-future-deadline"
+fixture = "ChronoUntilProducesFutureDeadline"
+kind = "correctness"
+
+[[test]]
+id = "instant-isexpired-true-for-past-deadline"
+fixture = "InstantIsExpiredTrueForPastDeadline"
+kind = "correctness"
+
+[[test]]
+id = "bumpallocator-allocateimpl-advances-watermark"
+fixture = "BumpAllocatorAllocateImplAdvancesWatermark"
+kind = "correctness"
+
+[[test]]
+id = "bumpallocator-deallocateimpl-resets-bump-to-zero"
+fixture = "BumpAllocatorDeallocateImplResetsBumpToZero"
+kind = "correctness"
+
+[[test]]
+id = "generalallocator-allocate-deallocate-round-trip"
+fixture = "GeneralAllocatorAllocateDeallocateRoundTrip"
+kind = "correctness"
+
+[[test]]
+id = "generalallocator-allocate-honors-requested-alignment"
+fixture = "GeneralAllocatorAllocateHonorsRequestedAlignment"
+kind = "correctness"
+
+[[test]]
+id = "generalallocator-cursor-rewind-reclaims-most-recent-block"
+fixture = "GeneralAllocatorCursorRewindReclaimsMostRecentBlock"
+kind = "correctness"
+
+[[test]]
+id = "allocatorregistry-per-node-generalallocator-is-usable"
+fixture = "AllocatorRegistryPerNodeGeneralAllocatorIsUsable"
+kind = "correctness"
+
+[[test]]
+id = "generalallocator-allocate-deallocate-throughput"
+fixture = "GeneralAllocatorAllocateDeallocateThroughput"
+kind = "performance"
+
+[[test]]
+id = "affinityfactory-createandstart-launches-thread-on-requested-node"
+fixture = "AffinityFactoryCreateAndStartLaunchesThreadOnRequestedNode"
+kind = "correctness"
+
+[[test]]
+id = "priorityfactory-createandstart-applies-requested-priority"
+fixture = "PriorityFactoryCreateAndStartAppliesRequestedPriority"
+kind = "correctness"
+
+[[test]]
+id = "nativethread-isalive-true-immediately-after-create"
+fixture = "NativeThreadIsAliveTrueImmediatelyAfterCreate"
+kind = "correctness"
+
+[[test]]
+id = "nativethread-jointhread-waits-for-completion"
+fixture = "NativeThreadJoinThreadWaitsForCompletion"
+kind = "correctness"
+
+[[test]]
+id = "affinityfactory-rejects-mask-outside-node-in-debug"
+fixture = "AffinityFactoryRejectsMaskOutsideNodeInDebug"
+kind = "correctness"
+

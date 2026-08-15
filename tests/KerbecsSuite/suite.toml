@@ -1,0 +1,136 @@
+# Hades suite manifest
+[[test]]
+id = "destroy-epoch-atomicity-race"
+fixture = "DestroyEpochAtomicityRace"
+kind = "correctness"
+
+[[test]]
+id = "nodefor-rejects-cross-region-handle"
+fixture = "NodeForRejectsCrossRegionHandle"
+kind = "correctness"
+
+[[test]]
+id = "allocatenode-exhausts-capacity-despite-dead"
+fixture = "AllocateNodeExhaustsCapacityDespiteDeadSlots"
+kind = "correctness"
+
+[[test]]
+id = "region-allocate-construct-destroy-basic"
+fixture = "RegionAllocateConstructDestroyBasic"
+kind = "correctness"
+
+[[test]]
+id = "region-allocate-zero-count-fails"
+fixture = "RegionAllocateZeroCountFails"
+kind = "correctness"
+
+[[test]]
+id = "region-allocate-size-overflow-rejected"
+fixture = "RegionAllocateSizeOverflowRejected"
+kind = "correctness"
+
+[[test]]
+id = "region-construct-rejects-misaligned-handle"
+fixture = "RegionConstructRejectsMisalignedHandle"
+kind = "correctness"
+
+[[test]]
+id = "region-destroy-double-free-detected"
+fixture = "RegionDestroyDoubleFreeDetected"
+kind = "correctness"
+
+[[test]]
+id = "region-destroy-wrong-thread-strict-policy"
+fixture = "RegionDestroyWrongThreadStrictPolicy"
+kind = "correctness"
+
+[[test]]
+id = "region-leak-assert-on-unfreed"
+fixture = "RegionLeakAssertOnUnfreedAllocation"
+kind = "correctness"
+
+[[test]]
+id = "region-oob-allocation-rejected"
+fixture = "RegionOutOfBoundsAllocationRejected"
+kind = "correctness"
+
+[[test]]
+id = "region-layout-aliases-compile"
+fixture = "RegionNormalEnhancedStaticLayoutAliasesCompile"
+kind = "correctness"
+
+[[test]]
+id = "shadowedmemory-operator-plus-negative-offset-rejected"
+fixture = "ShadowedMemoryOperatorPlusNegativeOffsetRejected"
+kind = "correctness"
+
+[[test]]
+id = "shadowedmemory-operator-plus-inbounds-succeeds"
+fixture = "ShadowedMemoryOperatorPlusInBoundsSucceeds"
+kind = "correctness"
+
+[[test]]
+id = "shadowedmemory-uaf-traps-on-access"
+fixture = "ShadowedMemoryUseAfterFreeTrapsOnAccess"
+kind = "correctness"
+
+[[test]]
+id = "shadowedmemory-equality-compares-generation"
+fixture = "ShadowedMemoryEqualityComparesGenerationNotJustAddress"
+kind = "correctness"
+
+[[test]]
+id = "shadowstateof-detects-lifecycle-states"
+fixture = "ShadowStateOfDetectsUninitializedConstructedDestroyed"
+kind = "correctness"
+
+[[test]]
+id = "quarantine-enqueue-flusheligible-roundtrip"
+fixture = "QuarantineEnqueueFlushEligibleRoundTrip"
+kind = "correctness"
+
+[[test]]
+id = "quarantine-flush-respects-epoch-window"
+fixture = "QuarantineFlushEligibleRespectsEpochWindow"
+kind = "correctness"
+
+[[test]]
+id = "quarantine-saturation-fail-fast"
+fixture = "QuarantineSaturationTriggersFailFast"
+kind = "correctness"
+
+[[test]]
+id = "quarantine-enqueue-throughput"
+fixture = "QuarantineEnqueueThroughput"
+kind = "performance"
+
+[[test]]
+id = "drainthread-advances-epoch-automatically"
+fixture = "DrainThreadAdvancesEpochAutomatically"
+kind = "correctness"
+
+[[test]]
+id = "drainthread-auto-flushes-without-force"
+fixture = "DrainThreadAutoFlushesQuarantinedBlockWithoutForce"
+kind = "correctness"
+
+[[test]]
+id = "teardown-joins-drain-thread-cleanly"
+fixture = "TeardownShadowzoneJoinsDrainThreadCleanly"
+kind = "correctness"
+
+[[test]]
+id = "violation-stack-pop-empty"
+fixture = "ViolationStackPopReturnsFalseWhenEmpty"
+kind = "correctness"
+
+[[test]]
+id = "violation-stack-lifo-overflow-eviction"
+fixture = "ViolationStackLIFOOrderingAndOverflowEviction"
+kind = "correctness"
+
+[[test]]
+id = "violation-stack-is-per-thread"
+fixture = "ViolationStackIsPerThread"
+kind = "correctness"
+
