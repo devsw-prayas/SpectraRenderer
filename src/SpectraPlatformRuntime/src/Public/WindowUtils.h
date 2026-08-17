@@ -8,6 +8,7 @@ namespace Spectra::Platform::Runtime::Windows {
 	namespace Internal {
 		struct PlatformWindowThunkHelper;
 		struct PlatformDisplayEnumHelper;
+		struct WindowDropTargetImpl;
 	}
 
 	enum class SPECTRA_RUNTIME_API WindowLifecycle : uint8_t {
@@ -285,10 +286,17 @@ namespace Spectra::Platform::Runtime::Windows {
 	using HitTestFn = WindowHitTestResult(*)(int32_t v_X, int32_t v_Y);
 	using DropRegionFn = bool(*)(int32_t v_X, int32_t v_Y);
 
+	// See project_display_manager_frame_graph.md - the UI-thread-only pump loop
+	// calls this once per drained event to hand it off into a second, genuinely
+	// cross-thread queue owned by the caller. No-op (nullptr) by default.
+	struct WindowEvent;
+	using EventForwardFn = void(*)(void* p_Context, const WindowEvent& ro_Event);
+
 	struct alignas(16) SPECTRA_RUNTIME_API WindowHandle final {
 		friend class PlatformWindow;
 		friend class PlatformInput;
 		friend struct Internal::PlatformWindowThunkHelper;
+		friend struct Internal::WindowDropTargetImpl;
 	private:
 		size_t m_Index = SIZE_MAX;
 		size_t m_Generation = 0;
@@ -307,6 +315,7 @@ namespace Spectra::Platform::Runtime::Windows {
 	struct alignas(8) SPECTRA_RUNTIME_API DisplayHandle final {
 		friend class PlatformDisplay;
 		friend struct Internal::PlatformDisplayEnumHelper;
+		friend struct Internal::PlatformWindowThunkHelper;
 		void* m_HMonitor = nullptr;
 	private:
 		explicit DisplayHandle(void* v_HMonitor) : m_HMonitor(v_HMonitor) {}
@@ -318,6 +327,7 @@ namespace Spectra::Platform::Runtime::Windows {
 
 	struct alignas(8) SPECTRA_RUNTIME_API RawInputDeviceHandle final {
 		friend class PlatformInput;
+		friend struct Internal::PlatformWindowThunkHelper;
 		void* m_DeviceHandle = nullptr;
 	private:
 		explicit RawInputDeviceHandle(void* v_Handle) : m_DeviceHandle(v_Handle) {}

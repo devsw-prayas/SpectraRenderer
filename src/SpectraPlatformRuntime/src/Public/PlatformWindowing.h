@@ -9,7 +9,7 @@ namespace Spectra::Platform::Runtime::Windows {
 		static void init();
 		static void shutdown();
 
-		SPECTRA_NODISCARD static WindowHandle create(const WindowDesc& ro_Desc);
+		SPECTRA_NODISCARD static WindowHandle create(const WindowDesc& ro_Desc, EventForwardFn v_Forward = nullptr, void* p_ForwardContext = nullptr);
 		static void show(const WindowHandle& ro_Handle) noexcept;
 		static void destroy(const WindowHandle& ro_Handle) noexcept;
 
@@ -17,6 +17,7 @@ namespace Spectra::Platform::Runtime::Windows {
 
 		static void setHitTestCallback(const WindowHandle& ro_Handle, HitTestFn v_Callback) noexcept;
 		static void setDropRegionCallback(const WindowHandle& ro_Handle, DropRegionFn v_Callback) noexcept;
+		static void enableDragDrop(const WindowHandle& ro_Handle) noexcept;
 
 		static void minimize(const WindowHandle& ro_Handle) noexcept;
 		static void maximize(const WindowHandle& ro_Handle) noexcept;
