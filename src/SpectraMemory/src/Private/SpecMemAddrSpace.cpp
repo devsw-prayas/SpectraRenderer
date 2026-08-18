@@ -43,6 +43,8 @@ namespace Spectra::Memory::Internal {
 	VARegion g_EbrRegionGuard[MAX_NUMA_NODES];
 	VARegion g_SmartPtrControlBlocks[MAX_NUMA_NODES];
 	VARegion g_SmartPtrControlBlocksGuard[MAX_NUMA_NODES];
+	VARegion g_ClosureRegion[MAX_NUMA_NODES];
+	VARegion g_ClosureRegionGuard[MAX_NUMA_NODES];
 	VARegion g_RuntimeCoreObjects[MAX_NUMA_NODES];
 
 	// -------------------------------------------------------------------------
@@ -191,7 +193,17 @@ namespace Spectra::Memory::Internal {
 				//   +------------------------------------------------------------+
 
 				//   +------------------------------------------------------------+
-				//   | RUNTIMECOREOBJECTS — remaining ~47.99 GiB                  |
+				//   | CLOSURE REGION (4 GiB)                                      |
+				g_ClosureRegion[node] = rt.slice(ClosureRegionSize);
+				//   +------------------------------------------------------------+
+
+				//   +------------------------------------------------------------+
+				//   | Guard (2 MiB)                                               |
+				g_ClosureRegionGuard[node] = rt.slice(SectionGuardSize);
+				//   +------------------------------------------------------------+
+
+				//   +------------------------------------------------------------+
+				//   | RUNTIMECOREOBJECTS — remaining ~43.99 GiB                  |
 				g_RuntimeCoreObjects[node] = rt.slice(rt.remaining());
 				//   +------------------------------------------------------------+
 			}
@@ -211,6 +223,7 @@ namespace Spectra::Memory::Internal {
 			lockGuard(g_TlsRegionGuard[node]);
 			lockGuard(g_EbrRegionGuard[node]);
 			lockGuard(g_SmartPtrControlBlocksGuard[node]);
+			lockGuard(g_ClosureRegionGuard[node]);
 		}
 
 		return true;

@@ -82,11 +82,8 @@ namespace Spectra::RHI {
 		bool                        m_PushConstantsEnabled = false;
 	};
 
-	// Associates a GPU resource with a numbered binding slot for a single UpdateBindings call.
-	// resource is IRHIObject* rather than IRHIResource* because IRHIAccelerationStructure derives from IRHIObject
-	// directly; the backend impl validates the concrete type against the declared RHIBindingType at bind time.
-	// offset/range describe a buffer sub-range (0/0 = whole resource); sampler pairs a sampled image with a
-	// standalone sampler for split sampler/texture binding models.
+	// Associates a GPU resource with a numbered binding slot for an UpdateBindings call.
+	// Buffer offset/range select a sub-range; samplers describe a separate sampler binding.
 	struct SPEC_RHI_ALIGNAS(8) RHIBinding final {
 		IRHIObject*  m_Resource;
 		uint32_t     m_Slot;

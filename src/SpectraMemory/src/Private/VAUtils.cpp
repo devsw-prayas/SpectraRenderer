@@ -40,4 +40,26 @@ namespace Spectra::Memory {
 
 		Memory::protectRegion(handle, desc);
 	}
+
+	bool commitPageIfNeeded(MemoryHandle& ro_Handle, size_t v_Offset) noexcept {
+		if (v_Offset >= ro_Handle.m_Memory.m_TotalSize) return false;
+		if (v_Offset < ro_Handle.m_CommittedSize) return true; // already covered, skip the query syscall
+
+		MemoryQueryDesc queryDesc{};
+		queryDesc.m_TargetAddress = static_cast<uint8_t*>(ro_Handle.m_Memory.m_BaseAddress) + v_Offset;
+		const PageInfo info = Memory::query(queryDesc);
+
+		if (info.m_State == MemoryState::COMMIT) return true;
+		if (info.m_State != MemoryState::RESERVE) return false;
+
+		VirtualMemoryDesc commitDesc{};
+		initMemoryDesc(commitDesc);
+		setTargetAddress(commitDesc, static_cast<uint8_t*>(ro_Handle.m_Memory.m_BaseAddress) + ro_Handle.m_CommittedSize);
+		setSize(commitDesc, v_Offset - ro_Handle.m_CommittedSize);
+		setNumaNode(commitDesc, static_cast<uint32_t>(ro_Handle.m_NumaNode));
+		setMemoryState(commitDesc, MemoryState::COMMIT);
+		setProtection(commitDesc, MemoryProtect::READ_WRITE);
+		Memory::commit(ro_Handle, commitDesc);
+		return true;
+	}
 }

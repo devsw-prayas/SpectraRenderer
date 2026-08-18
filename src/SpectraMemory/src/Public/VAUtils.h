@@ -113,4 +113,8 @@ namespace Spectra::Memory {
 	// Marks a guard region PAGE_NOACCESS via Memory::protectRegion. Fail-fast on error,
 	// same as the rest of the Memory:: primitives -- no bool/error-code return.
 	SPEC_MEM_RUNTIME_API void lockGuard(const VARegion& ro_Guard) noexcept;
+
+	// Commits the reserved pages needed to reach v_Offset, if they are not committed yet.
+	// Updates the handle's committed high-water mark; callers must keep their own allocation cursor.
+	SPEC_MEM_NODISCARD SPEC_MEM_RUNTIME_API bool commitPageIfNeeded(MemoryHandle& ro_Handle, size_t v_Offset) noexcept;
 }

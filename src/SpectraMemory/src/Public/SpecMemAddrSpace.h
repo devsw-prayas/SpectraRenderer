@@ -37,19 +37,20 @@ namespace Spectra::Memory::Internal {
 	constexpr size_t EbrRegionSize = 2_GiB;
 	constexpr size_t PoolReserveSize = 32_GiB;
 	constexpr size_t SmartPointerControlBlockSize = 16_GiB;
+	constexpr size_t ClosureRegionSize = 4_GiB; // ~8M closures @ 512B/closure
 	constexpr size_t MemMapFileRegionSize = 32_GiB;
 	constexpr size_t InstrumentationRegionSize = 16_GiB;
 	constexpr size_t UiDisplayRegionSize = 4_GiB;
 
 	// RuntimeObjects umbrella (96 GiB) — bundles TLSF Heap, Scratch Buffers,
-	// Thread-Local, EBR, and SmartPtr ControlBlocks under one top-level region,
-	// matching Corium's Runtime/Infra VA pattern. RuntimeCoreObjects absorbs
-	// whatever's left inside the umbrella after the five named sub-regions and
-	// their 5 internal guards — analogous to Corium's RuntimeCoreObjects catch-all.
+	// Thread-Local, EBR, SmartPtr ControlBlocks, and the Closure Region under one
+	// top-level region, matching Corium's Runtime/Infra VA pattern. RuntimeCoreObjects
+	// absorbs whatever's left inside the umbrella after the six named sub-regions and
+	// their 6 internal guards — analogous to Corium's RuntimeCoreObjects catch-all.
 	constexpr size_t RuntimeObjectsSize = 96_GiB;
 	constexpr size_t RuntimeCoreObjectsSize = RuntimeObjectsSize
-		- (TlsfHeapSize + ScratchBufferSize + TlsRegionSize + EbrRegionSize + SmartPointerControlBlockSize)
-		- 5 * SectionGuardSize;
+		- (TlsfHeapSize + ScratchBufferSize + TlsRegionSize + EbrRegionSize + SmartPointerControlBlockSize + ClosureRegionSize)
+		- 6 * SectionGuardSize;
 
 	// Reserved/Future VA per node — computed as whatever is left after all
 	// top-level named regions and guards (7 guards total: 5 inter-region + 2
@@ -93,56 +94,68 @@ namespace Spectra::Memory::Internal {
 	//   +------------------------------------------------------------+
 
 	//   +------------------------------------------------------------+
-	//   | SCRATCH BUFFERS (4 GiB)                                     |
-	//   | LinearArena / StackArena scratch space. Scratch trait.      |
-	//   | Adjacent to General Heap by design.                         |
+	//   | SCRATCH BUFFERS (4 GiB)                                    |
+	//   | LinearArena / StackArena scratch space. Scratch trait.     |
+	//   | Adjacent to General Heap by design.                        |
 	extern VARegion g_ScratchBuffers[MAX_NUMA_NODES];
 	//   +------------------------------------------------------------+
 
 	//   +------------------------------------------------------------+
-	//   | Guard (2 MiB)                                               |
+	//   | Guard (2 MiB)                                              |
 	extern VARegion g_ScratchBuffersGuard[MAX_NUMA_NODES];
 	//   +------------------------------------------------------------+
 
 	//   +------------------------------------------------------------+
-	//   | THREAD-LOCAL / FIBER-LOCAL (2 GiB)                          |
-	//   | Fixed total pool. Per-fiber slice clamped to [2 MiB, 100 MB]. |
-	//   | ~1024 concurrent fiber estimate.                             |
+	//   | THREAD-LOCAL / FIBER-LOCAL (2 GiB)                         |
+	//   | Fixed total pool. Per-fiber slice clamped to [2 MiB, 100 MB]|
+	//   | ~1024 concurrent fiber estimate.                           |
 	extern VARegion g_TlsRegion[MAX_NUMA_NODES];
 	//   +------------------------------------------------------------+
 
 	//   +------------------------------------------------------------+
-	//   | Guard (2 MiB)                                               |
+	//   | Guard (2 MiB)                                              |
 	extern VARegion g_TlsRegionGuard[MAX_NUMA_NODES];
 	//   +------------------------------------------------------------+
 
 	//   +------------------------------------------------------------+
-	//   | EBR (2 GiB)                                                 |
-	//   | EBRInstance objects for epoch-based reclamation.             |
+	//   | EBR (2 GiB)                                                |
+	//   | EBRInstance objects for epoch-based reclamation.           |
 	extern VARegion g_EbrRegion[MAX_NUMA_NODES];
 	//   +------------------------------------------------------------+
 
 	//   +------------------------------------------------------------+
-	//   | Guard (2 MiB)                                               |
+	//   | Guard (2 MiB)                                              |
 	extern VARegion g_EbrRegionGuard[MAX_NUMA_NODES];
 	//   +------------------------------------------------------------+
 
 	//   +------------------------------------------------------------+
-	//   | SMARTPTR CONTROL BLOCKS (16 GiB)                            |
-	//   | 64B-aligned ControlBlocks for HazardPointer/EBR-tracked     |
-	//   | smart pointers.                                             |
+	//   | SMARTPTR CONTROL BLOCKS (16 GiB)                           |
+	//   | 64B-aligned ControlBlocks for HazardPointer/EBR-tracked    |
+	//   | smart pointers.                                            |
 	extern VARegion g_SmartPtrControlBlocks[MAX_NUMA_NODES];
 	//   +------------------------------------------------------------+
 
 	//   +------------------------------------------------------------+
-	//   | Guard (2 MiB)                                               |
+	//   | Guard (2 MiB)                                              |
 	extern VARegion g_SmartPtrControlBlocksGuard[MAX_NUMA_NODES];
 	//   +------------------------------------------------------------+
 
 	//   +------------------------------------------------------------+
-	//   | RUNTIMECOREOBJECTS — remaining ~47.99 GiB                  |
-	//   | Spare headroom for runtime infra not yet designed           |
-	//   | (schedulers/executors/pools/global allocators, etc.)        |
+	//   | CLOSURE REGION (4 GiB)                                     |
+	//   | Backing store for Corium-style ClosureFunction/FunctionView|
+	//   | payloads (~8M closures @ 512B/closure).                    |
+	extern VARegion g_ClosureRegion[MAX_NUMA_NODES];
+	//   +------------------------------------------------------------+
+
+	//   +------------------------------------------------------------+
+	//   | Guard (2 MiB)                                              |
+	extern VARegion g_ClosureRegionGuard[MAX_NUMA_NODES];
+	//   +------------------------------------------------------------+
+
+	//   +------------------------------------------------------------+
+	//   | RUNTIMECOREOBJECTS — remaining ~43.99 GiB                  |
+	//   | Spare headroom for runtime infra not yet designed          |
+	//   | (schedulers/executors/pools/global allocators, etc.)       |
 	extern VARegion g_RuntimeCoreObjects[MAX_NUMA_NODES];
 	//   +------------------------------------------------------------+
 
@@ -179,7 +192,7 @@ namespace Spectra::Memory::Internal {
 
 	// +----------------------------------------------------------------+
 	// | INSTRUMENTATION / DEBUG (16 GiB)                               |
-	// | Reserved at init; never committed in release builds.          |
+	// | Reserved at init; never committed in release builds.           |
 	extern VARegion g_InstrumentationRegion[MAX_NUMA_NODES];
 	// +----------------------------------------------------------------+
 
@@ -190,7 +203,7 @@ namespace Spectra::Memory::Internal {
 
 	// +----------------------------------------------------------------+
 	// | UI / DISPLAY STAGING (4 GiB)                                   |
-	// | Vulkan host-side staging for UI/display assets.               |
+	// | Vulkan host-side staging for UI/display assets.                |
 	extern VARegion g_UiDisplayRegion[MAX_NUMA_NODES];
 	// +----------------------------------------------------------------+
 

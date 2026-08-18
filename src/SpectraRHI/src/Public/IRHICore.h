@@ -333,11 +333,8 @@ namespace Spectra::RHI {
 		SPEC_RHI_NODISCARD virtual RHIFrameContext getCurrentFrameContext() const ABSTRACT;
 	};
 
-	// Sole construction path for IRHIDevice. IRHIDevice and, by extension, RHIBuilder are explicitly
-	// single-device-scoped — no cross-device frame or lifecycle concept exists anywhere in the RHI.
-	// Fail-fast: requireRayTracing(true) / requireGPUDirect(true) make build() return RHIResult::Unsupported
-	// outright if the hardware cannot satisfy the requirement — these are hard build-time gates, not soft
-	// capability hints resolved later via getCapabilities().
+	// Sole construction path for an IRHIDevice; each builder and device is independently scoped.
+	// Required capabilities are hard build-time gates and return Unsupported when unavailable.
 	class RHIBuilder final {
 	public:
 		explicit RHIBuilder(Utils::RHIBackendType v_Backend);
