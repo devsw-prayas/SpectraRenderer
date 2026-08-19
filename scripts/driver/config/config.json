@@ -22,5 +22,9 @@
   "vulkanInstallerScript": "scripts/vulkan.bat",
   "testsDir": "tests",
   "testConfigFile": "test.config",
-  "hadesDriverTarget": "Hades-Driver"
+  "hadesDriverTarget": "Hades-Driver",
+  "srcDir": "src",
+  "configDir": "config",
+  "errCodesFile": "spectra-err.json",
+  "execCodesFile": "spectra-exec.json"
 }

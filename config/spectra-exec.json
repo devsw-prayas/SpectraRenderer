@@ -1,0 +1,40 @@
+{
+  "modules": [
+    {
+      "module": "SpectraCudaBackend",
+      "exec_module_id": "0x01",
+      "exec_domain_name": "Cuda",
+      "exec_codes": []
+    },
+    {
+      "module": "SpectraPlatformRuntime",
+      "exec_module_id": "0x02",
+      "exec_domain_name": "PlatformRuntime",
+      "exec_codes": []
+    },
+    {
+      "module": "SpectraVulkanBackend",
+      "exec_module_id": "0x03",
+      "exec_domain_name": "Vulkan",
+      "exec_codes": []
+    },
+    {
+      "module": "SpectraMemory",
+      "exec_module_id": "0x04",
+      "exec_domain_name": "Memory",
+      "exec_codes": []
+    },
+    {
+      "module": "SpectraInstrumentation",
+      "exec_module_id": "0x05",
+      "exec_domain_name": "Instrumentation",
+      "exec_codes": []
+    },
+    {
+      "module": "SpectraRHI",
+      "exec_module_id": "0x06",
+      "exec_domain_name": "RHI",
+      "exec_codes": []
+    }
+  ]
+}

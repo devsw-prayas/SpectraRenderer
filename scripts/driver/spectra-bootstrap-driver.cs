@@ -5,6 +5,7 @@
 using System.Diagnostics;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Text;
 using System.Text.Json;
 
 if (args.Length == 0 || args[0] is "help" or "-h" or "--help")
@@ -32,6 +33,7 @@ return command switch
     "cu-check" => CuCheck(rootDir, config, rest),
     "vk-check" => VkCheck(rootDir, config, rest),
     "header-gen" => HeaderGen(rest),
+    "exec-gen" => ExecGen(rootDir, config, rest),
     "build" => BuildConfig(rootDir, config, rest),
     "rebuild" => RebuildConfig(rootDir, config, rest),
     "run" => RunTarget(rootDir, config, rest),
@@ -55,6 +57,7 @@ void PrintUsage()
     Console.WriteLine("  cu-check [-d]                                          Check for CUDA toolkit (-d: install if missing)");
     Console.WriteLine("  vk-check [-d]                                          Check for Vulkan SDK (-d: install if missing)");
     Console.WriteLine("  header-gen -p <Prefix> -np <Namespace> -dir <path>     Generate Compiler.h/Diagnostic.h pair");
+    Console.WriteLine("  exec-gen                                               Regenerate <Module>.generated.h from config/spectra-err.json + spectra-exec.json (also runs automatically inside cmake-init)");
     Console.WriteLine("  build -c <Configuration> [-t <Target>] [-clangcl]      cmake --build (optionally a single target/submodule; -clangcl: build the clang-cl tree)");
     Console.WriteLine("  rebuild -c <Configuration> [-t <Target>] [-clangcl]    cmake --build --clean-first (optionally a single target/submodule; -clangcl: rebuild the clang-cl tree)");
     Console.WriteLine("  run -c <Configuration> [-clangcl]                      Launch the configured run target (-clangcl: from the clang-cl tree)");
@@ -77,6 +80,9 @@ int CmakeInit(string p_RootDir, Config p_Config, string[] p_Rest)
     var clangCl = p_Rest.Contains("-clangcl");
 
     if (p_Rest.Contains("-preq") && !CheckPrereqs())
+        return 1;
+
+    if (ExecGen(p_RootDir, p_Config, []) != 0)
         return 1;
 
     var buildDir = Path.Combine(p_RootDir, clangCl ? p_Config.ClangClBuildDir : p_Config.BuildDir);
@@ -673,6 +679,201 @@ string DiagnosticTemplate(string p_prefix, string p_moduleHeader, string p_compi
 #define SPEC_{{p_prefix}}_UNUSED(x) (void)(x)
 """ + "\n";
 
+// exec-gen
+//
+// Reads config/spectra-err.json + config/spectra-exec.json (two SEPARATE domain/code
+// namespaces - fail-fast ErrContext vs recoverable InstrumentedException, per the
+// SpectraInstrumentation design doc's Domain/Code Resolution Model). Every value is a
+// packed 32-bit constant: 0xD0 [class-byte: EA=err/EB=exec] [ModuleId] [Code], with
+// ModuleId/Code each a single 00-FF byte from the JSON. For every module referenced in
+// either file, emits src/<Module>/src/Internal/<Module>.generated.h - no message strings
+// ever land in the binary, those resolve offline against the JSON via crash-analysis tooling.
+
+int ExecGen(string p_RootDir, Config p_Config, string[] p_Rest)
+{
+    var configDir = Path.Combine(p_RootDir, p_Config.ConfigDir);
+    var srcDir = Path.Combine(p_RootDir, p_Config.SrcDir);
+
+    var errPath = Path.Combine(configDir, p_Config.ErrCodesFile);
+    var execPath = Path.Combine(configDir, p_Config.ExecCodesFile);
+
+    if (!File.Exists(errPath)) { Console.WriteLine($"[ERROR] exec-gen: {errPath} not found."); return 1; }
+    if (!File.Exists(execPath)) { Console.WriteLine($"[ERROR] exec-gen: {execPath} not found."); return 1; }
+
+    var errModules = ParseCodeFile(errPath, "err_codes", "err_module_id", "err_domain_name");
+    if (errModules is null) return 1;
+
+    var execModules = ParseCodeFile(execPath, "exec_codes", "exec_module_id", "exec_domain_name");
+    if (execModules is null) return 1;
+
+    if (!ValidateUniquePairs(errPath, errModules)) return 1;
+    if (!ValidateUniquePairs(execPath, execModules)) return 1;
+
+    var moduleNames = errModules.Keys.Union(execModules.Keys).OrderBy(n => n, StringComparer.Ordinal).ToArray();
+    if (moduleNames.Length == 0)
+    {
+        Console.WriteLine("[INFO] exec-gen: no modules with err/exec codes yet, nothing to generate.");
+        return 0;
+    }
+
+    foreach (var moduleName in moduleNames)
+    {
+        var moduleDir = Path.Combine(srcDir, moduleName);
+        if (!Directory.Exists(moduleDir))
+        {
+            Console.WriteLine($"[ERROR] exec-gen: module \"{moduleName}\" is referenced in {p_Config.ErrCodesFile}/{p_Config.ExecCodesFile} but {moduleDir} does not exist.");
+            return 1;
+        }
+
+        var internalDir = Path.Combine(moduleDir, "src", "Internal");
+        Directory.CreateDirectory(internalDir);
+
+        errModules.TryGetValue(moduleName, out var errEntry);
+        execModules.TryGetValue(moduleName, out var execEntry);
+
+        var headerPath = Path.Combine(internalDir, $"{moduleName}.generated.h");
+        File.WriteAllText(headerPath, GeneratedHeaderTemplate(errEntry, execEntry));
+        Console.WriteLine($"[OK] exec-gen: wrote {headerPath}");
+    }
+
+    return 0;
+}
+
+// p_CodesKey/p_ModuleIdKey/p_DomainNameKey let one parser serve both files -
+// "err_codes"/"err_module_id"/"err_domain_name" or "exec_codes"/"exec_module_id"/"exec_domain_name".
+// Using the wrong key name on the wrong file is itself the self-check the file-naming
+// convention exists for: it fails loudly instead of silently reading zero entries.
+Dictionary<string, ExecGenEntry>? ParseCodeFile(string p_Path, string p_CodesKey, string p_ModuleIdKey, string p_DomainNameKey)
+{
+    using var doc = JsonDocument.Parse(File.ReadAllText(p_Path));
+
+    if (!doc.RootElement.TryGetProperty("modules", out var modulesEl) || modulesEl.ValueKind != JsonValueKind.Array)
+    {
+        Console.WriteLine($"[ERROR] exec-gen: {p_Path} is missing a top-level \"modules\" array.");
+        return null;
+    }
+
+    var result = new Dictionary<string, ExecGenEntry>();
+    foreach (var moduleEl in modulesEl.EnumerateArray())
+    {
+        if (!moduleEl.TryGetProperty("module", out var moduleNameEl) || moduleNameEl.GetString() is not { } moduleName)
+        {
+            Console.WriteLine($"[ERROR] exec-gen: {p_Path} has a module entry missing \"module\".");
+            return null;
+        }
+        if (result.ContainsKey(moduleName))
+        {
+            Console.WriteLine($"[ERROR] exec-gen: {p_Path} has a duplicate \"module\": \"{moduleName}\" entry.");
+            return null;
+        }
+        if (!moduleEl.TryGetProperty(p_ModuleIdKey, out var moduleIdEl) || moduleIdEl.ValueKind != JsonValueKind.String
+            || ParseHexByte(moduleIdEl.GetString()) is not { } moduleId)
+        {
+            Console.WriteLine($"[ERROR] exec-gen: {p_Path}, module \"{moduleName}\" is missing a valid hex-byte \"{p_ModuleIdKey}\" (e.g. \"0x01\", range 0x00-0xFF).");
+            return null;
+        }
+        if (!moduleEl.TryGetProperty(p_DomainNameKey, out var domainNameEl) || domainNameEl.GetString() is not { } domainName)
+        {
+            Console.WriteLine($"[ERROR] exec-gen: {p_Path}, module \"{moduleName}\" is missing \"{p_DomainNameKey}\".");
+            return null;
+        }
+
+        var codes = new List<(byte Code, string Name)>();
+        var codeNames = new HashSet<string>(StringComparer.Ordinal);
+        if (moduleEl.TryGetProperty(p_CodesKey, out var codesEl) && codesEl.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var codeEl in codesEl.EnumerateArray())
+            {
+                if (!codeEl.TryGetProperty("code", out var codeValEl) || codeValEl.ValueKind != JsonValueKind.String
+                    || ParseHexByte(codeValEl.GetString()) is not { } codeByte)
+                {
+                    Console.WriteLine($"[ERROR] exec-gen: {p_Path}, module \"{moduleName}\" has a \"{p_CodesKey}\" entry missing a valid hex-byte \"code\" (e.g. \"0x01\", range 0x00-0xFF).");
+                    return null;
+                }
+                if (!codeEl.TryGetProperty("name", out var codeNameEl) || codeNameEl.GetString() is not { } codeName)
+                {
+                    Console.WriteLine($"[ERROR] exec-gen: {p_Path}, module \"{moduleName}\" has a \"{p_CodesKey}\" entry missing \"name\".");
+                    return null;
+                }
+                if (!codeNames.Add(codeName))
+                {
+                    Console.WriteLine($"[ERROR] exec-gen: {p_Path}, module \"{moduleName}\" has duplicate code name \"{codeName}\".");
+                    return null;
+                }
+                codes.Add((codeByte, codeName));
+            }
+        }
+
+        result[moduleName] = new ExecGenEntry(moduleId, domainName, codes);
+    }
+    return result;
+}
+
+// (ModuleId, Code) pairs must be unique across the WHOLE file, not just per module -
+// two modules sharing a module_id by mistake and then reusing the same code byte would
+// collide into the same packed 32-bit constant, making it ambiguous at crash-analysis time.
+bool ValidateUniquePairs(string p_Path, Dictionary<string, ExecGenEntry> p_Modules)
+{
+    var seen = new Dictionary<(byte ModuleId, byte Code), string>();
+    foreach (var (moduleName, entry) in p_Modules)
+    {
+        foreach (var (code, name) in entry.Codes)
+        {
+            var key = (entry.ModuleId, code);
+            if (seen.TryGetValue(key, out var owner))
+            {
+                Console.WriteLine($"[ERROR] exec-gen: {p_Path}: (module_id=0x{entry.ModuleId:X2}, code=0x{code:X2}) is used by both \"{owner}\" and \"{moduleName}.{name}\".");
+                return false;
+            }
+            seen[key] = $"{moduleName}.{name}";
+        }
+    }
+    return true;
+}
+
+// Packs the doc's locked byte layout: [0xD0 : fixed Spectra prefix][class byte: EA
+// err / EB exec][ModuleId][Code]. This packed value IS the DomainCode passed to
+// ErrScope/PushException - RawCode stays a separate, caller-supplied VkResult/
+// cudaError_t/HRESULT value, untouched by this scheme.
+uint PackExecGenCode(byte p_ClassByte, byte p_ModuleId, byte p_Code) =>
+    (0xD0u << 24) | ((uint)p_ClassByte << 16) | ((uint)p_ModuleId << 8) | p_Code;
+
+uint PackErrCode(byte p_ModuleId, byte p_Code) => PackExecGenCode(0xEA, p_ModuleId, p_Code);
+uint PackExecCode(byte p_ModuleId, byte p_Code) => PackExecGenCode(0xEB, p_ModuleId, p_Code);
+
+string GeneratedHeaderTemplate(ExecGenEntry? p_Err, ExecGenEntry? p_Exec)
+{
+    var sb = new StringBuilder();
+    sb.AppendLine("#pragma once");
+    sb.AppendLine("// AUTO-GENERATED by exec-gen from config/spectra-err.json and config/spectra-exec.json.");
+    sb.AppendLine("// Do not edit - regenerated on every cmake-init run.");
+    sb.AppendLine();
+    sb.AppendLine("#include <cstdint>");
+    sb.AppendLine();
+
+    if (p_Err is { } err)
+    {
+        sb.AppendLine("namespace Spectra::Generated::ErrCodes {");
+        sb.AppendLine($"    constexpr uint32_t kErr{err.DomainName}Domain = 0x{PackErrCode(err.ModuleId, 0x00):X8};");
+        foreach (var (code, name) in err.Codes)
+            sb.AppendLine($"    constexpr uint32_t kErr{name} = 0x{PackErrCode(err.ModuleId, code):X8};");
+        sb.AppendLine("}");
+        sb.AppendLine();
+    }
+
+    if (p_Exec is { } exec)
+    {
+        sb.AppendLine("namespace Spectra::Generated::ExecCodes {");
+        sb.AppendLine($"    constexpr uint32_t kExec{exec.DomainName}Domain = 0x{PackExecCode(exec.ModuleId, 0x00):X8};");
+        foreach (var (code, name) in exec.Codes)
+            sb.AppendLine($"    constexpr uint32_t kExec{name} = 0x{PackExecCode(exec.ModuleId, code):X8};");
+        sb.AppendLine("}");
+        sb.AppendLine();
+    }
+
+    return sb.ToString();
+}
+
 // module-gen
 
 int ModuleGen(string[] p_Rest)
@@ -878,6 +1079,16 @@ void Banner(string title)
     Console.WriteLine();
 }
 
+// module_id/code are written as "0x01"-style single-byte hex strings in the config
+// JSON (the doc's locked [0xD0][EA/EB][ModuleId][Code] layout) - JSON has no hex
+// numeric literal, so these arrive as strings and get parsed+range-checked here.
+byte? ParseHexByte(string? p_Value)
+{
+    if (p_Value is null) return null;
+    var trimmed = p_Value.StartsWith("0x", StringComparison.OrdinalIgnoreCase) ? p_Value[2..] : p_Value;
+    return byte.TryParse(trimmed, System.Globalization.NumberStyles.HexNumber, null, out var v) ? v : null;
+}
+
 string? GetFlagValue(string[] p_Args, string p_Flag)
 {
     var idx = Array.IndexOf(p_Args, p_Flag);
@@ -1023,7 +1234,11 @@ Config LoadConfig(string p_RootDir)
         GetString("vulkanInstallerScript"),
         GetString("testsDir"),
         GetString("testConfigFile"),
-        GetString("hadesDriverTarget"));
+        GetString("hadesDriverTarget"),
+        GetString("srcDir"),
+        GetString("configDir"),
+        GetString("errCodesFile"),
+        GetString("execCodesFile"));
 }
 
 string? ResolveConfiguration(Config p_Config, string[] p_Rest)
@@ -1054,4 +1269,10 @@ record Config(
     string VulkanInstallerScript,
     string TestsDir,
     string TestConfigFile,
-    string HadesDriverTarget);
+    string HadesDriverTarget,
+    string SrcDir,
+    string ConfigDir,
+    string ErrCodesFile,
+    string ExecCodesFile);
+
+record ExecGenEntry(byte ModuleId, string DomainName, List<(byte Code, string Name)> Codes);
