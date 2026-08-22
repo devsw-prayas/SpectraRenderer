@@ -26,5 +26,12 @@
   "srcDir": "src",
   "configDir": "config",
   "errCodesFile": "spectra-err.json",
-  "execCodesFile": "spectra-exec.json"
+  "execCodesFile": "spectra-exec.json",
+  "gitFilters": {
+    "kerbecs-strip": {
+      "cMacro": "SPECTRA_ENABLE_KERBECS",
+      "cmakeOption": "CORIUM_ENABLE_KERBECS",
+      "appliesTo": ["common/Corium"]
+    }
+  }
 }

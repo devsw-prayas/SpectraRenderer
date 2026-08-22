@@ -12,9 +12,6 @@ namespace Spectra::Memory {
 }
 
 namespace Spectra::Memory::Allocators {
-	// Shared CRTP-free base. `track()` is a locked seam for future tagging/scope
-	// instrumentation (Data Class enforcement) - a no-op today so every concrete
-	// allocator already participates once a real body is filled in here.
 	struct AllocatorTrackingBase {
 	protected:
 		void track() noexcept {}
@@ -29,11 +26,6 @@ namespace Spectra::Memory::Allocators {
 		{ d.deallocateImpl() } -> std::same_as<void>;
 	};
 
-	// CRTP base. `D` must satisfy `ArenaImpl`, but that cannot be checked via a
-	// `requires` clause on this template header - `D` is still an incomplete type
-	// at the point its own base-specifier list (`: IArena<D>`) is instantiated, so
-	// none of D's member functions are visible yet. The check is deferred to first
-	// construction instead, by which point D is complete.
 	template<typename D>
 	class IArena : public AllocatorTrackingBase {
 		using derived_ = D;
@@ -70,13 +62,16 @@ namespace Spectra::Memory::Allocators {
 	// array behaviour over T. T = void is the raw/untyped specialization.
 
 	template<typename D>
-	concept RawAllocatorImpl = requires(D & d, void* p, size_t n) {
+	concept RawAllocatorImpl = requires(D & d, void* p, size_t n, size_t a) {
+		{ d.allocateImpl(n, a) } -> std::same_as<void*>;
+		{ d.allocateImpl(n) } -> std::same_as<void*>;
 		{ d.deallocateImpl(p, n) } -> std::same_as<void>;
 	};
 
 	template<typename D, typename T>
-	concept TypedAllocatorImpl = requires(D & d, size_t n) {
+	concept TypedAllocatorImpl = requires(D & d, T* p, size_t n) {
 		{ d.allocateImpl(n) } -> std::same_as<T*>;
+		{ d.deallocateImpl(p, n) } -> std::same_as<void>;
 	};
 
 	template<typename T, typename Arena, typename D>
@@ -90,10 +85,10 @@ namespace Spectra::Memory::Allocators {
 		IAllocator() noexcept {
 			if constexpr (std::is_void_v<T>) {
 				SPEC_MEM_STATIC_ASSERT(RawAllocatorImpl<D>,
-									   "Raw allocator must implement deallocateImpl(void*,size_t)->void");
+									   "Raw allocator must implement allocateImpl(bytes,align)->void*, allocateImpl(bytes)->void*, deallocateImpl(void*,size_t)->void");
 			} else {
 				SPEC_MEM_STATIC_ASSERT((TypedAllocatorImpl<D, T>),
-									   "Typed allocator must implement allocateImpl(count)->T*");
+									   "Typed allocator must implement allocateImpl(count)->T*, deallocateImpl(T*,size_t)->void");
 			}
 		}
 
@@ -108,12 +103,6 @@ namespace Spectra::Memory::Allocators {
 		}
 
 		// ---- Raw (T = void) ----
-		// allocate()/emplace() dispatch through derived_::allocateImpl (CRTP), not
-		// straight to the underlying Arena - this is what lets a header/freelist
-		// policy (SpectraHeap) wrap every allocation while a pure-bump policy
-		// (LinearArena-backed raw allocator) can stay a fully empty derived struct
-		// and just inherit the defaults below, which forward to the Arena.
-
 		SPEC_MEM_NODISCARD_MSG("Cannot discard allocated block pointer")
 			void* allocate(size_t v_Bytes, size_t v_Alignment) requires std::is_void_v<T> {
 			return static_cast<derived_*>(this)->allocateImpl(v_Bytes, v_Alignment);
@@ -124,29 +113,25 @@ namespace Spectra::Memory::Allocators {
 			return static_cast<derived_*>(this)->allocateImpl(v_Bytes);
 		}
 
-		// Allocate + placement-construct in one call.
+		// Placement-new at a caller-supplied, already-allocated pointer only.
 		template<typename U, typename... Args>
-		U* emplace(Args&&... v_Args) requires std::is_void_v<T> {
-			void* memory = static_cast<derived_*>(this)->allocateImpl(sizeof(U), alignof(U));
-			if (!memory) return nullptr;
-			return ::new (memory) U(std::forward<Args>(v_Args)...);
+		U* emplace(void* p_Ptr, Args&&... v_Args) requires std::is_void_v<T> {
+			SPEC_MEM_ASSERT(p_Ptr != nullptr);
+			return ::new (p_Ptr) U(std::forward<Args>(v_Args)...);
 		}
 
 		// Policy-defined: no-op for pure-bump derivations, real freelist reclaim
-		// for header/freelist-driven derivations (e.g. SpectraHeap).
+		// for header/freelist-driven derivations
 		void deallocate(void* p_Ptr, size_t v_Size) requires std::is_void_v<T> {
 			static_cast<derived_*>(this)->deallocateImpl(p_Ptr, v_Size);
 		}
 
-		// Whole-arena discard. Derived types that track extra state on top of the
-		// Arena (e.g. SpectraHeap's freelist) hide this with their own reset().
+		// Whole-arena discard. Derived types that track extra state on top of the Arena
 		void reset() requires std::is_void_v<T> {
 			m_UnderlyingArena.reset();
 		}
 
 		// Pure-bump defaults: forward straight to the Arena, no individual reclaim.
-		// Derived types with real per-allocation policy (SpectraHeap) hide these
-		// with their own allocateImpl/deallocateImpl.
 		void* allocateImpl(size_t v_Bytes, size_t v_Alignment) requires std::is_void_v<T> {
 			return m_UnderlyingArena.allocate(v_Bytes, v_Alignment);
 		}
@@ -162,6 +147,12 @@ namespace Spectra::Memory::Allocators {
 
 		SPEC_MEM_NODISCARD_MSG("Cannot discard allocated block pointer")
 			T* allocate(size_t v_Count = 1) requires (!std::is_void_v<T>) {
+			return static_cast<derived_*>(this)->allocateImpl(v_Count);
+		}
+
+		// Pure-bump default: forwards straight to the Arena, same role as the Raw
+		// tier's allocateImpl default.
+		T* allocateImpl(size_t v_Count) requires (!std::is_void_v<T>) {
 			return static_cast<T*>(m_UnderlyingArena.allocate(v_Count * sizeof(T), alignof(T)));
 		}
 
@@ -176,5 +167,11 @@ namespace Spectra::Memory::Allocators {
 			for (size_t i = 0; i < v_Count; ++i)
 				p_Ptr[i].~T();
 		}
+
+		void deallocate(T* p_Ptr, size_t v_Count = 1) requires (!std::is_void_v<T>) {
+			static_cast<derived_*>(this)->deallocateImpl(p_Ptr, v_Count);
+		}
+
+		void deallocateImpl(T*, size_t) noexcept requires (!std::is_void_v<T>) {}
 	};
 }

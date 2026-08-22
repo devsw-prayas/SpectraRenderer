@@ -8,26 +8,32 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 file(GLOB_RECURSE SpectraMemory_HEADERS  CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/src/Public/*.h")
 file(GLOB_RECURSE SpectraMemory_SOURCE   CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/src/Private/*.cpp")
 file(GLOB_RECURSE SpectraMemory_INL      CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/src/Public/*.inl")
+file(GLOB_RECURSE SpectraMemory_INTERNAL_HEADERS CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/src/Internal/*.h")
 
 add_library(SpectraMemory SHARED
     ${SpectraMemory_HEADERS}
     ${SpectraMemory_SOURCE}
     ${SpectraMemory_INL}
+    ${SpectraMemory_INTERNAL_HEADERS}
 )
 
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES
     ${SpectraMemory_HEADERS}
     ${SpectraMemory_SOURCE}
     ${SpectraMemory_INL}
+    ${SpectraMemory_INTERNAL_HEADERS}
 )
 
-target_compile_definitions(SpectraMemory PRIVATE 
+target_compile_definitions(SpectraMemory PRIVATE
     SPECTRA_MEMORY_SHARED
     SPECTRA_MEMORY_EXPORTS
 )
 
-target_include_directories(SpectraMemory PUBLIC
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/Public
+target_include_directories(SpectraMemory
+    PUBLIC
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/Public
+    PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/Internal
 )
 
 target_precompile_headers(SpectraMemory PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src/Public/SpectraMemory.h)

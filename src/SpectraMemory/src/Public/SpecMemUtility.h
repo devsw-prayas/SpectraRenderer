@@ -73,9 +73,10 @@ namespace Spectra::Memory::Utils {
 			}
 			using LambdaT = std::decay_t<L>;
 
-			LambdaT* stored = allocator->template emplace<LambdaT>(
-				std::forward<L>(lambda)
-			);
+			void* memory = allocator->allocate(sizeof(LambdaT), alignof(LambdaT));
+			LambdaT* stored = memory ? allocator->template emplace<LambdaT>(
+				memory, std::forward<L>(lambda)
+			) : nullptr;
 
 			m_Context = stored;
 			m_Allocator = allocator;

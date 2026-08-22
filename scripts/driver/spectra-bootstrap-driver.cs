@@ -7,6 +7,7 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 
 if (args.Length == 0 || args[0] is "help" or "-h" or "--help")
 {
@@ -39,6 +40,7 @@ return command switch
     "run" => RunTarget(rootDir, config, rest),
     "test" => TestSuites(rootDir, config, rest),
     "hades" => HadesPassthrough(rootDir, config, rest),
+    "filters" => FiltersCommand(rootDir, config, rest),
     _ => UnknownCommand(command)
 };
 
@@ -63,6 +65,10 @@ void PrintUsage()
     Console.WriteLine("  run -c <Configuration> [-clangcl]                      Launch the configured run target (-clangcl: from the clang-cl tree)");
     Console.WriteLine("  test [-c <Configuration>] [--fbt=<pattern>] [-ls]     Run every Hades suite listed in tests/test.config (-ls: list suites/tests instead)");
     Console.WriteLine("  hades [-c <Configuration>] <args...>                   Passthrough to Hades-Driver.exe (init-suite/find-suite/new-test/run/validate/...)");
+    Console.WriteLine("  filters list                                           List gitFilters from config.json and whether each is enabled locally");
+    Console.WriteLine("  filters enable <name>                                  Configure the named filter's clean/smudge commands for its appliesTo submodule(s)");
+    Console.WriteLine("  filters disable <name>                                 Unset the named filter's clean/smudge commands (reverts to pass-through)");
+    Console.WriteLine("  filters clean <name>                                   (internal - invoked by git itself as filter.<name>.clean) strip guarded blocks from stdin to stdout");
 }
 
 int UnknownCommand(string name)
@@ -210,6 +216,306 @@ int HadesPassthrough(string p_RootDir, Config p_Config, string[] p_Rest)
     using var process = Process.Start(psi);
     process!.WaitForExit();
     return process.ExitCode;
+}
+
+// filters
+//
+// git clean/smudge filter support for debug-only instrumentation (e.g. Kerbecs)
+// that must never persist in a submodule's committed history. Definitions live in
+// config.json's "gitFilters" - "enable"/"disable" wire up local git config inside
+// each of a filter's appliesTo submodules; "clean" is what git itself invokes (as
+// filter.<name>.clean) on every `git add`/`git commit`, reading the working-tree
+// content on stdin and writing the sanitized version to stdout. A non-zero exit
+// from "clean" aborts the git operation - the safety-net check at the bottom of
+// FiltersClean relies on this to fail loudly instead of silently letting a leaked
+// reference through.
+
+int FiltersCommand(string p_RootDir, Config p_Config, string[] p_Rest)
+{
+    if (p_Rest.Length == 0)
+    {
+        Console.WriteLine("[ERROR] Usage: filters list|enable <name>|disable <name>|clean <name>");
+        return 1;
+    }
+    var sub = p_Rest[0];
+    var subRest = p_Rest[1..];
+    return sub switch
+    {
+        "list" => FiltersList(p_RootDir, p_Config),
+        "enable" => FiltersEnable(p_RootDir, p_Config, subRest),
+        "disable" => FiltersDisable(p_RootDir, p_Config, subRest),
+        "clean" => FiltersClean(p_Config, subRest),
+        _ => FiltersUnknownSub(sub)
+    };
+}
+
+int FiltersUnknownSub(string p_Sub)
+{
+    Console.WriteLine($"[ERROR] Unknown filters subcommand: {p_Sub}");
+    Console.WriteLine("[INFO] Usage: filters list|enable <name>|disable <name>|clean <name>");
+    return 1;
+}
+
+int FiltersList(string p_RootDir, Config p_Config)
+{
+    if (p_Config.GitFilters.Count == 0)
+    {
+        Console.WriteLine("[INFO] No gitFilters defined in config.json.");
+        return 0;
+    }
+    foreach (var (name, entry) in p_Config.GitFilters)
+    {
+        Console.WriteLine(name);
+        Console.WriteLine($"    cMacro: {entry.CMacro}   cmakeOption: {entry.CmakeOption}");
+        foreach (var relPath in entry.AppliesTo)
+        {
+            var targetDir = Path.Combine(p_RootDir, relPath);
+            var enabled = Directory.Exists(targetDir)
+                && !string.IsNullOrWhiteSpace(RunCaptureAt(targetDir, "git", $"config --get filter.{name}.clean"));
+            Console.WriteLine($"    {relPath}: {(enabled ? "enabled" : "disabled")}");
+        }
+    }
+    return 0;
+}
+
+int FiltersEnable(string p_RootDir, Config p_Config, string[] p_Rest)
+{
+    var name = p_Rest.Length > 0 ? p_Rest[0] : null;
+    if (name is null || !p_Config.GitFilters.TryGetValue(name, out var entry))
+        return FiltersUnknownName(name, p_Config);
+
+    var driverBatPath = Path.Combine(p_RootDir, "driver.bat");
+    // Absolute path, quoted for git's own later shell-invocation of this command
+    // (not for this process's own argument parsing) - submodules run filters with
+    // their own working directory as CWD, so a relative path here would break.
+    var cleanCmdValue = $"\"{driverBatPath}\" filters clean {name} %f";
+
+    var ok = true;
+    foreach (var relPath in entry.AppliesTo)
+    {
+        var targetDir = Path.Combine(p_RootDir, relPath);
+        if (!Directory.Exists(targetDir))
+        {
+            Console.WriteLine($"[ERROR] filters enable: {targetDir} does not exist.");
+            ok = false;
+            continue;
+        }
+        var r1 = RunAt("git", $"config filter.{name}.clean \"{cleanCmdValue.Replace("\"", "\\\"")}\"", targetDir);
+        var r2 = RunAt("git", $"config filter.{name}.smudge cat", targetDir);
+        if (r1 != 0 || r2 != 0)
+        {
+            Console.WriteLine($"[ERROR] filters enable: failed to configure '{name}' for {relPath}.");
+            ok = false;
+            continue;
+        }
+        Console.WriteLine($"[OK] filters enable: '{name}' configured for {relPath}");
+    }
+    return ok ? 0 : 1;
+}
+
+int FiltersDisable(string p_RootDir, Config p_Config, string[] p_Rest)
+{
+    var name = p_Rest.Length > 0 ? p_Rest[0] : null;
+    if (name is null || !p_Config.GitFilters.TryGetValue(name, out var entry))
+        return FiltersUnknownName(name, p_Config);
+
+    var ok = true;
+    foreach (var relPath in entry.AppliesTo)
+    {
+        var targetDir = Path.Combine(p_RootDir, relPath);
+        if (!Directory.Exists(targetDir))
+        {
+            Console.WriteLine($"[ERROR] filters disable: {targetDir} does not exist.");
+            ok = false;
+            continue;
+        }
+        // --unset returns nonzero if the key was never set - not a real failure here.
+        RunAt("git", $"config --unset filter.{name}.clean", targetDir);
+        RunAt("git", $"config --unset filter.{name}.smudge", targetDir);
+        Console.WriteLine($"[OK] filters disable: '{name}' unset for {relPath}");
+    }
+    return ok ? 0 : 1;
+}
+
+int FiltersUnknownName(string? p_Name, Config p_Config)
+{
+    Console.WriteLine($"[ERROR] Unknown filter: {p_Name}");
+    Console.WriteLine("[INFO] Defined filters: " + string.Join(", ", p_Config.GitFilters.Keys));
+    return 1;
+}
+
+int FiltersClean(Config p_Config, string[] p_Rest)
+{
+    var name = p_Rest.Length > 0 ? p_Rest[0] : null;
+    if (name is null || !p_Config.GitFilters.TryGetValue(name, out var entry))
+    {
+        Console.Error.WriteLine($"[ERROR] filters clean: unknown filter '{name}'");
+        return 1;
+    }
+
+    string content;
+    using (var reader = new StreamReader(Console.OpenStandardInput()))
+        content = reader.ReadToEnd();
+
+    string stripped;
+    try
+    {
+        stripped = StripCStyleBlocks(content, entry.CMacro);
+        stripped = StripCMakeStyleBlocks(stripped, entry.CmakeOption);
+    }
+    catch (Exception ex)
+    {
+        Console.Error.WriteLine($"[ERROR] filters clean: '{name}' scanner failed: {ex.Message}");
+        return 1;
+    }
+
+    // Cosmetic-only: reflows whitespace left behind by the strip above (and, since
+    // there's no line-range scoping, the whole file) against the submodule's own
+    // .clang-format. Never fails the filter - a missing clang-format or a formatting
+    // hiccup shouldn't block a commit, only the safety net below should.
+    var gitPath = p_Rest.Length > 1 ? p_Rest[1] : null;
+    var clangFormatExe = FindOnPath("clang-format");
+    if (clangFormatExe is not null && gitPath is not null)
+    {
+        try
+        {
+            var formatted = RunPipedCapture(clangFormatExe, $"-assume-filename=\"{gitPath}\" --style=file", stripped);
+            if (!string.IsNullOrWhiteSpace(formatted))
+                stripped = formatted;
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"[WARN] filters clean: '{name}' clang-format pass skipped: {ex.Message}");
+        }
+    }
+
+    // Safety net: a leftover "Kerbecs"-ish reference after stripping means either a
+    // call site was never guarded, or the scanner missed a block - fail loudly
+    // (non-zero exit aborts the git add/commit) instead of letting it through.
+    if (stripped.Contains("Kerbecs", StringComparison.OrdinalIgnoreCase)
+        || stripped.Contains(entry.CMacro, StringComparison.Ordinal)
+        || stripped.Contains(entry.CmakeOption, StringComparison.Ordinal))
+    {
+        Console.Error.WriteLine($"[ERROR] filters clean: stripped output for '{name}' still references Kerbecs/{entry.CMacro}/{entry.CmakeOption} - aborting.");
+        return 1;
+    }
+
+    using var writer = new StreamWriter(Console.OpenStandardOutput());
+    writer.Write(stripped);
+    writer.Flush();
+    return 0;
+}
+
+// StripCStyleBlocks/StripCMakeStyleBlocks
+//
+// Both grammars share one stack-based scanner (StripBlocks) - not regex-across-
+// the-whole-file. Each frame tracks whether it's testing OUR macro/option (IsOwn)
+// and, if so, whether the branch since its last #else/else() should be kept.
+// p_Macro/p_Option is always treated as undefined/OFF: an #ifdef<macro>/if(<option>)
+// branch is dropped, an #ifndef<macro> branch is kept, any #else/else() branch is
+// kept, and #elif/elseif(...) on an own frame is rejected outright (a binary on/off
+// guard can't represent a third branch). Suppressed() is true whenever ANY ancestor
+// frame is an own-frame in its dropped branch - that's what makes a nested, unrelated
+// #ifdef/if() sitting inside our own dropped branch get fully suppressed (directive
+// lines included), while one outside our block (or inside our kept branch) passes
+// through completely untouched, own directive lines included.
+
+string StripBlocks(
+    string p_Content,
+    Func<string, (bool IsOwn, bool InitialKeep)?> p_MatchOpen,
+    Func<string, bool> p_MatchElseIf,
+    Func<string, bool> p_MatchElse,
+    Func<string, bool> p_MatchClose)
+{
+    var stack = new Stack<(bool IsOwn, bool KeepCurrentBranch)>();
+    var output = new StringBuilder();
+    var lines = p_Content.Replace("\r\n", "\n").Split('\n');
+
+    bool Suppressed() => stack.Any(f => f.IsOwn && !f.KeepCurrentBranch);
+
+    for (var i = 0; i < lines.Length; i++)
+    {
+        var line = lines[i];
+        var eol = i == lines.Length - 1 ? "" : "\n";
+        var trimmed = line.TrimStart();
+
+        if (p_MatchOpen(trimmed) is { } open)
+        {
+            var wasSuppressed = Suppressed();
+            stack.Push((open.IsOwn, open.InitialKeep));
+            if (open.IsOwn) continue;
+            if (!wasSuppressed) output.Append(line).Append(eol);
+            continue;
+        }
+
+        if (p_MatchElseIf(trimmed) && stack.Count > 0)
+        {
+            if (stack.Peek().IsOwn)
+                throw new InvalidOperationException("#elif/elseif() inside an own guarded block is not supported - restructure to a plain if/else/endif.");
+            if (!Suppressed()) output.Append(line).Append(eol);
+            continue;
+        }
+
+        if (p_MatchElse(trimmed) && stack.Count > 0)
+        {
+            var top = stack.Pop();
+            var wasSuppressed = Suppressed();
+            if (top.IsOwn) { stack.Push((true, !top.KeepCurrentBranch)); continue; }
+            stack.Push(top);
+            if (!wasSuppressed) output.Append(line).Append(eol);
+            continue;
+        }
+
+        if (p_MatchClose(trimmed) && stack.Count > 0)
+        {
+            var top = stack.Pop();
+            if (top.IsOwn) continue;
+            if (!Suppressed()) output.Append(line).Append(eol);
+            continue;
+        }
+
+        if (!Suppressed()) output.Append(line).Append(eol);
+    }
+
+    return output.ToString();
+}
+
+string StripCStyleBlocks(string p_Content, string p_Macro)
+{
+    var ifdefRe = new Regex(@"^\s*#\s*ifdef\s+(\w+)\s*$");
+    var ifndefRe = new Regex(@"^\s*#\s*ifndef\s+(\w+)\s*$");
+    var elifRe = new Regex(@"^\s*#\s*elif\b");
+    var elseRe = new Regex(@"^\s*#\s*else\b");
+    var endifRe = new Regex(@"^\s*#\s*endif\b");
+
+    (bool, bool)? MatchOpen(string t)
+    {
+        var mIfdef = ifdefRe.Match(t);
+        if (mIfdef.Success) return (mIfdef.Groups[1].Value == p_Macro, false); // ifdef(macro): dropped
+        var mIfndef = ifndefRe.Match(t);
+        if (mIfndef.Success) return (mIfndef.Groups[1].Value == p_Macro, true); // ifndef(macro): kept
+        return null;
+    }
+
+    return StripBlocks(p_Content, MatchOpen, t => elifRe.IsMatch(t), t => elseRe.IsMatch(t), t => endifRe.IsMatch(t));
+}
+
+string StripCMakeStyleBlocks(string p_Content, string p_Option)
+{
+    var ifRe = new Regex(@"^\s*if\s*\(([^)]*)\)\s*$", RegexOptions.IgnoreCase);
+    var elseifRe = new Regex(@"^\s*elseif\s*\(", RegexOptions.IgnoreCase);
+    var elseRe = new Regex(@"^\s*else\s*\(\s*\)\s*$", RegexOptions.IgnoreCase);
+    var endifRe = new Regex(@"^\s*endif\s*\(", RegexOptions.IgnoreCase);
+
+    (bool, bool)? MatchOpen(string t)
+    {
+        var m = ifRe.Match(t);
+        if (!m.Success) return null;
+        var isOwn = m.Groups[1].Value.Trim().Equals(p_Option, StringComparison.OrdinalIgnoreCase);
+        return (isOwn, false); // own if(<option>): option treated OFF -> initial branch dropped
+    }
+
+    return StripBlocks(p_Content, MatchOpen, t => elseifRe.IsMatch(t), t => elseRe.IsMatch(t), t => endifRe.IsMatch(t));
 }
 
 // test
@@ -1145,6 +1451,41 @@ string RunCapture(string p_Exe, string p_Arguments)
     return output;
 }
 
+string RunCaptureAt(string p_WorkingDirectory, string p_Exe, string p_Arguments)
+{
+    var psi = new ProcessStartInfo(p_Exe, p_Arguments)
+    {
+        UseShellExecute = false,
+        RedirectStandardOutput = true,
+        WorkingDirectory = p_WorkingDirectory
+    };
+    using var process = Process.Start(psi);
+    var output = process!.StandardOutput.ReadToEnd();
+    process.WaitForExit();
+    return output;
+}
+
+// Pipes p_StdinContent to the process and captures stdout - clang-format reads the
+// file to format from stdin (no temp file needed) and -assume-filename tells it
+// which language/style to apply and where to start its .clang-format directory walk.
+string RunPipedCapture(string p_Exe, string p_Arguments, string p_StdinContent)
+{
+    var psi = new ProcessStartInfo(p_Exe, p_Arguments)
+    {
+        UseShellExecute = false,
+        RedirectStandardInput = true,
+        RedirectStandardOutput = true
+    };
+    using var process = Process.Start(psi);
+    process!.StandardInput.Write(p_StdinContent);
+    process.StandardInput.Close();
+    var output = process.StandardOutput.ReadToEnd();
+    process.WaitForExit();
+    if (process.ExitCode != 0)
+        throw new InvalidOperationException($"{p_Exe} exited with code {process.ExitCode}");
+    return output;
+}
+
 string? FindOnPath(string p_ExeName)
 {
     var pathVar = Environment.GetEnvironmentVariable("PATH") ?? "";
@@ -1218,6 +1559,39 @@ Config LoadConfig(string p_RootDir)
         return v.EnumerateArray().Select(e => e.GetString() ?? "").ToArray();
     }
 
+    Dictionary<string, GitFilterEntry> GetGitFilters()
+    {
+        var result = new Dictionary<string, GitFilterEntry>(StringComparer.Ordinal);
+        if (!root.TryGetProperty("gitFilters", out var filtersEl) || filtersEl.ValueKind != JsonValueKind.Object)
+            return result;
+
+        foreach (var filterProp in filtersEl.EnumerateObject())
+        {
+            var entryEl = filterProp.Value;
+            if (!entryEl.TryGetProperty("cMacro", out var cMacroEl) || cMacroEl.GetString() is not { } cMacro)
+            {
+                Console.WriteLine($"[ERROR] {configPath}: gitFilters.\"{filterProp.Name}\" is missing \"cMacro\".");
+                Environment.Exit(1);
+                return result;
+            }
+            if (!entryEl.TryGetProperty("cmakeOption", out var cmakeOptionEl) || cmakeOptionEl.GetString() is not { } cmakeOption)
+            {
+                Console.WriteLine($"[ERROR] {configPath}: gitFilters.\"{filterProp.Name}\" is missing \"cmakeOption\".");
+                Environment.Exit(1);
+                return result;
+            }
+            if (!entryEl.TryGetProperty("appliesTo", out var appliesToEl) || appliesToEl.ValueKind != JsonValueKind.Array)
+            {
+                Console.WriteLine($"[ERROR] {configPath}: gitFilters.\"{filterProp.Name}\" is missing array \"appliesTo\".");
+                Environment.Exit(1);
+                return result;
+            }
+            var appliesTo = appliesToEl.EnumerateArray().Select(e => e.GetString() ?? "").ToArray();
+            result[filterProp.Name] = new GitFilterEntry(cMacro, cmakeOption, appliesTo);
+        }
+        return result;
+    }
+
     return new Config(
         GetString("buildDir"),
         GetString("binDir"),
@@ -1238,7 +1612,8 @@ Config LoadConfig(string p_RootDir)
         GetString("srcDir"),
         GetString("configDir"),
         GetString("errCodesFile"),
-        GetString("execCodesFile"));
+        GetString("execCodesFile"),
+        GetGitFilters());
 }
 
 string? ResolveConfiguration(Config p_Config, string[] p_Rest)
@@ -1273,6 +1648,13 @@ record Config(
     string SrcDir,
     string ConfigDir,
     string ErrCodesFile,
-    string ExecCodesFile);
+    string ExecCodesFile,
+    Dictionary<string, GitFilterEntry> GitFilters);
 
 record ExecGenEntry(byte ModuleId, string DomainName, List<(byte Code, string Name)> Codes);
+
+// cMacro: C/C++ preprocessor macro guarding #ifdef blocks in .h/.cpp files.
+// cmakeOption: CMake option() guarding if()/endif() blocks in CMakeLists.txt.
+// appliesTo: submodule-relative paths (from repo root) this filter is scoped to -
+// "enable"/"disable" run `git config` inside each of these, not the outer repo.
+record GitFilterEntry(string CMacro, string CmakeOption, string[] AppliesTo);

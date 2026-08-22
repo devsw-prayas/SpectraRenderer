@@ -1,0 +1,37 @@
+BasedOnStyle: Microsoft
+Language: Cpp
+Standard: c++20
+
+UseTab: Always
+TabWidth: 4
+IndentWidth: 4
+ColumnLimit: 200
+
+BreakBeforeBraces: Attach
+PointerAlignment: Left
+ReferenceAlignment: Left
+SpaceBeforeParens: ControlStatements
+SpacesInAngles: false
+Cpp11BracedListStyle: false
+
+AlignConsecutiveDeclarations: None
+AlignConsecutiveAssignments: None
+AlignTrailingComments: false
+
+BreakConstructorInitializers: BeforeComma
+ConstructorInitializerIndentWidth: 4
+PackConstructorInitializers: Never
+
+SpaceAfterTemplateKeyword: false
+AlwaysBreakTemplateDeclarations: Yes
+
+AccessModifierOffset: -4
+IndentAccessModifiers: false
+FixNamespaceComments: false
+
+IndentCaseLabels: true
+NamespaceIndentation: All
+AllowShortFunctionsOnASingleLine: Empty
+AllowShortIfStatementsOnASingleLine: AllIfsAndElse
+AllowShortLoopsOnASingleLine: false
+SortIncludes: false
