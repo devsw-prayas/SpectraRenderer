@@ -29,8 +29,10 @@ namespace Spectra::Vulkan {
 		                              Utils::PipelineStage              v_Stage);
 
 		// Reads v_QueryCount 64-bit results starting at v_FirstQuery into p_Results.
-		// If v_Wait is true, blocks until results are available.
-		static void getResults(const Utils::QueryPoolHandle& r_Pool,
+		// If v_Wait is true, blocks until results are available. Returns false if v_Wait is
+		// false and the results weren't ready yet (VK_NOT_READY) - p_Results is untouched in
+		// that case, not partially written.
+		static bool getResults(const Utils::QueryPoolHandle& r_Pool,
 		                       uint32_t                      v_FirstQuery,
 		                       uint32_t                      v_QueryCount,
 		                       uint64_t*                     p_Results,

@@ -1,22 +1,22 @@
 #pragma once
 #include "SpectraCudaBackend.h"
 #include "CudaUtils.h"
-
-#define CUDA_ERROR_TRAP(result)	 \
-	do {												 \
-		CUresult res = (result);                        \
-		if (res != CUDA_SUCCESS) {                      \
-			const char* errorStr = nullptr;				\
-			cuGetErrorString(res, &errorStr);		    \
-			SPEC_CUDA_BK_ASSERT(false && errorStr);		\
-			SPEC_CUDA_BK_TRAP();						\
-		}                                               \
-	} while(0)
+#include <ScopeObjects.h>
 
 #ifdef ALLOW_HELPERS
 #include <cuda.h>
 
 namespace Spectra::Cuda::Internal {
+	// otherwise(...) handler for staticSwitch(cuApiCall(...), caseOf<CUDA_SUCCESS>(...), otherwise(trapCudaError))
+	// Replaces the old CUDA_ERROR_TRAP macro - same behavior (assert-log then trap), just as a shared function
+	// instead of a repeated lambda body at every call site.
+	inline void trapCudaError(CUresult res) {
+		const char* errorStr = nullptr;
+		cuGetErrorString(res, &errorStr);
+		SPEC_CUDA_BK_ASSERT(false && errorStr);
+		SPEC_CUDA_BK_TRAP();
+	}
+
 	class CUDA_DeviceRegistry {
 	public:
 		static constexpr int MAX_DEVICE_COUNT = 32;

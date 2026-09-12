@@ -13,20 +13,34 @@ namespace Spectra::Vulkan::Sync {
 		const VkAllocationCallbacks* pA = r_Alloc.m_pfnAllocation ? &alloc : nullptr;
 
 		Utils::FenceHandle handle{};
-		vkCreateFence(g_GlobalInstance.m_LogicalDevice.m_Device, &info, pA, reinterpret_cast<VkFence*>(&handle.m_Handle));
+		Instrumentation::staticSwitch(vkCreateFence(g_GlobalInstance.m_LogicalDevice.m_Device, &info, pA, reinterpret_cast<VkFence*>(&handle.m_Handle)),
+			Instrumentation::caseOf<VK_SUCCESS>([]{}),
+			Instrumentation::otherwise(Internal::trapVulkanError));
 		return handle;
 	}
 
-	void VulkanFence::waitForFences(uint32_t v_Count, const Utils::FenceHandle* p_Fences, bool v_WaitAll, uint64_t v_Timeout) {
-		vkWaitForFences(g_GlobalInstance.m_LogicalDevice.m_Device, v_Count, reinterpret_cast<const VkFence*>(p_Fences), v_WaitAll ? VK_TRUE : VK_FALSE, v_Timeout);
+	bool VulkanFence::waitForFences(uint32_t v_Count, const Utils::FenceHandle* p_Fences, bool v_WaitAll, uint64_t v_Timeout) {
+		bool signaled = false;
+		Instrumentation::staticSwitch(vkWaitForFences(g_GlobalInstance.m_LogicalDevice.m_Device, v_Count, reinterpret_cast<const VkFence*>(p_Fences), v_WaitAll ? VK_TRUE : VK_FALSE, v_Timeout),
+			Instrumentation::caseOf<VK_SUCCESS>([&]{ signaled = true; }),
+			Instrumentation::caseOf<VK_TIMEOUT>([&]{ signaled = false; }),
+			Instrumentation::otherwise(Internal::trapVulkanError));
+		return signaled;
 	}
 
 	void VulkanFence::resetFences(uint32_t v_Count, const Utils::FenceHandle* p_Fences) {
-		vkResetFences(g_GlobalInstance.m_LogicalDevice.m_Device, v_Count, reinterpret_cast<const VkFence*>(p_Fences));
+		Instrumentation::staticSwitch(vkResetFences(g_GlobalInstance.m_LogicalDevice.m_Device, v_Count, reinterpret_cast<const VkFence*>(p_Fences)),
+			Instrumentation::caseOf<VK_SUCCESS>([]{}),
+			Instrumentation::otherwise(Internal::trapVulkanError));
 	}
 
 	bool VulkanFence::getFenceStatus(const Utils::FenceHandle& r_Fence) {
-		return vkGetFenceStatus(g_GlobalInstance.m_LogicalDevice.m_Device, static_cast<VkFence>(r_Fence.m_Handle)) == VK_SUCCESS;
+		bool signaled = false;
+		Instrumentation::staticSwitch(vkGetFenceStatus(g_GlobalInstance.m_LogicalDevice.m_Device, static_cast<VkFence>(r_Fence.m_Handle)),
+			Instrumentation::caseOf<VK_SUCCESS>([&]{ signaled = true; }),
+			Instrumentation::caseOf<VK_NOT_READY>([&]{ signaled = false; }),
+			Instrumentation::otherwise(Internal::trapVulkanError));
+		return signaled;
 	}
 
 	void VulkanFence::destroyFence(const Utils::FenceHandle& r_Fence, const Utils::AllocationCallbacksDesc& r_Alloc) {
@@ -52,7 +66,9 @@ namespace Spectra::Vulkan::Sync {
 		const VkAllocationCallbacks* pA = r_Alloc.m_pfnAllocation ? &alloc : nullptr;
 
 		Utils::SemaphoreHandle handle{};
-		vkCreateSemaphore(g_GlobalInstance.m_LogicalDevice.m_Device, &createInfo, pA, reinterpret_cast<VkSemaphore*>(&handle.m_Handle));
+		Instrumentation::staticSwitch(vkCreateSemaphore(g_GlobalInstance.m_LogicalDevice.m_Device, &createInfo, pA, reinterpret_cast<VkSemaphore*>(&handle.m_Handle)),
+			Instrumentation::caseOf<VK_SUCCESS>([]{}),
+			Instrumentation::otherwise(Internal::trapVulkanError));
 		return handle;
 	}
 
@@ -60,21 +76,30 @@ namespace Spectra::Vulkan::Sync {
 		auto info      = Internal::vkInit<VkSemaphoreSignalInfo>();
 		info.semaphore = static_cast<VkSemaphore>(r_Sem.m_Handle);
 		info.value     = v_Value;
-		vkSignalSemaphore(g_GlobalInstance.m_LogicalDevice.m_Device, &info);
+		Instrumentation::staticSwitch(vkSignalSemaphore(g_GlobalInstance.m_LogicalDevice.m_Device, &info),
+			Instrumentation::caseOf<VK_SUCCESS>([]{}),
+			Instrumentation::otherwise(Internal::trapVulkanError));
 	}
 
-	void VulkanTimelineSemaphore::wait(const Utils::SemaphoreHandle& r_Sem, uint64_t v_Value, uint64_t v_Timeout) {
+	bool VulkanTimelineSemaphore::wait(const Utils::SemaphoreHandle& r_Sem, uint64_t v_Value, uint64_t v_Timeout) {
 		VkSemaphore vkSem = static_cast<VkSemaphore>(r_Sem.m_Handle);
 		auto info         = Internal::vkInit<VkSemaphoreWaitInfo>();
 		info.semaphoreCount = 1;
 		info.pSemaphores    = &vkSem;
 		info.pValues        = &v_Value;
-		vkWaitSemaphores(g_GlobalInstance.m_LogicalDevice.m_Device, &info, v_Timeout);
+		bool signaled = false;
+		Instrumentation::staticSwitch(vkWaitSemaphores(g_GlobalInstance.m_LogicalDevice.m_Device, &info, v_Timeout),
+			Instrumentation::caseOf<VK_SUCCESS>([&]{ signaled = true; }),
+			Instrumentation::caseOf<VK_TIMEOUT>([&]{ signaled = false; }),
+			Instrumentation::otherwise(Internal::trapVulkanError));
+		return signaled;
 	}
 
 	uint64_t VulkanTimelineSemaphore::getCounter(const Utils::SemaphoreHandle& r_Sem) {
 		uint64_t value = 0;
-		vkGetSemaphoreCounterValue(g_GlobalInstance.m_LogicalDevice.m_Device, static_cast<VkSemaphore>(r_Sem.m_Handle), &value);
+		Instrumentation::staticSwitch(vkGetSemaphoreCounterValue(g_GlobalInstance.m_LogicalDevice.m_Device, static_cast<VkSemaphore>(r_Sem.m_Handle), &value),
+			Instrumentation::caseOf<VK_SUCCESS>([]{}),
+			Instrumentation::otherwise(Internal::trapVulkanError));
 		return value;
 	}
 
@@ -89,7 +114,9 @@ namespace Spectra::Vulkan::Sync {
 		info.handleType = VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_OPAQUE_WIN32_BIT;
 
 		HANDLE win32Handle = nullptr;
-		fn(dev, &info, &win32Handle);
+		Instrumentation::staticSwitch(fn(dev, &info, &win32Handle),
+			Instrumentation::caseOf<VK_SUCCESS>([]{}),
+			Instrumentation::otherwise(Internal::trapVulkanError));
 		return win32Handle;
 	}
 

@@ -17,8 +17,10 @@ namespace Spectra::Vulkan {
 		info.queryCount  = r_Desc.m_Count;
 
 		Utils::QueryPoolHandle handle{};
-		vkCreateQueryPool(g_GlobalInstance.m_LogicalDevice.m_Device, &info, pA,
-		                  reinterpret_cast<VkQueryPool*>(&handle.m_Handle));
+		Instrumentation::staticSwitch(vkCreateQueryPool(g_GlobalInstance.m_LogicalDevice.m_Device, &info, pA,
+		                  reinterpret_cast<VkQueryPool*>(&handle.m_Handle)),
+			Instrumentation::caseOf<VK_SUCCESS>([]{}),
+			Instrumentation::otherwise(Internal::trapVulkanError));
 		return handle;
 	}
 
@@ -52,17 +54,22 @@ namespace Spectra::Vulkan {
 		                     v_QueryIndex);
 	}
 
-	void VulkanQuery::getResults(const Utils::QueryPoolHandle& r_Pool,
+	bool VulkanQuery::getResults(const Utils::QueryPoolHandle& r_Pool,
 	                             uint32_t v_FirstQuery, uint32_t v_QueryCount,
 	                             uint64_t* p_Results, bool v_Wait)
 	{
 		VkQueryResultFlags flags = VK_QUERY_RESULT_64_BIT;
 		if (v_Wait) flags |= VK_QUERY_RESULT_WAIT_BIT;
 
-		vkGetQueryPoolResults(g_GlobalInstance.m_LogicalDevice.m_Device,
+		bool ready = false;
+		Instrumentation::staticSwitch(vkGetQueryPoolResults(g_GlobalInstance.m_LogicalDevice.m_Device,
 		                      static_cast<VkQueryPool>(r_Pool.m_Handle),
 		                      v_FirstQuery, v_QueryCount,
 		                      v_QueryCount * sizeof(uint64_t), p_Results,
-		                      sizeof(uint64_t), flags);
+		                      sizeof(uint64_t), flags),
+			Instrumentation::caseOf<VK_SUCCESS>([&]{ ready = true; }),
+			Instrumentation::caseOf<VK_NOT_READY>([&]{ ready = false; }),
+			Instrumentation::otherwise(Internal::trapVulkanError));
+		return ready;
 	}
 }

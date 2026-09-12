@@ -3,24 +3,23 @@
 #include "SpectraCudaBackend.h"
 #include "OptixUtils.h"
 #include "SpecCudaDiagnostics.h"
+#include <ScopeObjects.h>
 
 #define ALLOW_SYSCALL
 #include "SpecCudaSyscall.h"
-
-#define OPTIX_ERROR_TRAP(result) \
-	do { \
-		OptixResult res = (result); \
-		if (res != OPTIX_SUCCESS) { \
-			const char* errorStr = optixGetErrorString(res); \
-			SPEC_CUDA_BK_ASSERT(false && errorStr); \
-			SPEC_CUDA_BK_TRAP(); \
-		} \
-	} while (0)
 
 #ifdef ALLOW_HELPERS
 namespace Spectra::Cuda::Internal {
 
 #ifdef SPECTRA_OPTIX_AVAILABLE
+
+	// otherwise(...) handler for staticSwitch(optixApiCall(...), caseOf<OPTIX_SUCCESS>(...), otherwise(trapOptixError))
+	// Replaces the old OPTIX_ERROR_TRAP macro - same behavior, shared function instead of a repeated lambda.
+	inline void trapOptixError(OptixResult res) {
+		const char* errorStr = optixGetErrorString(res);
+		SPEC_CUDA_BK_ASSERT(false && errorStr);
+		SPEC_CUDA_BK_TRAP();
+	}
 
 	class Optix_InternalHelpers final {
 	public:

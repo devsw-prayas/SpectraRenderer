@@ -22,11 +22,6 @@ target_include_directories(SpectraLauncher PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/src/Public
 )
 
-target_link_libraries(SpectraLauncher Corium SpectraPlatformRuntime Hades-Core Leibniz Kerbecs)
+target_link_libraries(SpectraLauncher StormSTL Corium SpectraPlatformRuntime Hades-Core Leibniz Kerbecs)
 
 target_precompile_headers(SpectraLauncher PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src/Public/SpectraLauncher.h)
-
-target_compile_options(SpectraLauncher PRIVATE
-    $<$<AND:$<COMPILE_LANGUAGE:CXX>,$<CXX_COMPILER_ID:MSVC>>:/arch:AVX2 /W4 /permissive->
-    $<$<AND:$<COMPILE_LANGUAGE:CXX>,$<NOT:$<CXX_COMPILER_ID:MSVC>>>:-mavx2 -Wall -Wextra -Wpedantic>
-)

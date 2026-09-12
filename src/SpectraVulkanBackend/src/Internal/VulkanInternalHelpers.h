@@ -3,9 +3,18 @@
 #include <vector>
 #define ALLOW_SYSCALL
 #include "SpecVulkanSyscalls.h"
+#include <ScopeObjects.h>
 
 namespace Spectra::Vulkan::Internal {
 #define VK_LAYERS_KHRONOS_VALIDATION "VK_LAYER_KHRONOS_validation"
+
+	// otherwise(...) handler for staticSwitch(vkApiCall(...), caseOf<VK_SUCCESS>(...), otherwise(trapVulkanError)).
+	// Vulkan has no cuGetErrorString equivalent, so unlike CUDA's trapCudaError this can't log a
+	// message string - just assert-then-trap.
+	inline void trapVulkanError(VkResult res) {
+		SPEC_VK_BK_ASSERT(res == VK_SUCCESS);
+		SPEC_VK_BK_TRAP();
+	}
 
 	class VulkanRegistry final {
 	public:

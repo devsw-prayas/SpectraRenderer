@@ -14,7 +14,7 @@ namespace Spectra::Cuda::Optix {
 		const GpuOptixContext& ro_Context,
 		const OptixModuleCompileOptions& ro_ModuleOptions,
 		const OptixPipelineCompileOptions& ro_PipelineOptions,
-		const char* p_PtxCode) 
+		const char* p_PtxCode)
 	{
 		GpuOptixModule moduleHandle{};
 #ifdef SPECTRA_OPTIX_AVAILABLE
@@ -59,16 +59,18 @@ namespace Spectra::Cuda::Optix {
 			ptxLen++;
 		}
 
-		OPTIX_ERROR_TRAP(optixModuleCreate(
-			static_cast<OptixDeviceContext>(ro_Context.m_Handle),
-			&nativeModuleOptions,
-			&nativePipelineOptions,
-			p_PtxCode,
-			ptxLen,
-			log,
-			&sizeofLog,
-			&nativeModule
-		));
+		Instrumentation::staticSwitch(optixModuleCreate(
+				static_cast<OptixDeviceContext>(ro_Context.m_Handle),
+				&nativeModuleOptions,
+				&nativePipelineOptions,
+				p_PtxCode,
+				ptxLen,
+				log,
+				&sizeofLog,
+				&nativeModule
+			),
+			Instrumentation::caseOf<OPTIX_SUCCESS>([]{}),
+			Instrumentation::otherwise(Internal::trapOptixError));
 
 		if (nativeBoundValues) {
 			delete[] nativeBoundValues;
@@ -82,7 +84,9 @@ namespace Spectra::Cuda::Optix {
 	void DeviceOptixPipeline::destroyModule(GpuOptixModule& ro_Module) {
 #ifdef SPECTRA_OPTIX_AVAILABLE
 		if (ro_Module.isValid()) {
-			OPTIX_ERROR_TRAP(optixModuleDestroy(static_cast<::OptixModule>(ro_Module.m_Handle)));
+			Instrumentation::staticSwitch(optixModuleDestroy(static_cast<::OptixModule>(ro_Module.m_Handle)),
+				Instrumentation::caseOf<OPTIX_SUCCESS>([]{}),
+				Instrumentation::otherwise(Internal::trapOptixError));
 			ro_Module.m_Handle = nullptr;
 		}
 #endif
@@ -92,7 +96,7 @@ namespace Spectra::Cuda::Optix {
 		const GpuOptixContext& ro_Context,
 		const OptixProgramGroupDesc* p_Descs,
 		uint32_t v_Count,
-		GpuOptixProgramGroup* p_OutGroups) 
+		GpuOptixProgramGroup* p_OutGroups)
 	{
 #ifdef SPECTRA_OPTIX_AVAILABLE
 		SPEC_CUDA_BK_ASSERT(ro_Context.isValid());
@@ -100,10 +104,10 @@ namespace Spectra::Cuda::Optix {
 		SPEC_CUDA_BK_ASSERT(p_OutGroups != nullptr);
 
 		::OptixProgramGroupDesc* nativeDescs = new ::OptixProgramGroupDesc[v_Count];
-		
+
 		for (uint32_t i = 0; i < v_Count; ++i) {
 			nativeDescs[i] = {}; // Zero initialize
-			
+
 			switch (p_Descs[i].m_Kind) {
 			case OptixProgramGroupKind::RAYGEN:
 				nativeDescs[i].kind = OPTIX_PROGRAM_GROUP_KIND_RAYGEN;
@@ -140,27 +144,29 @@ namespace Spectra::Cuda::Optix {
 		}
 
 		::OptixProgramGroupOptions nativeOptions{}; // reserved = 0 in OptiX 8
-		
+
 		::OptixProgramGroup* nativeGroups = new ::OptixProgramGroup[v_Count];
 		for (uint32_t i = 0; i < v_Count; ++i) nativeGroups[i] = nullptr;
-		
+
 		char log[2048];
 		size_t sizeofLog = sizeof(log);
 
-		OPTIX_ERROR_TRAP(optixProgramGroupCreate(
-			static_cast<OptixDeviceContext>(ro_Context.m_Handle),
-			nativeDescs,
-			v_Count,
-			&nativeOptions,
-			log,
-			&sizeofLog,
-			nativeGroups
-		));
+		Instrumentation::staticSwitch(optixProgramGroupCreate(
+				static_cast<OptixDeviceContext>(ro_Context.m_Handle),
+				nativeDescs,
+				v_Count,
+				&nativeOptions,
+				log,
+				&sizeofLog,
+				nativeGroups
+			),
+			Instrumentation::caseOf<OPTIX_SUCCESS>([]{}),
+			Instrumentation::otherwise(Internal::trapOptixError));
 
 		for (uint32_t i = 0; i < v_Count; ++i) {
 			p_OutGroups[i].m_Handle = static_cast<void*>(nativeGroups[i]);
 		}
-		
+
 		delete[] nativeDescs;
 		delete[] nativeGroups;
 #endif
@@ -169,7 +175,9 @@ namespace Spectra::Cuda::Optix {
 	void DeviceOptixPipeline::destroyProgramGroup(GpuOptixProgramGroup& ro_Group) {
 #ifdef SPECTRA_OPTIX_AVAILABLE
 		if (ro_Group.isValid()) {
-			OPTIX_ERROR_TRAP(optixProgramGroupDestroy(static_cast<::OptixProgramGroup>(ro_Group.m_Handle)));
+			Instrumentation::staticSwitch(optixProgramGroupDestroy(static_cast<::OptixProgramGroup>(ro_Group.m_Handle)),
+				Instrumentation::caseOf<OPTIX_SUCCESS>([]{}),
+				Instrumentation::otherwise(Internal::trapOptixError));
 			ro_Group.m_Handle = nullptr;
 		}
 #endif
@@ -181,10 +189,12 @@ namespace Spectra::Cuda::Optix {
 #ifdef SPECTRA_OPTIX_AVAILABLE
 		SPEC_CUDA_BK_ASSERT(ro_Group.isValid());
 		::OptixStackSizes nativeSizes{};
-		OPTIX_ERROR_TRAP(optixProgramGroupGetStackSize(
-			static_cast<::OptixProgramGroup>(ro_Group.m_Handle),
-			&nativeSizes, static_cast<OptixPipeline>(ro_Pipeline.m_Handle)
-		));
+		Instrumentation::staticSwitch(optixProgramGroupGetStackSize(
+				static_cast<::OptixProgramGroup>(ro_Group.m_Handle),
+				&nativeSizes, static_cast<OptixPipeline>(ro_Pipeline.m_Handle)
+			),
+			Instrumentation::caseOf<OPTIX_SUCCESS>([]{}),
+			Instrumentation::otherwise(Internal::trapOptixError));
 		sizes.m_CssRG = nativeSizes.cssRG;
 		sizes.m_CssMS = nativeSizes.cssMS;
 		sizes.m_CssCH = nativeSizes.cssCH;
@@ -201,7 +211,7 @@ namespace Spectra::Cuda::Optix {
 		const OptixPipelineCompileOptions& ro_CompileOptions,
 		const OptixPipelineLinkOptions& ro_LinkOptions,
 		const GpuOptixProgramGroup* p_Groups,
-		uint32_t v_GroupCount) 
+		uint32_t v_GroupCount)
 	{
 		GpuOptixPipeline pipeline{};
 #ifdef SPECTRA_OPTIX_AVAILABLE
@@ -232,16 +242,18 @@ namespace Spectra::Cuda::Optix {
 		char log[2048];
 		size_t sizeofLog = sizeof(log);
 
-		OPTIX_ERROR_TRAP(optixPipelineCreate(
-			static_cast<OptixDeviceContext>(ro_Context.m_Handle),
-			&nativePipelineOptions,
-			&nativeLinkOptions,
-			nativeGroups,
-			v_GroupCount,
-			log,
-			&sizeofLog,
-			&nativePipeline
-		));
+		Instrumentation::staticSwitch(optixPipelineCreate(
+				static_cast<OptixDeviceContext>(ro_Context.m_Handle),
+				&nativePipelineOptions,
+				&nativeLinkOptions,
+				nativeGroups,
+				v_GroupCount,
+				log,
+				&sizeofLog,
+				&nativePipeline
+			),
+			Instrumentation::caseOf<OPTIX_SUCCESS>([]{}),
+			Instrumentation::otherwise(Internal::trapOptixError));
 
 		pipeline.m_Handle = static_cast<void*>(nativePipeline);
 
@@ -255,7 +267,9 @@ namespace Spectra::Cuda::Optix {
 	void DeviceOptixPipeline::destroyPipeline(GpuOptixPipeline& ro_Pipeline) {
 #ifdef SPECTRA_OPTIX_AVAILABLE
 		if (ro_Pipeline.isValid()) {
-			OPTIX_ERROR_TRAP(optixPipelineDestroy(static_cast<::OptixPipeline>(ro_Pipeline.m_Handle)));
+			Instrumentation::staticSwitch(optixPipelineDestroy(static_cast<::OptixPipeline>(ro_Pipeline.m_Handle)),
+				Instrumentation::caseOf<OPTIX_SUCCESS>([]{}),
+				Instrumentation::otherwise(Internal::trapOptixError));
 			ro_Pipeline.m_Handle = nullptr;
 		}
 #endif
@@ -266,17 +280,19 @@ namespace Spectra::Cuda::Optix {
 		uint32_t directCallableStackSizeFromTraversal,
 		uint32_t directCallableStackSizeFromState,
 		uint32_t continuationStackSize,
-		uint32_t maxTraversableGraphDepth) 
+		uint32_t maxTraversableGraphDepth)
 	{
 #ifdef SPECTRA_OPTIX_AVAILABLE
 		SPEC_CUDA_BK_ASSERT(ro_Pipeline.isValid());
-		OPTIX_ERROR_TRAP(optixPipelineSetStackSize(
-			static_cast<::OptixPipeline>(ro_Pipeline.m_Handle),
-			directCallableStackSizeFromTraversal,
-			directCallableStackSizeFromState,
-			continuationStackSize,
-			maxTraversableGraphDepth
-		));
+		Instrumentation::staticSwitch(optixPipelineSetStackSize(
+				static_cast<::OptixPipeline>(ro_Pipeline.m_Handle),
+				directCallableStackSizeFromTraversal,
+				directCallableStackSizeFromState,
+				continuationStackSize,
+				maxTraversableGraphDepth
+			),
+			Instrumentation::caseOf<OPTIX_SUCCESS>([]{}),
+			Instrumentation::otherwise(Internal::trapOptixError));
 #endif
 	}
 

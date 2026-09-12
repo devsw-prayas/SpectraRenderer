@@ -15,10 +15,12 @@ namespace Spectra::Cuda::Optix {
 		SPEC_CUDA_BK_ASSERT(ro_ProgramGroup.isValid());
 		SPEC_CUDA_BK_ASSERT(p_SbtRecordHeaderDest != nullptr);
 
-		OPTIX_ERROR_TRAP(optixSbtRecordPackHeader(
-			static_cast<::OptixProgramGroup>(ro_ProgramGroup.m_Handle),
-			p_SbtRecordHeaderDest
-		));
+		Instrumentation::staticSwitch(optixSbtRecordPackHeader(
+				static_cast<::OptixProgramGroup>(ro_ProgramGroup.m_Handle),
+				p_SbtRecordHeaderDest
+			),
+			Instrumentation::caseOf<OPTIX_SUCCESS>([]{}),
+			Instrumentation::otherwise(Internal::trapOptixError));
 #endif
 	}
 
@@ -42,25 +44,27 @@ namespace Spectra::Cuda::Optix {
 		nativeSbt.missRecordBase = static_cast<CUdeviceptr>(ro_Sbt.m_MissRecordBase);
 		nativeSbt.missRecordStrideInBytes = ro_Sbt.m_MissRecordStrideInBytes;
 		nativeSbt.missRecordCount = ro_Sbt.m_MissRecordCount;
-		
+
 		nativeSbt.hitgroupRecordBase = static_cast<CUdeviceptr>(ro_Sbt.m_HitgroupRecordBase);
 		nativeSbt.hitgroupRecordStrideInBytes = ro_Sbt.m_HitgroupRecordStrideInBytes;
 		nativeSbt.hitgroupRecordCount = ro_Sbt.m_HitgroupRecordCount;
-		
+
 		nativeSbt.callablesRecordBase = static_cast<CUdeviceptr>(ro_Sbt.m_CallablesRecordBase);
 		nativeSbt.callablesRecordStrideInBytes = ro_Sbt.m_CallablesRecordStrideInBytes;
 		nativeSbt.callablesRecordCount = ro_Sbt.m_CallablesRecordCount;
 
-		OPTIX_ERROR_TRAP(optixLaunch(
-			static_cast<::OptixPipeline>(ro_Pipeline.m_Handle),
-			static_cast<CUstream>(ro_Stream.m_StreamHandle),
-			static_cast<CUdeviceptr>(v_PipelineParamsAddress),
-			v_PipelineParamsSize,
-			&nativeSbt,
-			v_Width,
-			v_Height,
-			v_Depth
-		));
+		Instrumentation::staticSwitch(optixLaunch(
+				static_cast<::OptixPipeline>(ro_Pipeline.m_Handle),
+				static_cast<CUstream>(ro_Stream.m_StreamHandle),
+				static_cast<CUdeviceptr>(v_PipelineParamsAddress),
+				v_PipelineParamsSize,
+				&nativeSbt,
+				v_Width,
+				v_Height,
+				v_Depth
+			),
+			Instrumentation::caseOf<OPTIX_SUCCESS>([]{}),
+			Instrumentation::otherwise(Internal::trapOptixError));
 #endif
 	}
 

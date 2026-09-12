@@ -1,5 +1,7 @@
 #pragma once
 
+#include <utility>
+
 #ifndef SPEC_INST_RUNTIME_API
 #if defined(_WIN32) || defined(__CYGWIN__)
 #if defined(SPECTRA_INSTRUMENTATION_SHARED)

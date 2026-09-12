@@ -95,8 +95,10 @@ namespace Spectra::Vulkan {
 
 		VkBuffer      buf{};
 		VmaAllocation alloc{};
-		vmaCreateBuffer(g_GlobalInstance.m_Allocator.m_Allocator, &bufInfo, &vmaInfo,
-		                &buf, &alloc, nullptr);
+		Instrumentation::staticSwitch(vmaCreateBuffer(g_GlobalInstance.m_Allocator.m_Allocator, &bufInfo, &vmaInfo,
+		                &buf, &alloc, nullptr),
+			Instrumentation::caseOf<VK_SUCCESS>([]{}),
+			Instrumentation::otherwise(Internal::trapVulkanError));
 
 		auto createInfo        = Internal::vkInit<VkAccelerationStructureCreateInfoKHR>();
 		createInfo.buffer      = buf;
@@ -105,7 +107,9 @@ namespace Spectra::Vulkan {
 		(void)v_Flags;
 
 		VkAccelerationStructureKHR as{};
-		pfn(dev, &createInfo, nullptr, &as);
+		Instrumentation::staticSwitch(pfn(dev, &createInfo, nullptr, &as),
+			Instrumentation::caseOf<VK_SUCCESS>([]{}),
+			Instrumentation::otherwise(Internal::trapVulkanError));
 
 		Utils::AccelerationStructureHandle handle{};
 		handle.m_Handle        = static_cast<void*>(as);

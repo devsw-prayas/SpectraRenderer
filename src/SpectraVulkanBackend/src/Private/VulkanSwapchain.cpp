@@ -31,7 +31,9 @@ namespace Spectra::Vulkan {
 		VkAllocationCallbacks* pAlloc       = r_Alloc.m_pfnAllocation ? &allocStorage : nullptr;
 
 		VkSurfaceKHR surface{};
-		vkCreateWin32SurfaceKHR(g_GlobalInstance.m_GlobalInstance, &info, pAlloc, &surface);
+		Instrumentation::staticSwitch(vkCreateWin32SurfaceKHR(g_GlobalInstance.m_GlobalInstance, &info, pAlloc, &surface),
+			Instrumentation::caseOf<VK_SUCCESS>([]{}),
+			Instrumentation::otherwise(Internal::trapVulkanError));
 
 		Utils::SurfaceHandle handle{};
 		handle.m_Handle = static_cast<void*>(surface);
@@ -74,7 +76,9 @@ namespace Spectra::Vulkan {
 		VkAllocationCallbacks* pAlloc       = r_Alloc.m_pfnAllocation ? &allocStorage : nullptr;
 
 		VkSwapchainKHR swapchain{};
-		vkCreateSwapchainKHR(g_GlobalInstance.m_LogicalDevice.m_Device, &info, pAlloc, &swapchain);
+		Instrumentation::staticSwitch(vkCreateSwapchainKHR(g_GlobalInstance.m_LogicalDevice.m_Device, &info, pAlloc, &swapchain),
+			Instrumentation::caseOf<VK_SUCCESS>([]{}),
+			Instrumentation::otherwise(Internal::trapVulkanError));
 
 		Utils::SwapchainHandle handle{};
 		handle.m_Handle = static_cast<void*>(swapchain);
@@ -96,11 +100,16 @@ namespace Spectra::Vulkan {
 		VkDevice       device    = g_GlobalInstance.m_LogicalDevice.m_Device;
 
 		uint32_t count = 0;
-		vkGetSwapchainImagesKHR(device, swapchain, &count, nullptr);
+		Instrumentation::staticSwitch(vkGetSwapchainImagesKHR(device, swapchain, &count, nullptr),
+			Instrumentation::caseOf<VK_SUCCESS>([]{}),
+			Instrumentation::otherwise(Internal::trapVulkanError));
 		if (count > MAX_SWAPCHAIN_IMAGES) count = MAX_SWAPCHAIN_IMAGES;
 
 		VkImage images[MAX_SWAPCHAIN_IMAGES]{};
-		vkGetSwapchainImagesKHR(device, swapchain, &count, images);
+		Instrumentation::staticSwitch(vkGetSwapchainImagesKHR(device, swapchain, &count, images),
+			Instrumentation::caseOf<VK_SUCCESS>([]{}),
+			Instrumentation::caseOf<VK_INCOMPLETE>([]{}),
+			Instrumentation::otherwise(Internal::trapVulkanError));
 
 		r_Count = count;
 		for (uint32_t i = 0; i < count; ++i) {

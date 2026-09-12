@@ -8,11 +8,11 @@
 namespace Spectra::Cuda::Optix {
 	bool DeviceOptixContext::initOptix() {
 #ifdef SPECTRA_OPTIX_AVAILABLE
-		OptixResult res = optixInit();
-		if (res != OPTIX_SUCCESS) {
-			return false;
-		}
-		return true;
+		bool success = true;
+		Instrumentation::staticSwitch(optixInit(),
+			Instrumentation::caseOf<OPTIX_SUCCESS>([]{}),
+			Instrumentation::otherwise([&](OptixResult){ success = false; }));
+		return success;
 #else
 		return false;
 #endif
@@ -27,17 +27,19 @@ namespace Spectra::Cuda::Optix {
 		options.logCallbackFunction = ro_Options.m_LogCallbackFunction;
 		options.logCallbackData = ro_Options.m_LogCallbackData;
 		options.logCallbackLevel = ro_Options.m_LogCallbackLevel;
-		options.validationMode = ro_Options.m_Validation == OptixValidationMode::VALIDATION_ON ? 
-									OPTIX_DEVICE_CONTEXT_VALIDATION_MODE_ALL : 
+		options.validationMode = ro_Options.m_Validation == OptixValidationMode::VALIDATION_ON ?
+									OPTIX_DEVICE_CONTEXT_VALIDATION_MODE_ALL :
 									OPTIX_DEVICE_CONTEXT_VALIDATION_MODE_OFF;
 
 		OptixDeviceContext nativeCtx = nullptr;
-		OPTIX_ERROR_TRAP(optixDeviceContextCreate(
-			static_cast<CUcontext>(ro_DeviceCtx.m_Handle),
-			&options,
-			&nativeCtx
-		));
-		
+		Instrumentation::staticSwitch(optixDeviceContextCreate(
+				static_cast<CUcontext>(ro_DeviceCtx.m_Handle),
+				&options,
+				&nativeCtx
+			),
+			Instrumentation::caseOf<OPTIX_SUCCESS>([]{}),
+			Instrumentation::otherwise(Internal::trapOptixError));
+
 		ctx.m_Handle = static_cast<void*>(nativeCtx);
 #endif
 		return ctx;
@@ -46,7 +48,9 @@ namespace Spectra::Cuda::Optix {
 	void DeviceOptixContext::destroyContext(GpuOptixContext& ro_Context) {
 #ifdef SPECTRA_OPTIX_AVAILABLE
 		if (ro_Context.isValid()) {
-			OPTIX_ERROR_TRAP(optixDeviceContextDestroy(static_cast<OptixDeviceContext>(ro_Context.m_Handle)));
+			Instrumentation::staticSwitch(optixDeviceContextDestroy(static_cast<OptixDeviceContext>(ro_Context.m_Handle)),
+				Instrumentation::caseOf<OPTIX_SUCCESS>([]{}),
+				Instrumentation::otherwise(Internal::trapOptixError));
 			ro_Context.m_Handle = nullptr;
 		}
 #endif
@@ -55,33 +59,39 @@ namespace Spectra::Cuda::Optix {
 	void DeviceOptixContext::setLogCallback(const GpuOptixContext& ro_Context, OptixContextOptions::LogCallback p_Callback, void* p_CallbackData, uint32_t v_CallbackLevel) {
 #ifdef SPECTRA_OPTIX_AVAILABLE
 		SPEC_CUDA_BK_ASSERT(ro_Context.isValid());
-		OPTIX_ERROR_TRAP(optixDeviceContextSetLogCallback(
-			static_cast<OptixDeviceContext>(ro_Context.m_Handle),
-			p_Callback,
-			p_CallbackData,
-			v_CallbackLevel
-		));
+		Instrumentation::staticSwitch(optixDeviceContextSetLogCallback(
+				static_cast<OptixDeviceContext>(ro_Context.m_Handle),
+				p_Callback,
+				p_CallbackData,
+				v_CallbackLevel
+			),
+			Instrumentation::caseOf<OPTIX_SUCCESS>([]{}),
+			Instrumentation::otherwise(Internal::trapOptixError));
 #endif
 	}
 
 	void DeviceOptixContext::setCacheEnabled(const GpuOptixContext& ro_Context, int v_Enabled) {
 #ifdef SPECTRA_OPTIX_AVAILABLE
 		SPEC_CUDA_BK_ASSERT(ro_Context.isValid());
-		OPTIX_ERROR_TRAP(optixDeviceContextSetCacheEnabled(
-			static_cast<OptixDeviceContext>(ro_Context.m_Handle),
-			v_Enabled
-		));
+		Instrumentation::staticSwitch(optixDeviceContextSetCacheEnabled(
+				static_cast<OptixDeviceContext>(ro_Context.m_Handle),
+				v_Enabled
+			),
+			Instrumentation::caseOf<OPTIX_SUCCESS>([]{}),
+			Instrumentation::otherwise(Internal::trapOptixError));
 #endif
 	}
 
 	void DeviceOptixContext::setCacheDatabaseSizes(const GpuOptixContext& ro_Context, size_t v_LowWatermark, size_t v_HighWatermark) {
 #ifdef SPECTRA_OPTIX_AVAILABLE
 		SPEC_CUDA_BK_ASSERT(ro_Context.isValid());
-		OPTIX_ERROR_TRAP(optixDeviceContextSetCacheDatabaseSizes(
-			static_cast<OptixDeviceContext>(ro_Context.m_Handle),
-			v_LowWatermark,
-			v_HighWatermark
-		));
+		Instrumentation::staticSwitch(optixDeviceContextSetCacheDatabaseSizes(
+				static_cast<OptixDeviceContext>(ro_Context.m_Handle),
+				v_LowWatermark,
+				v_HighWatermark
+			),
+			Instrumentation::caseOf<OPTIX_SUCCESS>([]{}),
+			Instrumentation::otherwise(Internal::trapOptixError));
 #endif
 	}
 }

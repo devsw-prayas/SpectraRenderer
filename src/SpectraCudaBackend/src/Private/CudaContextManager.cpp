@@ -40,70 +40,56 @@ namespace Spectra::Cuda::Context {
 			}
 			params.cigParams = static_cast<CUctxCigParam*>(p_Params->m_CigParams);
 		}
-		CUresult result = cuCtxCreate(&context, &params, flags, Internal::CUDA_DeviceRegistry::s_Devices[v_Handle.m_HandleValue]);
-		if (result == CUDA_SUCCESS) {
-			ctx.m_Handle = context;
-			return ctx;
-		}
-		CUDA_ERROR_TRAP(result);
+		Instrumentation::staticSwitch(cuCtxCreate(&context, &params, flags, Internal::CUDA_DeviceRegistry::s_Devices[v_Handle.m_HandleValue]),
+			Instrumentation::caseOf<CUDA_SUCCESS>([&]{ ctx.m_Handle = context; }),
+			Instrumentation::otherwise(Internal::trapCudaError));
 		return ctx;
 	}
 
 	void ContextManager::setCurrentCudaContext(const Utils::CudaContext& ro_Context) {
 		SPEC_CUDA_BK_ASSERT(ro_Context.m_Handle);
-		const CUresult result = cuCtxSetCurrent(static_cast<CUcontext>(ro_Context.m_Handle));
-		if (result == CUDA_SUCCESS) return;
-
-		CUDA_ERROR_TRAP(result);
+		Instrumentation::staticSwitch(cuCtxSetCurrent(static_cast<CUcontext>(ro_Context.m_Handle)),
+			Instrumentation::caseOf<CUDA_SUCCESS>([]{}),
+			Instrumentation::otherwise(Internal::trapCudaError));
 	}
 
 	Utils::CudaContext ContextManager::getCurrentCudaContext() {
 		CUcontext context{};
 		Utils::CudaContext ctx;
-		const CUresult result = cuCtxGetCurrent(&context);
 		ctx.m_Handle = nullptr;
-		if (result == CUDA_SUCCESS) {
-			ctx.m_Handle = context;
-			return ctx;
-		}
-		CUDA_ERROR_TRAP(result);
+		Instrumentation::staticSwitch(cuCtxGetCurrent(&context),
+			Instrumentation::caseOf<CUDA_SUCCESS>([&]{ ctx.m_Handle = context; }),
+			Instrumentation::otherwise(Internal::trapCudaError));
 		return ctx;
 	}
 
 	void ContextManager::pushCudaContext(const Utils::CudaContext& ro_Context) {
 		SPEC_CUDA_BK_ASSERT(ro_Context.m_Handle);
-		CUresult result = cuCtxPushCurrent_v2(static_cast<CUcontext>(ro_Context.m_Handle));
-		if (result == CUDA_SUCCESS) return;
-		CUDA_ERROR_TRAP(result);
+		Instrumentation::staticSwitch(cuCtxPushCurrent_v2(static_cast<CUcontext>(ro_Context.m_Handle)),
+			Instrumentation::caseOf<CUDA_SUCCESS>([]{}),
+			Instrumentation::otherwise(Internal::trapCudaError));
 	}
 
 	Utils::CudaContext ContextManager::popCudaContext() {
 		CUcontext context{};
-		CUresult result = cuCtxPopCurrent_v2(&context);
 		Utils::CudaContext ctx;
 		ctx.m_Handle = nullptr;
-		if (result == CUDA_SUCCESS) {
-			ctx.m_Handle = context;
-			return ctx;
-		}
-
-		CUDA_ERROR_TRAP(result);
+		Instrumentation::staticSwitch(cuCtxPopCurrent_v2(&context),
+			Instrumentation::caseOf<CUDA_SUCCESS>([&]{ ctx.m_Handle = context; }),
+			Instrumentation::otherwise(Internal::trapCudaError));
 		return ctx;
 	}
 
 	void ContextManager::cudaContextSynchronize() {
-		CUresult result = cuCtxSynchronize();
-		if (result == CUDA_SUCCESS) return;
-		CUDA_ERROR_TRAP(result);
+		Instrumentation::staticSwitch(cuCtxSynchronize(),
+			Instrumentation::caseOf<CUDA_SUCCESS>([]{}),
+			Instrumentation::otherwise(Internal::trapCudaError));
 	}
 
 	void ContextManager::destroyCudaContext(Utils::CudaContext& ro_Context) {
 		SPEC_CUDA_BK_ASSERT(ro_Context.m_Handle);
-		CUresult result = cuCtxDestroy_v2(static_cast<CUcontext>(ro_Context.m_Handle));
-		if (result == CUDA_SUCCESS) {
-			ro_Context.m_Handle = nullptr;
-			return;
-		}
-		CUDA_ERROR_TRAP(result);
+		Instrumentation::staticSwitch(cuCtxDestroy_v2(static_cast<CUcontext>(ro_Context.m_Handle)),
+			Instrumentation::caseOf<CUDA_SUCCESS>([&]{ ro_Context.m_Handle = nullptr; }),
+			Instrumentation::otherwise(Internal::trapCudaError));
 	}
 }

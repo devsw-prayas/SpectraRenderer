@@ -9,8 +9,9 @@ namespace Spectra::Cuda::Modules {
 		SPEC_CUDA_BK_ASSERT(p_Path && "Invalid Module Path");
 
 		CUmodule moduleHandle = nullptr;
-		CUresult res = cuModuleLoad(&moduleHandle, p_Path);
-		CUDA_ERROR_TRAP(res);
+		Instrumentation::staticSwitch(cuModuleLoad(&moduleHandle, p_Path),
+			Instrumentation::caseOf<CUDA_SUCCESS>([]{}),
+			Instrumentation::otherwise(Internal::trapCudaError));
 
 		GpuModule gpuModule;
 		gpuModule.m_ModuleHandle = static_cast<void*>(moduleHandle);
@@ -21,8 +22,9 @@ namespace Spectra::Cuda::Modules {
 		SPEC_CUDA_BK_ASSERT(p_Image && "Invalid Module Image Data");
 
 		CUmodule moduleHandle = nullptr;
-		CUresult res = cuModuleLoadData(&moduleHandle, p_Image);
-		CUDA_ERROR_TRAP(res);
+		Instrumentation::staticSwitch(cuModuleLoadData(&moduleHandle, p_Image),
+			Instrumentation::caseOf<CUDA_SUCCESS>([]{}),
+			Instrumentation::otherwise(Internal::trapCudaError));
 
 		GpuModule gpuModule;
 		gpuModule.m_ModuleHandle = static_cast<void*>(moduleHandle);
@@ -35,8 +37,9 @@ namespace Spectra::Cuda::Modules {
 		Internal::CUDA_JitOptionPacker packer(ro_Options);
 
 		CUmodule moduleHandle = nullptr;
-		CUresult res = cuModuleLoadDataEx(&moduleHandle, p_Image, packer.getCount(), packer.getOptions(), packer.getValues());
-		CUDA_ERROR_TRAP(res);
+		Instrumentation::staticSwitch(cuModuleLoadDataEx(&moduleHandle, p_Image, packer.getCount(), packer.getOptions(), packer.getValues()),
+			Instrumentation::caseOf<CUDA_SUCCESS>([]{}),
+			Instrumentation::otherwise(Internal::trapCudaError));
 
 		GpuModule gpuModule;
 		gpuModule.m_ModuleHandle = static_cast<void*>(moduleHandle);
@@ -48,8 +51,9 @@ namespace Spectra::Cuda::Modules {
 		SPEC_CUDA_BK_ASSERT(p_Name && "Invalid Function Name");
 
 		CUfunction functionHandle = nullptr;
-		CUresult res = cuModuleGetFunction(&functionHandle, static_cast<CUmodule>(ro_Module.m_ModuleHandle), p_Name);
-		CUDA_ERROR_TRAP(res);
+		Instrumentation::staticSwitch(cuModuleGetFunction(&functionHandle, static_cast<CUmodule>(ro_Module.m_ModuleHandle), p_Name),
+			Instrumentation::caseOf<CUDA_SUCCESS>([]{}),
+			Instrumentation::otherwise(Internal::trapCudaError));
 
 		GpuFunction gpuFunction;
 		gpuFunction.m_FunctionHandle = static_cast<void*>(functionHandle);
@@ -63,8 +67,9 @@ namespace Spectra::Cuda::Modules {
 		CUdeviceptr ptr = 0;
 		size_t size = 0;
 
-		CUresult res = cuModuleGetGlobal(&ptr, &size, static_cast<CUmodule>(ro_Module.m_ModuleHandle), p_Name);
-		CUDA_ERROR_TRAP(res);
+		Instrumentation::staticSwitch(cuModuleGetGlobal(&ptr, &size, static_cast<CUmodule>(ro_Module.m_ModuleHandle), p_Name),
+			Instrumentation::caseOf<CUDA_SUCCESS>([]{}),
+			Instrumentation::otherwise(Internal::trapCudaError));
 
 		GlobalMemorySegment segment;
 		segment.m_Address   = GpuAddress(ptr);
@@ -75,8 +80,9 @@ namespace Spectra::Cuda::Modules {
 
 	void DeviceModules::unloadModule(GpuModule& ro_Module) {
 		if (ro_Module.isValid()) {
-			CUresult res = cuModuleUnload(static_cast<CUmodule>(ro_Module.m_ModuleHandle));
-			CUDA_ERROR_TRAP(res);
+			Instrumentation::staticSwitch(cuModuleUnload(static_cast<CUmodule>(ro_Module.m_ModuleHandle)),
+				Instrumentation::caseOf<CUDA_SUCCESS>([]{}),
+				Instrumentation::otherwise(Internal::trapCudaError));
 			ro_Module.m_ModuleHandle = nullptr;
 		}
 	}

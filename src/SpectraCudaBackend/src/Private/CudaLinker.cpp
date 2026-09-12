@@ -10,8 +10,9 @@ namespace Spectra::Cuda::Modules {
 		Internal::CUDA_JitOptionPacker packer(ro_Options);
 
 		CUlinkState linkState = nullptr;
-		CUresult res = cuLinkCreate(packer.getCount(), packer.getOptions(), packer.getValues(), &linkState);
-		CUDA_ERROR_TRAP(res);
+		Instrumentation::staticSwitch(cuLinkCreate(packer.getCount(), packer.getOptions(), packer.getValues(), &linkState),
+			Instrumentation::caseOf<CUDA_SUCCESS>([]{}),
+			Instrumentation::otherwise(Internal::trapCudaError));
 
 		GpuLinkState state;
 		state.m_LinkStateHandle = static_cast<void*>(linkState);
@@ -23,8 +24,9 @@ namespace Spectra::Cuda::Modules {
 		SPEC_CUDA_BK_ASSERT(p_Data && v_Size > 0 && "Invalid Link Data");
 
 		CUjitInputType type = Internal::CUDA_InternalHelpers::toCudaJitInputType(v_Type);
-		CUresult res = cuLinkAddData(static_cast<CUlinkState>(ro_State.m_LinkStateHandle), type, p_Data, v_Size, p_Name, 0, nullptr, nullptr);
-		CUDA_ERROR_TRAP(res);
+		Instrumentation::staticSwitch(cuLinkAddData(static_cast<CUlinkState>(ro_State.m_LinkStateHandle), type, p_Data, v_Size, p_Name, 0, nullptr, nullptr),
+			Instrumentation::caseOf<CUDA_SUCCESS>([]{}),
+			Instrumentation::otherwise(Internal::trapCudaError));
 	}
 
 	GpuModule DeviceLinker::completeAndLoad(GpuLinkState& ro_State) {
@@ -33,16 +35,18 @@ namespace Spectra::Cuda::Modules {
 		void* cubinOut = nullptr;
 		size_t sizeOut = 0;
 
-		CUresult res = cuLinkComplete(static_cast<CUlinkState>(ro_State.m_LinkStateHandle), &cubinOut, &sizeOut);
-		CUDA_ERROR_TRAP(res);
+		Instrumentation::staticSwitch(cuLinkComplete(static_cast<CUlinkState>(ro_State.m_LinkStateHandle), &cubinOut, &sizeOut),
+			Instrumentation::caseOf<CUDA_SUCCESS>([]{}),
+			Instrumentation::otherwise(Internal::trapCudaError));
 
 		return DeviceModules::loadModuleData(cubinOut);
 	}
 
 	void DeviceLinker::destroyLinkState(GpuLinkState& ro_State) {
 		if (ro_State.isValid()) {
-			CUresult res = cuLinkDestroy(static_cast<CUlinkState>(ro_State.m_LinkStateHandle));
-			CUDA_ERROR_TRAP(res);
+			Instrumentation::staticSwitch(cuLinkDestroy(static_cast<CUlinkState>(ro_State.m_LinkStateHandle)),
+				Instrumentation::caseOf<CUDA_SUCCESS>([]{}),
+				Instrumentation::otherwise(Internal::trapCudaError));
 			ro_State.m_LinkStateHandle = nullptr;
 		}
 	}

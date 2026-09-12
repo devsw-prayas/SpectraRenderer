@@ -55,15 +55,21 @@ namespace Spectra::Vulkan {
 		submit2.signalSemaphoreInfoCount   = r_Desc.m_SignalCount;
 		submit2.pSignalSemaphoreInfos      = r_Desc.m_SignalCount  ? signalInfos : nullptr;
 
-		vkQueueSubmit2(queueForType(v_QueueType), 1, &submit2,
-		               static_cast<VkFence>(r_Fence.m_Handle));
+		Instrumentation::staticSwitch(vkQueueSubmit2(queueForType(v_QueueType), 1, &submit2,
+		               static_cast<VkFence>(r_Fence.m_Handle)),
+			Instrumentation::caseOf<VK_SUCCESS>([]{}),
+			Instrumentation::otherwise(Internal::trapVulkanError));
 	}
 
 	void VulkanQueue::waitIdle(Utils::QueueType v_QueueType) {
-		vkQueueWaitIdle(queueForType(v_QueueType));
+		Instrumentation::staticSwitch(vkQueueWaitIdle(queueForType(v_QueueType)),
+			Instrumentation::caseOf<VK_SUCCESS>([]{}),
+			Instrumentation::otherwise(Internal::trapVulkanError));
 	}
 
 	void VulkanQueue::deviceWaitIdle() {
-		vkDeviceWaitIdle(g_GlobalInstance.m_LogicalDevice.m_Device);
+		Instrumentation::staticSwitch(vkDeviceWaitIdle(g_GlobalInstance.m_LogicalDevice.m_Device),
+			Instrumentation::caseOf<VK_SUCCESS>([]{}),
+			Instrumentation::otherwise(Internal::trapVulkanError));
 	}
 }

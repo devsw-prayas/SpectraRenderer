@@ -49,10 +49,14 @@ namespace Spectra::Vulkan {
 		createInstance.pApplicationInfo = &g_GlobalInstance.m_AppInfo;
 
 		uint32_t extCount = 0;
-		vkEnumerateInstanceExtensionProperties(nullptr, &extCount, nullptr);
+		Instrumentation::staticSwitch(vkEnumerateInstanceExtensionProperties(nullptr, &extCount, nullptr),
+			Instrumentation::caseOf<VK_SUCCESS>([]{}),
+			Instrumentation::otherwise(Internal::trapVulkanError));
 		VkExtensionProperties props[Utils::MAX_INSTANCE_EXT];
 		SPEC_VK_BK_ASSERT(extCount <= Utils::MAX_INSTANCE_EXT);
-		vkEnumerateInstanceExtensionProperties(nullptr, &extCount, props);
+		Instrumentation::staticSwitch(vkEnumerateInstanceExtensionProperties(nullptr, &extCount, props),
+			Instrumentation::caseOf<VK_SUCCESS>([]{}),
+			Instrumentation::otherwise(Internal::trapVulkanError));
 
 		g_GlobalInstance.s_ExtensionCount = 0;
 		for (uint32_t i = 0; i < Internal::VulkanRegistry::INSTANCE_EXTENSIONS; ++i) {
@@ -90,11 +94,15 @@ namespace Spectra::Vulkan {
 		createInstance.ppEnabledExtensionNames = enabledExts;
 
 		uint32_t layerCount = 0;
-		vkEnumerateInstanceLayerProperties(&layerCount, nullptr);
+		Instrumentation::staticSwitch(vkEnumerateInstanceLayerProperties(&layerCount, nullptr),
+			Instrumentation::caseOf<VK_SUCCESS>([]{}),
+			Instrumentation::otherwise(Internal::trapVulkanError));
 
 		VkLayerProperties layerProps[32];
 		SPEC_VK_BK_ASSERT(layerCount <= 32);
-		vkEnumerateInstanceLayerProperties(&layerCount, layerProps);
+		Instrumentation::staticSwitch(vkEnumerateInstanceLayerProperties(&layerCount, layerProps),
+			Instrumentation::caseOf<VK_SUCCESS>([]{}),
+			Instrumentation::otherwise(Internal::trapVulkanError));
 
 		auto isLayerAvailable = [&](const char* name) {
 			for (uint32_t i = 0; i < layerCount; ++i) {
@@ -141,8 +149,9 @@ namespace Spectra::Vulkan {
 			createInstance.pNext = nullptr;
 		}
 
-		VkResult res = vkCreateInstance(&createInstance, nullptr, &g_GlobalInstance.m_GlobalInstance);
-		SPEC_VK_BK_ASSERT(res == VK_SUCCESS);
+		Instrumentation::staticSwitch(vkCreateInstance(&createInstance, nullptr, &g_GlobalInstance.m_GlobalInstance),
+			Instrumentation::caseOf<VK_SUCCESS>([]{}),
+			Instrumentation::otherwise(Internal::trapVulkanError));
 
 		if (ro_Desc.m_EnableValidation) {
 			auto raw = vkGetInstanceProcAddr(
@@ -155,13 +164,13 @@ namespace Spectra::Vulkan {
 
 			SPEC_VK_BK_ASSERT(fn);
 
-			VkResult dbgRes = fn(
-				g_GlobalInstance.m_GlobalInstance,
-				&debugInfo,
-				nullptr,
-				&g_GlobalInstance.m_GlobalDebugMessager);
-
-			SPEC_VK_BK_ASSERT(dbgRes == VK_SUCCESS);
+			Instrumentation::staticSwitch(fn(
+					g_GlobalInstance.m_GlobalInstance,
+					&debugInfo,
+					nullptr,
+					&g_GlobalInstance.m_GlobalDebugMessager),
+				Instrumentation::caseOf<VK_SUCCESS>([]{}),
+				Instrumentation::otherwise(Internal::trapVulkanError));
 		}
 
 		g_IsInitialized = true;
@@ -169,9 +178,13 @@ namespace Spectra::Vulkan {
 	}
 
 	void VulkanBootstrap::selectPhysicalDevice() {
-		vkEnumeratePhysicalDevices(g_GlobalInstance.m_GlobalInstance, &g_GlobalInstance.s_DeviceCount, nullptr);
+		Instrumentation::staticSwitch(vkEnumeratePhysicalDevices(g_GlobalInstance.m_GlobalInstance, &g_GlobalInstance.s_DeviceCount, nullptr),
+			Instrumentation::caseOf<VK_SUCCESS>([]{}),
+			Instrumentation::otherwise(Internal::trapVulkanError));
 		VkPhysicalDevice devices[VulkanInstance::MAX_DEVICES] = {};
-		vkEnumeratePhysicalDevices(g_GlobalInstance.m_GlobalInstance, &g_GlobalInstance.s_DeviceCount, devices);
+		Instrumentation::staticSwitch(vkEnumeratePhysicalDevices(g_GlobalInstance.m_GlobalInstance, &g_GlobalInstance.s_DeviceCount, devices),
+			Instrumentation::caseOf<VK_SUCCESS>([]{}),
+			Instrumentation::otherwise(Internal::trapVulkanError));
 
 		SPEC_VK_BK_ASSERT(g_GlobalInstance.s_DeviceCount > 0);
 		SPEC_VK_BK_ASSERT(g_GlobalInstance.s_DeviceCount <= VulkanInstance::MAX_DEVICES);
@@ -215,10 +228,14 @@ namespace Spectra::Vulkan {
 
 			// --- Device extension validation ---
 			uint32_t devExtCount = 0;
-			vkEnumerateDeviceExtensionProperties(device, nullptr, &devExtCount, nullptr);
+			Instrumentation::staticSwitch(vkEnumerateDeviceExtensionProperties(device, nullptr, &devExtCount, nullptr),
+				Instrumentation::caseOf<VK_SUCCESS>([]{}),
+				Instrumentation::otherwise(Internal::trapVulkanError));
 			VkExtensionProperties devExtProps[512] = {};
 			SPEC_VK_BK_ASSERT(devExtCount <= 512);
-			vkEnumerateDeviceExtensionProperties(device, nullptr, &devExtCount, devExtProps);
+			Instrumentation::staticSwitch(vkEnumerateDeviceExtensionProperties(device, nullptr, &devExtCount, devExtProps),
+				Instrumentation::caseOf<VK_SUCCESS>([]{}),
+				Instrumentation::otherwise(Internal::trapVulkanError));
 
 			Utils::VkExtension enabledDevExts[Utils::VK_SUPPORTED_EXT_COUNT] = {};
 			uint32_t enabledDevExtCount = 0;
@@ -401,8 +418,9 @@ namespace Spectra::Vulkan {
 		deviceInfo.ppEnabledExtensionNames = extNames;
 		deviceInfo.pEnabledFeatures = nullptr;
 
-		VkResult res = vkCreateDevice(physDevice, &deviceInfo, nullptr, &g_GlobalInstance.m_LogicalDevice.m_Device);
-		SPEC_VK_BK_ASSERT(res == VK_SUCCESS);
+		Instrumentation::staticSwitch(vkCreateDevice(physDevice, &deviceInfo, nullptr, &g_GlobalInstance.m_LogicalDevice.m_Device),
+			Instrumentation::caseOf<VK_SUCCESS>([]{}),
+			Instrumentation::otherwise(Internal::trapVulkanError));
 
 		VkDevice dev = g_GlobalInstance.m_LogicalDevice.m_Device;
 
@@ -467,8 +485,9 @@ namespace Spectra::Vulkan {
 		allocInfo.device = g_GlobalInstance.m_LogicalDevice.m_Device;
 		allocInfo.pVulkanFunctions = &vmaFuncs;
 
-		VkResult res = vmaCreateAllocator(&allocInfo, &g_GlobalInstance.m_Allocator.m_Allocator);
-		SPEC_VK_BK_ASSERT(res == VK_SUCCESS);
+		Instrumentation::staticSwitch(vmaCreateAllocator(&allocInfo, &g_GlobalInstance.m_Allocator.m_Allocator),
+			Instrumentation::caseOf<VK_SUCCESS>([]{}),
+			Instrumentation::otherwise(Internal::trapVulkanError));
 		SPEC_VK_BK_ASSERT(g_GlobalInstance.m_Allocator.isValid());
 	}
 
@@ -483,8 +502,9 @@ namespace Spectra::Vulkan {
 			poolInfo.queueFamilyIndex = familyIndex;
 
 			VkCommandPool pool = VK_NULL_HANDLE;
-			VkResult res = vkCreateCommandPool(dev, &poolInfo, nullptr, &pool);
-			SPEC_VK_BK_ASSERT(res == VK_SUCCESS);
+			Instrumentation::staticSwitch(vkCreateCommandPool(dev, &poolInfo, nullptr, &pool),
+				Instrumentation::caseOf<VK_SUCCESS>([]{}),
+				Instrumentation::otherwise(Internal::trapVulkanError));
 			return pool;
 			};
 
@@ -563,7 +583,9 @@ namespace Spectra::Vulkan {
 
 		// --- Logical Device ---
 		if (dev != VK_NULL_HANDLE) {
-			vkDeviceWaitIdle(dev);
+			Instrumentation::staticSwitch(vkDeviceWaitIdle(dev),
+				Instrumentation::caseOf<VK_SUCCESS>([]{}),
+				Instrumentation::otherwise(Internal::trapVulkanError));
 			vkDestroyDevice(dev, nullptr);
 			g_GlobalInstance.m_LogicalDevice.m_Device = VK_NULL_HANDLE;
 			g_GlobalInstance.m_LogicalDevice.m_GraphicsQueue = VK_NULL_HANDLE;

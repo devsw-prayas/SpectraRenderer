@@ -21,8 +21,10 @@ namespace Spectra::Vulkan {
 		const VkAllocationCallbacks* pA = r_Alloc.m_pfnAllocation ? &alloc : nullptr;
 
 		Utils::ShaderModuleHandle handle{};
-		vkCreateShaderModule(g_GlobalInstance.m_LogicalDevice.m_Device, &info, pA,
-		                     reinterpret_cast<VkShaderModule*>(&handle.m_Handle));
+		Instrumentation::staticSwitch(vkCreateShaderModule(g_GlobalInstance.m_LogicalDevice.m_Device, &info, pA,
+		                     reinterpret_cast<VkShaderModule*>(&handle.m_Handle)),
+			Instrumentation::caseOf<VK_SUCCESS>([]{}),
+			Instrumentation::otherwise(Internal::trapVulkanError));
 		return handle;
 	}
 
@@ -68,8 +70,10 @@ namespace Spectra::Vulkan {
 		const VkAllocationCallbacks* pA = r_Alloc.m_pfnAllocation ? &alloc : nullptr;
 
 		Utils::PipelineLayoutHandle handle{};
-		vkCreatePipelineLayout(g_GlobalInstance.m_LogicalDevice.m_Device, &info, pA,
-		                       reinterpret_cast<VkPipelineLayout*>(&handle.m_Handle));
+		Instrumentation::staticSwitch(vkCreatePipelineLayout(g_GlobalInstance.m_LogicalDevice.m_Device, &info, pA,
+		                       reinterpret_cast<VkPipelineLayout*>(&handle.m_Handle)),
+			Instrumentation::caseOf<VK_SUCCESS>([]{}),
+			Instrumentation::otherwise(Internal::trapVulkanError));
 		return handle;
 	}
 
@@ -99,8 +103,10 @@ namespace Spectra::Vulkan {
 		const VkAllocationCallbacks* pA = r_Alloc.m_pfnAllocation ? &alloc : nullptr;
 
 		Utils::PipelineCacheHandle handle{};
-		vkCreatePipelineCache(g_GlobalInstance.m_LogicalDevice.m_Device, &info, pA,
-		                      reinterpret_cast<VkPipelineCache*>(&handle.m_Handle));
+		Instrumentation::staticSwitch(vkCreatePipelineCache(g_GlobalInstance.m_LogicalDevice.m_Device, &info, pA,
+		                      reinterpret_cast<VkPipelineCache*>(&handle.m_Handle)),
+			Instrumentation::caseOf<VK_SUCCESS>([]{}),
+			Instrumentation::otherwise(Internal::trapVulkanError));
 		return handle;
 	}
 
@@ -248,10 +254,15 @@ namespace Spectra::Vulkan {
 		ci.renderPass              = VK_NULL_HANDLE;
 
 		Utils::PipelineHandle handle{};
-		vkCreateGraphicsPipelines(g_GlobalInstance.m_LogicalDevice.m_Device,
+		// VK_PIPELINE_COMPILE_REQUIRED only occurs when ci.flags sets
+		// VK_PIPELINE_CREATE_FAIL_ON_PIPELINE_COMPILE_REQUIRED_BIT, which this codebase never does -
+		// no caseOf needed for it here.
+		Instrumentation::staticSwitch(vkCreateGraphicsPipelines(g_GlobalInstance.m_LogicalDevice.m_Device,
 		                          static_cast<VkPipelineCache>(r_Desc.m_Cache.m_Handle),
 		                          1, &ci, pA,
-		                          reinterpret_cast<VkPipeline*>(&handle.m_Handle));
+		                          reinterpret_cast<VkPipeline*>(&handle.m_Handle)),
+			Instrumentation::caseOf<VK_SUCCESS>([]{}),
+			Instrumentation::otherwise(Internal::trapVulkanError));
 		return handle;
 	}
 
@@ -276,10 +287,12 @@ namespace Spectra::Vulkan {
 		ci.layout  = static_cast<VkPipelineLayout>(r_Desc.m_Layout.m_Handle);
 
 		Utils::PipelineHandle handle{};
-		vkCreateComputePipelines(g_GlobalInstance.m_LogicalDevice.m_Device,
+		Instrumentation::staticSwitch(vkCreateComputePipelines(g_GlobalInstance.m_LogicalDevice.m_Device,
 		                         static_cast<VkPipelineCache>(r_Desc.m_Cache.m_Handle),
 		                         1, &ci, pA,
-		                         reinterpret_cast<VkPipeline*>(&handle.m_Handle));
+		                         reinterpret_cast<VkPipeline*>(&handle.m_Handle)),
+			Instrumentation::caseOf<VK_SUCCESS>([]{}),
+			Instrumentation::otherwise(Internal::trapVulkanError));
 		return handle;
 	}
 
@@ -328,11 +341,13 @@ namespace Spectra::Vulkan {
 		ci.layout                  = static_cast<VkPipelineLayout>(r_Desc.m_Layout.m_Handle);
 
 		Utils::PipelineHandle handle{};
-		pfnCreate(dev,
+		Instrumentation::staticSwitch(pfnCreate(dev,
 		          VK_NULL_HANDLE,
 		          static_cast<VkPipelineCache>(r_Desc.m_Cache.m_Handle),
 		          1, &ci, pA,
-		          reinterpret_cast<VkPipeline*>(&handle.m_Handle));
+		          reinterpret_cast<VkPipeline*>(&handle.m_Handle)),
+			Instrumentation::caseOf<VK_SUCCESS>([]{}),
+			Instrumentation::otherwise(Internal::trapVulkanError));
 		return handle;
 	}
 

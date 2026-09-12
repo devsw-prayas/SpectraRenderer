@@ -24,8 +24,10 @@ namespace Spectra::Vulkan {
 		info.commandBufferCount     = 1;
 
 		Utils::CommandBufferHandle handle{};
-		vkAllocateCommandBuffers(g_GlobalInstance.m_LogicalDevice.m_Device, &info,
-		                         reinterpret_cast<VkCommandBuffer*>(&handle.m_Handle));
+		Instrumentation::staticSwitch(vkAllocateCommandBuffers(g_GlobalInstance.m_LogicalDevice.m_Device, &info,
+		                         reinterpret_cast<VkCommandBuffer*>(&handle.m_Handle)),
+			Instrumentation::caseOf<VK_SUCCESS>([]{}),
+			Instrumentation::otherwise(Internal::trapVulkanError));
 		return handle;
 	}
 
@@ -38,20 +40,28 @@ namespace Spectra::Vulkan {
 	void VulkanCommandBuffer::begin(const Utils::CommandBufferHandle& r_Cmd) {
 		auto info  = Internal::vkInit<VkCommandBufferBeginInfo>();
 		info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-		vkBeginCommandBuffer(static_cast<VkCommandBuffer>(r_Cmd.m_Handle), &info);
+		Instrumentation::staticSwitch(vkBeginCommandBuffer(static_cast<VkCommandBuffer>(r_Cmd.m_Handle), &info),
+			Instrumentation::caseOf<VK_SUCCESS>([]{}),
+			Instrumentation::otherwise(Internal::trapVulkanError));
 	}
 
 	void VulkanCommandBuffer::beginReusable(const Utils::CommandBufferHandle& r_Cmd) {
 		auto info = Internal::vkInit<VkCommandBufferBeginInfo>();
-		vkBeginCommandBuffer(static_cast<VkCommandBuffer>(r_Cmd.m_Handle), &info);
+		Instrumentation::staticSwitch(vkBeginCommandBuffer(static_cast<VkCommandBuffer>(r_Cmd.m_Handle), &info),
+			Instrumentation::caseOf<VK_SUCCESS>([]{}),
+			Instrumentation::otherwise(Internal::trapVulkanError));
 	}
 
 	void VulkanCommandBuffer::end(const Utils::CommandBufferHandle& r_Cmd) {
-		vkEndCommandBuffer(static_cast<VkCommandBuffer>(r_Cmd.m_Handle));
+		Instrumentation::staticSwitch(vkEndCommandBuffer(static_cast<VkCommandBuffer>(r_Cmd.m_Handle)),
+			Instrumentation::caseOf<VK_SUCCESS>([]{}),
+			Instrumentation::otherwise(Internal::trapVulkanError));
 	}
 
 	void VulkanCommandBuffer::reset(const Utils::CommandBufferHandle& r_Cmd) {
-		vkResetCommandBuffer(static_cast<VkCommandBuffer>(r_Cmd.m_Handle), 0);
+		Instrumentation::staticSwitch(vkResetCommandBuffer(static_cast<VkCommandBuffer>(r_Cmd.m_Handle), 0),
+			Instrumentation::caseOf<VK_SUCCESS>([]{}),
+			Instrumentation::otherwise(Internal::trapVulkanError));
 	}
 
 	// -------------------------------------------------------------------------

@@ -31,7 +31,9 @@ namespace Spectra::Vulkan {
 		allocInfo.memoryTypeIndex = findDeviceLocalMemoryType(v_Reqs.memoryTypeBits);
 
 		VkDeviceMemory memory{};
-		vkAllocateMemory(g_GlobalInstance.m_LogicalDevice.m_Device, &allocInfo, p_Alloc, &memory);
+		Instrumentation::staticSwitch(vkAllocateMemory(g_GlobalInstance.m_LogicalDevice.m_Device, &allocInfo, p_Alloc, &memory),
+			Instrumentation::caseOf<VK_SUCCESS>([]{}),
+			Instrumentation::otherwise(Internal::trapVulkanError));
 		return memory;
 	}
 
@@ -47,7 +49,9 @@ namespace Spectra::Vulkan {
 		info.handleType = VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_WIN32_BIT;
 
 		HANDLE win32Handle = nullptr;
-		pfn(dev, &info, &win32Handle);
+		Instrumentation::staticSwitch(pfn(dev, &info, &win32Handle),
+			Instrumentation::caseOf<VK_SUCCESS>([]{}),
+			Instrumentation::otherwise(Internal::trapVulkanError));
 		return static_cast<void*>(win32Handle);
 	}
 
@@ -69,13 +73,17 @@ namespace Spectra::Vulkan {
 		bufInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
 		VkBuffer buf{};
-		vkCreateBuffer(g_GlobalInstance.m_LogicalDevice.m_Device, &bufInfo, pA, &buf);
+		Instrumentation::staticSwitch(vkCreateBuffer(g_GlobalInstance.m_LogicalDevice.m_Device, &bufInfo, pA, &buf),
+			Instrumentation::caseOf<VK_SUCCESS>([]{}),
+			Instrumentation::otherwise(Internal::trapVulkanError));
 
 		VkMemoryRequirements reqs{};
 		vkGetBufferMemoryRequirements(g_GlobalInstance.m_LogicalDevice.m_Device, buf, &reqs);
 
 		VkDeviceMemory memory = allocateExportableMemory(reqs, pA);
-		vkBindBufferMemory(g_GlobalInstance.m_LogicalDevice.m_Device, buf, memory, 0);
+		Instrumentation::staticSwitch(vkBindBufferMemory(g_GlobalInstance.m_LogicalDevice.m_Device, buf, memory, 0),
+			Instrumentation::caseOf<VK_SUCCESS>([]{}),
+			Instrumentation::otherwise(Internal::trapVulkanError));
 
 		Utils::BufferHandle handle{};
 		handle.m_Handle     = static_cast<void*>(buf);
@@ -104,13 +112,17 @@ namespace Spectra::Vulkan {
 		imgInfo.initialLayout     = VK_IMAGE_LAYOUT_UNDEFINED;
 
 		VkImage img{};
-		vkCreateImage(g_GlobalInstance.m_LogicalDevice.m_Device, &imgInfo, pA, &img);
+		Instrumentation::staticSwitch(vkCreateImage(g_GlobalInstance.m_LogicalDevice.m_Device, &imgInfo, pA, &img),
+			Instrumentation::caseOf<VK_SUCCESS>([]{}),
+			Instrumentation::otherwise(Internal::trapVulkanError));
 
 		VkMemoryRequirements reqs{};
 		vkGetImageMemoryRequirements(g_GlobalInstance.m_LogicalDevice.m_Device, img, &reqs);
 
 		VkDeviceMemory memory = allocateExportableMemory(reqs, pA);
-		vkBindImageMemory(g_GlobalInstance.m_LogicalDevice.m_Device, img, memory, 0);
+		Instrumentation::staticSwitch(vkBindImageMemory(g_GlobalInstance.m_LogicalDevice.m_Device, img, memory, 0),
+			Instrumentation::caseOf<VK_SUCCESS>([]{}),
+			Instrumentation::otherwise(Internal::trapVulkanError));
 
 		Utils::ImageHandle handle{};
 		handle.m_Handle     = static_cast<void*>(img);

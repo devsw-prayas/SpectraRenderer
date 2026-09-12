@@ -30,18 +30,20 @@ namespace Spectra::Cuda::Optix {
 		}
 
 		::OptixAccelBufferSizes nativeSizes{};
-		OPTIX_ERROR_TRAP(optixAccelComputeMemoryUsage(
-			static_cast<OptixDeviceContext>(ro_Context.m_Handle),
-			&nativeOptions,
-			nativeInputs,
-			v_NumInputs,
-			&nativeSizes
-		));
+		Instrumentation::staticSwitch(optixAccelComputeMemoryUsage(
+				static_cast<OptixDeviceContext>(ro_Context.m_Handle),
+				&nativeOptions,
+				nativeInputs,
+				v_NumInputs,
+				&nativeSizes
+			),
+			Instrumentation::caseOf<OPTIX_SUCCESS>([]{}),
+			Instrumentation::otherwise(Internal::trapOptixError));
 
 		ret.m_OutputSizeInBytes = nativeSizes.outputSizeInBytes;
 		ret.m_TempSizeInBytes = nativeSizes.tempSizeInBytes;
 		ret.m_TempUpdateSizeInBytes = nativeSizes.tempUpdateSizeInBytes;
-		
+
 		if (nativeInputs) {
 			delete[] nativeInputs;
 		}
@@ -65,7 +67,7 @@ namespace Spectra::Cuda::Optix {
 #ifdef SPECTRA_OPTIX_AVAILABLE
 		SPEC_CUDA_BK_ASSERT(ro_Context.isValid());
 		SPEC_CUDA_BK_ASSERT(ro_Stream.isValid());
-		
+
 		::OptixAccelBuildOptions nativeOptions{};
 		nativeOptions.buildFlags = ro_Options.m_BuildFlags;
 		nativeOptions.operation = ro_Options.m_Operation == OptixBuildOperation::BUILD ? OPTIX_BUILD_OPERATION_BUILD : OPTIX_BUILD_OPERATION_UPDATE;
@@ -85,20 +87,22 @@ namespace Spectra::Cuda::Optix {
 		uint32_t numEmit = (v_CompactedSizePropAddress != 0) ? 1 : 0;
 
 		::OptixTraversableHandle nativeHandle = 0;
-		OPTIX_ERROR_TRAP(optixAccelBuild(
-			static_cast<OptixDeviceContext>(ro_Context.m_Handle),
-			static_cast<CUstream>(ro_Stream.m_StreamHandle),
-			&nativeOptions,
-			nativeInputs,
-			v_NumInputs,
-			static_cast<CUdeviceptr>(v_TempBufferAddress),
-			v_TempBufferSize,
-			static_cast<CUdeviceptr>(v_OutputBufferAddress),
-			v_OutputBufferSize,
-			&nativeHandle,
-			emitDescPtr,
-			numEmit
-		));
+		Instrumentation::staticSwitch(optixAccelBuild(
+				static_cast<OptixDeviceContext>(ro_Context.m_Handle),
+				static_cast<CUstream>(ro_Stream.m_StreamHandle),
+				&nativeOptions,
+				nativeInputs,
+				v_NumInputs,
+				static_cast<CUdeviceptr>(v_TempBufferAddress),
+				v_TempBufferSize,
+				static_cast<CUdeviceptr>(v_OutputBufferAddress),
+				v_OutputBufferSize,
+				&nativeHandle,
+				emitDescPtr,
+				numEmit
+			),
+			Instrumentation::caseOf<OPTIX_SUCCESS>([]{}),
+			Instrumentation::otherwise(Internal::trapOptixError));
 
 		handle.m_Handle = nativeHandle;
 
@@ -123,14 +127,16 @@ namespace Spectra::Cuda::Optix {
 		SPEC_CUDA_BK_ASSERT(ro_InputHandle.isValid());
 
 		::OptixTraversableHandle nativeHandle = 0;
-		OPTIX_ERROR_TRAP(optixAccelCompact(
-			static_cast<OptixDeviceContext>(ro_Context.m_Handle),
-			static_cast<CUstream>(ro_Stream.m_StreamHandle),
-			static_cast<::OptixTraversableHandle>(ro_InputHandle.m_Handle),
-			static_cast<CUdeviceptr>(v_OutputBufferAddress),
-			v_OutputBufferSize,
-			&nativeHandle
-		));
+		Instrumentation::staticSwitch(optixAccelCompact(
+				static_cast<OptixDeviceContext>(ro_Context.m_Handle),
+				static_cast<CUstream>(ro_Stream.m_StreamHandle),
+				static_cast<::OptixTraversableHandle>(ro_InputHandle.m_Handle),
+				static_cast<CUdeviceptr>(v_OutputBufferAddress),
+				v_OutputBufferSize,
+				&nativeHandle
+			),
+			Instrumentation::caseOf<OPTIX_SUCCESS>([]{}),
+			Instrumentation::otherwise(Internal::trapOptixError));
 
 		handle.m_Handle = nativeHandle;
 #endif
@@ -145,11 +151,13 @@ namespace Spectra::Cuda::Optix {
 		SPEC_CUDA_BK_ASSERT(ro_Context.isValid());
 		SPEC_CUDA_BK_ASSERT(ro_Handle.isValid());
 
-		OPTIX_ERROR_TRAP(optixAccelGetRelocationInfo(
-			static_cast<OptixDeviceContext>(ro_Context.m_Handle),
-			static_cast<::OptixTraversableHandle>(ro_Handle.m_Handle),
-			reinterpret_cast<::OptixRelocationInfo*>(info.m_Info)
-		));
+		Instrumentation::staticSwitch(optixAccelGetRelocationInfo(
+				static_cast<OptixDeviceContext>(ro_Context.m_Handle),
+				static_cast<::OptixTraversableHandle>(ro_Handle.m_Handle),
+				reinterpret_cast<::OptixRelocationInfo*>(info.m_Info)
+			),
+			Instrumentation::caseOf<OPTIX_SUCCESS>([]{}),
+			Instrumentation::otherwise(Internal::trapOptixError));
 #endif
 		return info;
 	}
@@ -167,16 +175,18 @@ namespace Spectra::Cuda::Optix {
 		SPEC_CUDA_BK_ASSERT(ro_Info.isValid());
 
 		::OptixTraversableHandle nativeHandle = 0;
-		OPTIX_ERROR_TRAP(optixAccelRelocate(
-			static_cast<OptixDeviceContext>(ro_Context.m_Handle),
-			static_cast<CUstream>(ro_Stream.m_StreamHandle),
-			reinterpret_cast<const ::OptixRelocationInfo*>(ro_Info.m_Info),
-			nullptr,
-			0,
-			static_cast<CUdeviceptr>(v_TargetRelocateBufferAddress),
-			v_TargetRelocateBufferSize,
-			&nativeHandle
-		));
+		Instrumentation::staticSwitch(optixAccelRelocate(
+				static_cast<OptixDeviceContext>(ro_Context.m_Handle),
+				static_cast<CUstream>(ro_Stream.m_StreamHandle),
+				reinterpret_cast<const ::OptixRelocationInfo*>(ro_Info.m_Info),
+				nullptr,
+				0,
+				static_cast<CUdeviceptr>(v_TargetRelocateBufferAddress),
+				v_TargetRelocateBufferSize,
+				&nativeHandle
+			),
+			Instrumentation::caseOf<OPTIX_SUCCESS>([]{}),
+			Instrumentation::otherwise(Internal::trapOptixError));
 
 		handle.m_Handle = nativeHandle;
 #endif

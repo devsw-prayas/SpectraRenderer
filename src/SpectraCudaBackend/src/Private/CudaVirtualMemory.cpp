@@ -18,21 +18,16 @@ namespace Spectra::Cuda::Memory {
         CUdeviceptr ptr{};
         Utils::GpuAddress addr{};
 
-        const CUresult result = cuMemAddressReserve(
-            &ptr,
-            v_Size,
-            v_Alignment,
-            static_cast<CUdeviceptr>(v_RequestedAddr.m_GpuAddr),
-            0
-        );
-
-        if (result == CUDA_SUCCESS) {
-            addr.m_GpuAddr = ptr;
-            return addr;
-        }
-
-        CUDA_ERROR_TRAP(result);
-            return addr;
+        Instrumentation::staticSwitch(cuMemAddressReserve(
+                &ptr,
+                v_Size,
+                v_Alignment,
+                static_cast<CUdeviceptr>(v_RequestedAddr.m_GpuAddr),
+                0
+            ),
+            Instrumentation::caseOf<CUDA_SUCCESS>([&]{ addr.m_GpuAddr = ptr; }),
+            Instrumentation::otherwise(Internal::trapCudaError));
+        return addr;
     }
 
 
@@ -42,17 +37,12 @@ namespace Spectra::Cuda::Memory {
     ) {
         if (!ro_Address.isValid()) return;
 
-        const CUresult result = cuMemAddressFree(
-            static_cast<CUdeviceptr>(ro_Address.m_GpuAddr),
-            v_Size
-        );
-
-        if (result == CUDA_SUCCESS) {
-            ro_Address.m_GpuAddr = 0;
-            return;
-        }
-
-        CUDA_ERROR_TRAP(result);
+        Instrumentation::staticSwitch(cuMemAddressFree(
+                static_cast<CUdeviceptr>(ro_Address.m_GpuAddr),
+                v_Size
+            ),
+            Instrumentation::caseOf<CUDA_SUCCESS>([&]{ ro_Address.m_GpuAddr = 0; }),
+            Instrumentation::otherwise(Internal::trapCudaError));
     }
 
     Utils::AllocHandle VirtualMemory::createAllocation(
@@ -77,20 +67,15 @@ namespace Spectra::Cuda::Memory {
         CUmemGenericAllocationHandle handle{};
         Utils::AllocHandle outHandle{};
 
-        const CUresult result = cuMemCreate(
-            &handle,
-            v_Size,
-            &prop,
-            0
-        );
-
-        if (result == CUDA_SUCCESS) {
-            outHandle.m_Handle = handle;
-            return outHandle;
-        }
-
-        CUDA_ERROR_TRAP(result);
-            return outHandle;
+        Instrumentation::staticSwitch(cuMemCreate(
+                &handle,
+                v_Size,
+                &prop,
+                0
+            ),
+            Instrumentation::caseOf<CUDA_SUCCESS>([&]{ outHandle.m_Handle = handle; }),
+            Instrumentation::otherwise(Internal::trapCudaError));
+        return outHandle;
     }
 
 
@@ -99,16 +84,11 @@ namespace Spectra::Cuda::Memory {
     ) {
         if (!ro_Handle.isValid()) return;
 
-        const CUresult result = cuMemRelease(
-            static_cast<CUmemGenericAllocationHandle>(ro_Handle.m_Handle)
-        );
-
-        if (result == CUDA_SUCCESS) {
-            ro_Handle.m_Handle = 0;
-            return;
-        }
-
-        CUDA_ERROR_TRAP(result);
+        Instrumentation::staticSwitch(cuMemRelease(
+                static_cast<CUmemGenericAllocationHandle>(ro_Handle.m_Handle)
+            ),
+            Instrumentation::caseOf<CUDA_SUCCESS>([&]{ ro_Handle.m_Handle = 0; }),
+            Instrumentation::otherwise(Internal::trapCudaError));
     }
 
     void VirtualMemory::map(
@@ -121,17 +101,15 @@ namespace Spectra::Cuda::Memory {
         SPEC_CUDA_BK_ASSERT(ro_Handle.isValid());
         SPEC_CUDA_BK_ASSERT(v_Size > 0);
 
-        const CUresult result = cuMemMap(
-            static_cast<CUdeviceptr>(ro_Address.m_GpuAddr),
-            v_Size,
-            v_Offset,
-            static_cast<CUmemGenericAllocationHandle>(ro_Handle.m_Handle),
-            0
-        );
-
-        if (result == CUDA_SUCCESS) return;
-
-        CUDA_ERROR_TRAP(result);
+        Instrumentation::staticSwitch(cuMemMap(
+                static_cast<CUdeviceptr>(ro_Address.m_GpuAddr),
+                v_Size,
+                v_Offset,
+                static_cast<CUmemGenericAllocationHandle>(ro_Handle.m_Handle),
+                0
+            ),
+            Instrumentation::caseOf<CUDA_SUCCESS>([]{}),
+            Instrumentation::otherwise(Internal::trapCudaError));
     }
 
 
@@ -142,14 +120,12 @@ namespace Spectra::Cuda::Memory {
         SPEC_CUDA_BK_ASSERT(ro_Address.isValid());
         SPEC_CUDA_BK_ASSERT(v_Size > 0);
 
-        const CUresult result = cuMemUnmap(
-            static_cast<CUdeviceptr>(ro_Address.m_GpuAddr),
-            v_Size
-        );
-
-        if (result == CUDA_SUCCESS) return;
-
-        CUDA_ERROR_TRAP(result);
+        Instrumentation::staticSwitch(cuMemUnmap(
+                static_cast<CUdeviceptr>(ro_Address.m_GpuAddr),
+                v_Size
+            ),
+            Instrumentation::caseOf<CUDA_SUCCESS>([]{}),
+            Instrumentation::otherwise(Internal::trapCudaError));
     }
 
     void VirtualMemory::setAccess(
@@ -177,16 +153,14 @@ namespace Spectra::Cuda::Memory {
                 Internal::CUDA_InternalHelpers::toAccessFlags(static_cast<Utils::AccessFlagBits>(p_Desc[i].flags));
         }
 
-        const CUresult result = cuMemSetAccess(
-            static_cast<CUdeviceptr>(ro_Address.m_GpuAddr),
-            v_Size,
-            descs,
-            v_Count
-        );
-
-        if (result == CUDA_SUCCESS) return;
-
-        CUDA_ERROR_TRAP(result);
+        Instrumentation::staticSwitch(cuMemSetAccess(
+                static_cast<CUdeviceptr>(ro_Address.m_GpuAddr),
+                v_Size,
+                descs,
+                v_Count
+            ),
+            Instrumentation::caseOf<CUDA_SUCCESS>([]{}),
+            Instrumentation::otherwise(Internal::trapCudaError));
     }
 
     // ------------------------------------------------------------
@@ -212,16 +186,14 @@ namespace Spectra::Cuda::Memory {
 
         size_t granularity = 0;
 
-        const CUresult result = cuMemGetAllocationGranularity(
-            &granularity,
-            &prop,
-            Internal::CUDA_InternalHelpers::toCuMemAllocGranularity(v_Option)
-        );
-
-        if (result == CUDA_SUCCESS) return granularity;
-
-        CUDA_ERROR_TRAP(result);;
-            return 0;
+        Instrumentation::staticSwitch(cuMemGetAllocationGranularity(
+                &granularity,
+                &prop,
+                Internal::CUDA_InternalHelpers::toCuMemAllocGranularity(v_Option)
+            ),
+            Instrumentation::caseOf<CUDA_SUCCESS>([]{}),
+            Instrumentation::otherwise(Internal::trapCudaError));
+        return granularity;
     }
 
     void VirtualMemory::exportAllocation(
@@ -232,16 +204,14 @@ namespace Spectra::Cuda::Memory {
         SPEC_CUDA_BK_ASSERT(p_Handle != nullptr);
         SPEC_CUDA_BK_ASSERT(ro_Handle.isValid());
 
-        const CUresult result = cuMemExportToShareableHandle(
-            p_Handle,
-            static_cast<CUmemGenericAllocationHandle>(ro_Handle.m_Handle),
-            Internal::CUDA_InternalHelpers::toCuMemAllocHandleType(v_Type),
-            0
-        );
-
-        if (result == CUDA_SUCCESS) return;
-
-        CUDA_ERROR_TRAP(result);;
+        Instrumentation::staticSwitch(cuMemExportToShareableHandle(
+                p_Handle,
+                static_cast<CUmemGenericAllocationHandle>(ro_Handle.m_Handle),
+                Internal::CUDA_InternalHelpers::toCuMemAllocHandleType(v_Type),
+                0
+            ),
+            Instrumentation::caseOf<CUDA_SUCCESS>([]{}),
+            Instrumentation::otherwise(Internal::trapCudaError));
     }
 
 }

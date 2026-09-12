@@ -32,8 +32,10 @@ namespace Spectra::Vulkan {
 
 	void* VulkanBuffer::mapBuffer(const Utils::BufferHandle& r_Buf) {
 		void* ptr = nullptr;
-		vmaMapMemory(g_GlobalInstance.m_Allocator.m_Allocator,
-		             static_cast<VmaAllocation>(r_Buf.m_Allocation), &ptr);
+		Instrumentation::staticSwitch(vmaMapMemory(g_GlobalInstance.m_Allocator.m_Allocator,
+		                                            static_cast<VmaAllocation>(r_Buf.m_Allocation), &ptr),
+			Instrumentation::caseOf<VK_SUCCESS>([]{}),
+			Instrumentation::otherwise(Internal::trapVulkanError));
 		return ptr;
 	}
 
@@ -110,7 +112,9 @@ namespace Spectra::Vulkan {
 		const VkAllocationCallbacks* pA = r_Alloc.m_pfnAllocation ? &alloc : nullptr;
 
 		VkImageView view{};
-		vkCreateImageView(g_GlobalInstance.m_LogicalDevice.m_Device, &info, pA, &view);
+		Instrumentation::staticSwitch(vkCreateImageView(g_GlobalInstance.m_LogicalDevice.m_Device, &info, pA, &view),
+			Instrumentation::caseOf<VK_SUCCESS>([]{}),
+			Instrumentation::otherwise(Internal::trapVulkanError));
 
 		Utils::ImageViewHandle handle{};
 		handle.m_Handle = static_cast<void*>(view);
@@ -149,7 +153,9 @@ namespace Spectra::Vulkan {
 		const VkAllocationCallbacks* pA = r_Alloc.m_pfnAllocation ? &alloc : nullptr;
 
 		VkSampler sampler{};
-		vkCreateSampler(g_GlobalInstance.m_LogicalDevice.m_Device, &info, pA, &sampler);
+		Instrumentation::staticSwitch(vkCreateSampler(g_GlobalInstance.m_LogicalDevice.m_Device, &info, pA, &sampler),
+			Instrumentation::caseOf<VK_SUCCESS>([]{}),
+			Instrumentation::otherwise(Internal::trapVulkanError));
 
 		Utils::SamplerHandle handle{};
 		handle.m_Handle = static_cast<void*>(sampler);

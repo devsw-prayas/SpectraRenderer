@@ -37,6 +37,8 @@ target_compile_definitions(SpectraVulkanBackend PRIVATE
     SPEC_VK_BK_SHARED
 )
 
+target_link_libraries(SpectraVulkanBackend PRIVATE SpectraInstrumentation)
+
 target_precompile_headers(SpectraVulkanBackend PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src/Public/SpectraVulkanBackend.h)
 
 target_compile_options(SpectraVulkanBackend PRIVATE

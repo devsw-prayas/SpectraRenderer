@@ -37,6 +37,8 @@ target_compile_definitions(SpectraCudaBackend PRIVATE
     SPEC_CUDA_BK_SHARED
 )
 
+target_link_libraries(SpectraCudaBackend PRIVATE SpectraInstrumentation)
+
 target_precompile_headers(SpectraCudaBackend PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src/Public/SpectraCudaBackend.h)
 
 target_compile_options(SpectraCudaBackend PRIVATE

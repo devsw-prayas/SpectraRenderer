@@ -27,8 +27,10 @@ namespace Spectra::Vulkan {
 		const VkAllocationCallbacks* pA = r_Alloc.m_pfnAllocation ? &alloc : nullptr;
 
 		Utils::DescriptorSetLayoutHandle handle{};
-		vkCreateDescriptorSetLayout(g_GlobalInstance.m_LogicalDevice.m_Device, &info, pA,
-		                            reinterpret_cast<VkDescriptorSetLayout*>(&handle.m_Handle));
+		Instrumentation::staticSwitch(vkCreateDescriptorSetLayout(g_GlobalInstance.m_LogicalDevice.m_Device, &info, pA,
+		                            reinterpret_cast<VkDescriptorSetLayout*>(&handle.m_Handle)),
+			Instrumentation::caseOf<VK_SUCCESS>([]{}),
+			Instrumentation::otherwise(Internal::trapVulkanError));
 		return handle;
 	}
 
@@ -64,8 +66,10 @@ namespace Spectra::Vulkan {
 		const VkAllocationCallbacks* pA = r_Alloc.m_pfnAllocation ? &alloc : nullptr;
 
 		Utils::DescriptorPoolHandle handle{};
-		vkCreateDescriptorPool(g_GlobalInstance.m_LogicalDevice.m_Device, &info, pA,
-		                       reinterpret_cast<VkDescriptorPool*>(&handle.m_Handle));
+		Instrumentation::staticSwitch(vkCreateDescriptorPool(g_GlobalInstance.m_LogicalDevice.m_Device, &info, pA,
+		                       reinterpret_cast<VkDescriptorPool*>(&handle.m_Handle)),
+			Instrumentation::caseOf<VK_SUCCESS>([]{}),
+			Instrumentation::otherwise(Internal::trapVulkanError));
 		return handle;
 	}
 
@@ -80,8 +84,10 @@ namespace Spectra::Vulkan {
 	}
 
 	void VulkanDescriptors::resetDescriptorPool(const Utils::DescriptorPoolHandle& r_Pool) {
-		vkResetDescriptorPool(g_GlobalInstance.m_LogicalDevice.m_Device,
-		                      static_cast<VkDescriptorPool>(r_Pool.m_Handle), 0);
+		Instrumentation::staticSwitch(vkResetDescriptorPool(g_GlobalInstance.m_LogicalDevice.m_Device,
+		                      static_cast<VkDescriptorPool>(r_Pool.m_Handle), 0),
+			Instrumentation::caseOf<VK_SUCCESS>([]{}),
+			Instrumentation::otherwise(Internal::trapVulkanError));
 	}
 
 	void VulkanDescriptors::allocateDescriptorSets(
@@ -101,7 +107,15 @@ namespace Spectra::Vulkan {
 		info.pSetLayouts      = layouts;
 
 		VkDescriptorSet sets[MAX_SETS_PER_ALLOC];
-		vkAllocateDescriptorSets(g_GlobalInstance.m_LogicalDevice.m_Device, &info, sets);
+		// OUT_OF_POOL_MEMORY/FRAGMENTED_POOL are real, expected-under-load outcomes (pool
+		// exhaustion), not programmer-error bugs - called out separately from the generic
+		// otherwise() so a caller could eventually recreate the pool and retry instead of
+		// trapping. Still traps for now; the split is here to make that recovery cheap to add.
+		Instrumentation::staticSwitch(vkAllocateDescriptorSets(g_GlobalInstance.m_LogicalDevice.m_Device, &info, sets),
+			Instrumentation::caseOf<VK_SUCCESS>([]{}),
+			Instrumentation::caseOf<VK_ERROR_OUT_OF_POOL_MEMORY>([]{ Internal::trapVulkanError(VK_ERROR_OUT_OF_POOL_MEMORY); }),
+			Instrumentation::caseOf<VK_ERROR_FRAGMENTED_POOL>([]{ Internal::trapVulkanError(VK_ERROR_FRAGMENTED_POOL); }),
+			Instrumentation::otherwise(Internal::trapVulkanError));
 		for (uint32_t i = 0; i < v_Count; ++i)
 			p_Sets[i].m_Handle = static_cast<void*>(sets[i]);
 	}

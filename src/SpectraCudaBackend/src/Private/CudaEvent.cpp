@@ -10,62 +10,51 @@
 namespace Spectra::Cuda::Events {
 	GpuEvent DeviceEvents::createEvent(uint32_t v_Flags) {
 		CUevent hEvent;
-		const CUresult result = cuEventCreate(&hEvent, static_cast<unsigned int>(v_Flags));
+		GpuEvent ro_Event{};
 
-		if (result == CUDA_SUCCESS) {
-			GpuEvent ro_Event;
-			ro_Event.m_EventHandle = hEvent;
-			return ro_Event;
-		}
-
-		CUDA_ERROR_TRAP(result);
-			return GpuEvent{};
+		Instrumentation::staticSwitch(cuEventCreate(&hEvent, static_cast<unsigned int>(v_Flags)),
+			Instrumentation::caseOf<CUDA_SUCCESS>([&]{ ro_Event.m_EventHandle = hEvent; }),
+			Instrumentation::otherwise(Internal::trapCudaError));
+		return ro_Event;
 	}
 
 	void DeviceEvents::destroyEvent(GpuEvent& ro_Event) {
 		if (!ro_Event.isValid()) return;
 
-		const CUresult result = cuEventDestroy(static_cast<CUevent>(ro_Event.m_EventHandle));
-		if (result == CUDA_SUCCESS) {
-			ro_Event.m_EventHandle = nullptr;
-			return;
-		}
-
-		CUDA_ERROR_TRAP(result);
+		Instrumentation::staticSwitch(cuEventDestroy(static_cast<CUevent>(ro_Event.m_EventHandle)),
+			Instrumentation::caseOf<CUDA_SUCCESS>([&]{ ro_Event.m_EventHandle = nullptr; }),
+			Instrumentation::otherwise(Internal::trapCudaError));
 	}
 
 	void DeviceEvents::recordEvent(const GpuEvent& ro_Event, const GpuStream& ro_Stream) {
 		SPEC_CUDA_BK_ASSERT(ro_Event.isValid());
 		SPEC_CUDA_BK_ASSERT(ro_Stream.isValid());
 
-		const CUresult result = cuEventRecord(
-			static_cast<CUevent>(ro_Event.m_EventHandle),
-			static_cast<CUstream>(ro_Stream.m_StreamHandle)
-		);
-
-		if (result == CUDA_SUCCESS) return;
-
-		CUDA_ERROR_TRAP(result);
+		Instrumentation::staticSwitch(cuEventRecord(
+				static_cast<CUevent>(ro_Event.m_EventHandle),
+				static_cast<CUstream>(ro_Stream.m_StreamHandle)
+			),
+			Instrumentation::caseOf<CUDA_SUCCESS>([]{}),
+			Instrumentation::otherwise(Internal::trapCudaError));
 	}
 
 	void DeviceEvents::syncEvent(const GpuEvent& ro_Event) {
 		SPEC_CUDA_BK_ASSERT(ro_Event.isValid());
 
-		const CUresult result = cuEventSynchronize(static_cast<CUevent>(ro_Event.m_EventHandle));
-		if (result == CUDA_SUCCESS) return;
-
-		CUDA_ERROR_TRAP(result);
+		Instrumentation::staticSwitch(cuEventSynchronize(static_cast<CUevent>(ro_Event.m_EventHandle)),
+			Instrumentation::caseOf<CUDA_SUCCESS>([]{}),
+			Instrumentation::otherwise(Internal::trapCudaError));
 	}
 
 	bool DeviceEvents::queryEvent(const GpuEvent& ro_Event) {
 		if (!ro_Event.isValid()) return true;
 
-		const CUresult result = cuEventQuery(static_cast<CUevent>(ro_Event.m_EventHandle));
-		if (result == CUDA_SUCCESS) return true;
-		if (result == CUDA_ERROR_NOT_READY) return false;
-
-		CUDA_ERROR_TRAP(result);
-			return false;
+		bool ready = false;
+		Instrumentation::staticSwitch(cuEventQuery(static_cast<CUevent>(ro_Event.m_EventHandle)),
+			Instrumentation::caseOf<CUDA_SUCCESS>([&]{ ready = true; }),
+			Instrumentation::caseOf<CUDA_ERROR_NOT_READY>([&]{ ready = false; }),
+			Instrumentation::otherwise(Internal::trapCudaError));
+		return ready;
 	}
 
 	float DeviceEvents::elapsedTime(const GpuEvent& ro_Start, const GpuEvent& ro_End) {
@@ -73,31 +62,24 @@ namespace Spectra::Cuda::Events {
 		SPEC_CUDA_BK_ASSERT(ro_End.isValid());
 
 		float ms = 0.0f;
-		const CUresult result = cuEventElapsedTime(&ms,
-												   static_cast<CUevent>(ro_Start.m_EventHandle),
-												   static_cast<CUevent>(ro_End.m_EventHandle)
-		);
-
-		if (result == CUDA_SUCCESS) return ms;
-
-		CUDA_ERROR_TRAP(result);
-			return 0.0f;
+		Instrumentation::staticSwitch(cuEventElapsedTime(&ms,
+				static_cast<CUevent>(ro_Start.m_EventHandle),
+				static_cast<CUevent>(ro_End.m_EventHandle)
+			),
+			Instrumentation::caseOf<CUDA_SUCCESS>([]{}),
+			Instrumentation::otherwise(Internal::trapCudaError));
+		return ms;
 	}
 
 	GpuIpcEventHandle DeviceEvents::getIpcHandle(const GpuEvent& ro_Event) {
 		SPEC_CUDA_BK_ASSERT(ro_Event.isValid());
 
 		CUipcEventHandle handle;
-		const CUresult result = cuIpcGetEventHandle(&handle, static_cast<CUevent>(ro_Event.m_EventHandle));
-
-		if (result == CUDA_SUCCESS) {
-			GpuIpcEventHandle ro_Handle;
-			std::memcpy(ro_Handle.m_Reserved, &handle, sizeof(CUipcEventHandle));
-			return ro_Handle;
-		}
-
-		CUDA_ERROR_TRAP(result);
-			return GpuIpcEventHandle{};
+		GpuIpcEventHandle ro_Handle{};
+		Instrumentation::staticSwitch(cuIpcGetEventHandle(&handle, static_cast<CUevent>(ro_Event.m_EventHandle)),
+			Instrumentation::caseOf<CUDA_SUCCESS>([&]{ std::memcpy(ro_Handle.m_Reserved, &handle, sizeof(CUipcEventHandle)); }),
+			Instrumentation::otherwise(Internal::trapCudaError));
+		return ro_Handle;
 	}
 
 	GpuEvent DeviceEvents::openIpcHandle(const GpuIpcEventHandle& ro_Handle) {
@@ -105,15 +87,10 @@ namespace Spectra::Cuda::Events {
 		std::memcpy(&handle, ro_Handle.m_Reserved, sizeof(CUipcEventHandle));
 
 		CUevent hEvent;
-		const CUresult result = cuIpcOpenEventHandle(&hEvent, handle);
-
-		if (result == CUDA_SUCCESS) {
-			GpuEvent ro_Event;
-			ro_Event.m_EventHandle = hEvent;
-			return ro_Event;
-		}
-
-		CUDA_ERROR_TRAP(result);
-			return GpuEvent{};
+		GpuEvent ro_Event{};
+		Instrumentation::staticSwitch(cuIpcOpenEventHandle(&hEvent, handle),
+			Instrumentation::caseOf<CUDA_SUCCESS>([&]{ ro_Event.m_EventHandle = hEvent; }),
+			Instrumentation::otherwise(Internal::trapCudaError));
+		return ro_Event;
 	}
 }
