@@ -23,6 +23,8 @@ desktop.ini
 # Build and intermediate files
 /build/
 /bin/
+/build-clangcl/
+/bin-clangcl/
 /obj/
 /intermediate/
 /DerivedDataCache/
