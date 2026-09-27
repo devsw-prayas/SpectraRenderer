@@ -1190,6 +1190,131 @@ namespace Spectra::Platform::Internal {
 #endif
 #endif
 
+#if SPECTRA_COMPILER_CLANG
+	// clang-cl defines _MSC_VER but its <intrin.h> lacks these MSVC-only intrinsics.
+	// Same signatures and results as MSVC (verified against it): a nonzero carry-in
+	// counts as 1, and the full-width multiplies write lo to the 3rd arg, hi to the 4th.
+	namespace ClangIntrin {
+		template<typename T, typename W>
+		inline unsigned char addCarry(unsigned char v_C, T v_A, T v_B, T* p_Out) {
+			const W s = W(v_A) + W(v_B) + W(v_C != 0);
+			*p_Out = T(s);
+			return (unsigned char)(s >> (sizeof(T) * 8));
+		}
+
+		template<typename T, typename W>
+		inline unsigned char subBorrow(unsigned char v_C, T v_A, T v_B, T* p_Out) {
+			const W d = W(v_A) - W(v_B) - W(v_C != 0);
+			*p_Out = T(d);
+			return (unsigned char)(W(v_A) < W(v_B) + W(v_C != 0));
+		}
+
+		template<typename T>
+		inline unsigned char addOverflow(unsigned char v_C, T v_A, T v_B, T* p_Out) {
+			const __int128 s = __int128(v_A) + __int128(v_B) + __int128(v_C != 0);
+			*p_Out = T(s);
+			return (unsigned char)(s != __int128(T(s)));
+		}
+
+		template<typename T>
+		inline unsigned char subOverflow(unsigned char v_C, T v_A, T v_B, T* p_Out) {
+			const __int128 d = __int128(v_A) - __int128(v_B) - __int128(v_C != 0);
+			*p_Out = T(d);
+			return (unsigned char)(d != __int128(T(d)));
+		}
+
+		template<typename T>
+		inline unsigned char mulOverflow(T v_A, T v_B, T* p_Out) {
+			const __int128 p = __int128(v_A) * __int128(v_B);
+			*p_Out = T(p);
+			return (unsigned char)(p != __int128(T(p)));
+		}
+
+		template<typename T, typename W>
+		inline unsigned char mulFullNarrow(T v_A, T v_B, W* p_Out) {
+			const W p = W(W(v_A) * W(v_B));
+			*p_Out = p;
+			return (unsigned char)(p != W(T(p)));
+		}
+
+		template<typename T, typename W>
+		inline unsigned char mulFull(T v_A, T v_B, T* p_Lo, T* p_Hi) {
+			const W p = W(v_A) * W(v_B);
+			*p_Lo = T(p);
+			*p_Hi = T(p >> (sizeof(T) * 8));
+			return (unsigned char)(p != W(T(p)));
+		}
+
+		template<typename T>
+		inline T satAdd(T v_A, T v_B) {
+			T r;
+			if (!__builtin_add_overflow(v_A, v_B, &r)) return r;
+			if constexpr (T(-1) < T(0)) return v_B < 0 ? T(T(1) << (sizeof(T) * 8 - 1)) : T(~(T(1) << (sizeof(T) * 8 - 1)));
+			else return T(~T(0));
+		}
+
+		template<typename T>
+		inline T satSub(T v_A, T v_B) {
+			T r;
+			if (!__builtin_sub_overflow(v_A, v_B, &r)) return r;
+			if constexpr (T(-1) < T(0)) return v_B > 0 ? T(T(1) << (sizeof(T) * 8 - 1)) : T(~(T(1) << (sizeof(T) * 8 - 1)));
+			else return T(0);
+		}
+
+		// Non-inlined so the return address is the instruction after the call site.
+		[[gnu::noinline]] inline void* addressOfNextInstruction() {
+			return __builtin_return_address(0);
+		}
+	}
+
+#define SPEC_CLANG_INTRIN ::Spectra::Platform::Internal::ClangIntrin
+#define Spec_ADDCARRY_U8(c, a, b, out)   SPEC_CLANG_INTRIN::addCarry<unsigned char, unsigned int>((c), (a), (b), (out))
+#define Spec_ADDCARRY_U16(c, a, b, out)  SPEC_CLANG_INTRIN::addCarry<unsigned short, unsigned int>((c), (a), (b), (out))
+#define Spec_SUBBORROW_U8(c, a, b, out)  SPEC_CLANG_INTRIN::subBorrow<unsigned char, int>((c), (a), (b), (out))
+#define Spec_SUBBORROW_U16(c, a, b, out) SPEC_CLANG_INTRIN::subBorrow<unsigned short, int>((c), (a), (b), (out))
+
+#define Spec_ADD_OVERFLOW_I8(c, a, b, out)  SPEC_CLANG_INTRIN::addOverflow<signed char>((c), (a), (b), (out))
+#define Spec_ADD_OVERFLOW_I16(c, a, b, out) SPEC_CLANG_INTRIN::addOverflow<short>((c), (a), (b), (out))
+#define Spec_ADD_OVERFLOW_I32(c, a, b, out) SPEC_CLANG_INTRIN::addOverflow<int>((c), (a), (b), (out))
+#define Spec_ADD_OVERFLOW_I64(c, a, b, out) SPEC_CLANG_INTRIN::addOverflow<long long>((c), (a), (b), (out))
+#define Spec_SUB_OVERFLOW_I8(c, a, b, out)  SPEC_CLANG_INTRIN::subOverflow<signed char>((c), (a), (b), (out))
+#define Spec_SUB_OVERFLOW_I16(c, a, b, out) SPEC_CLANG_INTRIN::subOverflow<short>((c), (a), (b), (out))
+#define Spec_SUB_OVERFLOW_I32(c, a, b, out) SPEC_CLANG_INTRIN::subOverflow<int>((c), (a), (b), (out))
+#define Spec_SUB_OVERFLOW_I64(c, a, b, out) SPEC_CLANG_INTRIN::subOverflow<long long>((c), (a), (b), (out))
+
+#define Spec_MUL_OVERFLOW_I16(a, b, out) SPEC_CLANG_INTRIN::mulOverflow<short>((a), (b), (out))
+#define Spec_MUL_OVERFLOW_I32(a, b, out) SPEC_CLANG_INTRIN::mulOverflow<int>((a), (b), (out))
+#define Spec_MUL_OVERFLOW_I64(a, b, out) SPEC_CLANG_INTRIN::mulOverflow<long long>((a), (b), (out))
+
+#define Spec_MUL_FULL_OVERFLOW_I8(a, b, out)       SPEC_CLANG_INTRIN::mulFullNarrow<signed char, short>((a), (b), (out))
+#define Spec_MUL_FULL_OVERFLOW_U8(a, b, out)       SPEC_CLANG_INTRIN::mulFullNarrow<unsigned char, unsigned short>((a), (b), (out))
+#define Spec_MUL_FULL_OVERFLOW_I16(a, b, lo, hi)   SPEC_CLANG_INTRIN::mulFull<short, int>((a), (b), (lo), (hi))
+#define Spec_MUL_FULL_OVERFLOW_I32(a, b, lo, hi)   SPEC_CLANG_INTRIN::mulFull<int, long long>((a), (b), (lo), (hi))
+#define Spec_MUL_FULL_OVERFLOW_I64(a, b, lo, hi)   SPEC_CLANG_INTRIN::mulFull<long long, __int128>((a), (b), (lo), (hi))
+#define Spec_MUL_FULL_OVERFLOW_U16(a, b, lo, hi)   SPEC_CLANG_INTRIN::mulFull<unsigned short, unsigned int>((a), (b), (lo), (hi))
+#define Spec_MUL_FULL_OVERFLOW_U32(a, b, lo, hi)   SPEC_CLANG_INTRIN::mulFull<unsigned int, unsigned long long>((a), (b), (lo), (hi))
+#define Spec_MUL_FULL_OVERFLOW_U64(a, b, lo, hi)   SPEC_CLANG_INTRIN::mulFull<unsigned long long, unsigned __int128>((a), (b), (lo), (hi))
+
+#define Spec_SAT_ADD_I8(a, b)  SPEC_CLANG_INTRIN::satAdd<signed char>((a), (b))
+#define Spec_SAT_ADD_I16(a, b) SPEC_CLANG_INTRIN::satAdd<short>((a), (b))
+#define Spec_SAT_ADD_I32(a, b) SPEC_CLANG_INTRIN::satAdd<int>((a), (b))
+#define Spec_SAT_ADD_I64(a, b) SPEC_CLANG_INTRIN::satAdd<long long>((a), (b))
+#define Spec_SAT_ADD_U8(a, b)  SPEC_CLANG_INTRIN::satAdd<unsigned char>((a), (b))
+#define Spec_SAT_ADD_U16(a, b) SPEC_CLANG_INTRIN::satAdd<unsigned short>((a), (b))
+#define Spec_SAT_ADD_U32(a, b) SPEC_CLANG_INTRIN::satAdd<unsigned int>((a), (b))
+#define Spec_SAT_ADD_U64(a, b) SPEC_CLANG_INTRIN::satAdd<unsigned long long>((a), (b))
+#define Spec_SAT_SUB_I8(a, b)  SPEC_CLANG_INTRIN::satSub<signed char>((a), (b))
+#define Spec_SAT_SUB_I16(a, b) SPEC_CLANG_INTRIN::satSub<short>((a), (b))
+#define Spec_SAT_SUB_I32(a, b) SPEC_CLANG_INTRIN::satSub<int>((a), (b))
+#define Spec_SAT_SUB_I64(a, b) SPEC_CLANG_INTRIN::satSub<long long>((a), (b))
+#define Spec_SAT_SUB_U8(a, b)  SPEC_CLANG_INTRIN::satSub<unsigned char>((a), (b))
+#define Spec_SAT_SUB_U16(a, b) SPEC_CLANG_INTRIN::satSub<unsigned short>((a), (b))
+#define Spec_SAT_SUB_U32(a, b) SPEC_CLANG_INTRIN::satSub<unsigned int>((a), (b))
+#define Spec_SAT_SUB_U64(a, b) SPEC_CLANG_INTRIN::satSub<unsigned long long>((a), (b))
+
+#define Spec_ADDRESS_OF_NEXT_INSTRUCTION() SPEC_CLANG_INTRIN::addressOfNextInstruction()
+#endif
+
     // Integer carry and borrow helpers.
 	// Used for multi-precision arithmetic.
 
@@ -1335,8 +1460,8 @@ namespace Spectra::Platform::Internal {
 
 #ifndef Spec_MUL_FULL_OVERFLOW_I16
 #if SPECTRA_COMPILER_MSVC
-#define Spec_MUL_FULL_OVERFLOW_I16(a, b, hi, lo) \
-            _mul_full_overflow_i16((a), (b), (hi), (lo))
+#define Spec_MUL_FULL_OVERFLOW_I16(a, b, lo, hi) \
+            _mul_full_overflow_i16((a), (b), (lo), (hi))
 #endif
 #endif
 

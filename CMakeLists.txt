@@ -94,8 +94,8 @@ set(CMAKE_PDB_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/${SPECTRA_BIN_SUBDIR}/$<CONFI
 # as it's processed. No FORCE, so a -D override on the cmake invocation sticks across
 # cmake-init reruns instead of getting reset.
 set(STL_PREFER_SSE    OFF CACHE BOOL "Prefer SSE in StormSTL vectorized ops")
-set(STL_PREFER_AVX    OFF CACHE BOOL "Prefer AVX in StormSTL vectorized ops")
-set(STL_PREFER_AVX512 ON  CACHE BOOL "Prefer AVX512f in StormSTL vectorized ops")
+set(STL_PREFER_AVX    ON  CACHE BOOL "Prefer AVX in StormSTL vectorized ops")
+set(STL_PREFER_AVX512 OFF CACHE BOOL "Prefer AVX512f in StormSTL vectorized ops")
 
 # Targets that include StormSTL's header-only vectorized ops directly, and so need to
 # compile with the same /arch as StormSTL itself. Otherwise they silently compile the

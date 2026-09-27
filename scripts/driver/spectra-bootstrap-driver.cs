@@ -53,7 +53,7 @@ void PrintUsage()
     Console.WriteLine();
     Console.WriteLine("Commands:");
     Console.WriteLine("  help, -h, --help                                       Show this message");
-    Console.WriteLine("  cmake-init [-f] [-preq] [-clangcl]                     Configure cmake (-f: delete CMakeCache.txt first, -preq: check cmake/VS2022 first, -clangcl: configure a separate clang-cl build tree)");
+    Console.WriteLine("  cmake-init [-f] [-preq] [-clangcl]                     Configure cmake (-f: delete CMakeCache.txt first, -preq: check cmake/VS2022 first, -clangcl: configure a separate clang-cl + CUDA build tree with Ninja inside the VS dev environment)");
     Console.WriteLine("  submodule-update [--remote]                            git submodule update --init --recursive (--remote: also pull latest tracked branch)");
     Console.WriteLine("  module-gen -lib|-dll|-exe -cpp17|-cpp20|-cpp23 -n \"Name\" -dir <location>   Scaffold a new module");
     Console.WriteLine("  cu-check [-d]                                          Check for CUDA toolkit (-d: install if missing)");
@@ -104,16 +104,45 @@ int CmakeInit(string p_RootDir, Config p_Config, string[] p_Rest)
         }
     }
 
-    // clang-cl is a separate toolset within the same VS-generator family, not
-    // a different generator - it gets its own build tree (a CMake cache can't
-    // switch toolsets in place) and its own SPECTRA_BIN_SUBDIR so its output
-    // never lands in the same bin/<Configuration> path as the default MSVC
-    // build.
-    var toolsetArgs = clangCl ? $" -T {p_Config.ClangClToolset}" : "";
-    var binSubdirArgs = clangCl ? $" -DSPECTRA_BIN_SUBDIR=\"{p_Config.ClangClBinDir}\"" : "";
-
     Console.WriteLine($"[INFO] Configuring build in {buildDir}{(clangCl ? " (clang-cl)" : "")}... \n");
-    var exitCode = Run("cmake", $"-S \"{p_RootDir}\" -B \"{buildDir}\" -G \"{p_Config.CmakeGenerator}\"{toolsetArgs}{binSubdirArgs}");
+
+    if (!clangCl)
+    {
+        var msvcExit = Run("cmake", $"-S \"{p_RootDir}\" -B \"{buildDir}\" -G \"{p_Config.CmakeGenerator}\"");
+        Console.WriteLine(msvcExit == 0 ? "[OK] CMake configured." : "[ERROR] CMake configure failed.");
+        return msvcExit;
+    }
+
+    // clang-cl can't use the VS generator's ClangCL toolset once CUDA is enabled: MSBuild
+    // hands clang's headers to nvcc's cl.exe host compile. Ninja keeps clang-cl (C/C++) and
+    // nvcc + cl (CUDA) separate, but needs the VS developer environment around cmake.
+    // clang-cl is resolved from the user's PATH first - vcvars puts VS's bundled (older)
+    // clang-cl ahead of a standalone LLVM install.
+    var clangClPath = FindOnPath(p_Config.ClangClCompiler);
+    if (clangClPath is null)
+    {
+        Console.WriteLine($"[ERROR] {p_Config.ClangClCompiler} not found in PATH. Install LLVM and try again.");
+        return 1;
+    }
+    var vsInstall = FindVisualStudio2022();
+    if (vsInstall is null)
+    {
+        Console.WriteLine("[ERROR] Visual Studio 2022 not found. Install it before building.");
+        return 1;
+    }
+    var devEnv = LoadVsDevEnv(vsInstall, p_Config);
+    if (devEnv is null) return 1;
+
+    var ninjaPath = Path.Combine(vsInstall, p_Config.VsNinjaRelPath);
+    var clangArgs =
+        $" -DCMAKE_MAKE_PROGRAM=\"{ninjaPath.Replace('\\', '/')}\"" +
+        $" -DCMAKE_C_COMPILER=\"{clangClPath.Replace('\\', '/')}\"" +
+        $" -DCMAKE_CXX_COMPILER=\"{clangClPath.Replace('\\', '/')}\"" +
+        $" -DCMAKE_CUDA_HOST_COMPILER={p_Config.ClangClCudaHostCompiler}" +
+        $" -DSPECTRA_BIN_SUBDIR=\"{p_Config.ClangClBinDir}\"";
+
+    Console.WriteLine($"[INFO] clang-cl: {clangClPath}");
+    var exitCode = Run("cmake", $"-S \"{p_RootDir}\" -B \"{buildDir}\" -G \"{p_Config.ClangClGenerator}\"{clangArgs}", devEnv);
     Console.WriteLine(exitCode == 0 ? "[OK] CMake configured." : "[ERROR] CMake configure failed.");
     return exitCode;
 }
@@ -143,7 +172,9 @@ int BuildConfig(string p_RootDir, Config p_Config, string[] p_Rest)
     var buildDir = Path.Combine(p_RootDir, clangCl ? p_Config.ClangClBuildDir : p_Config.BuildDir);
     var targetArgs = target is null ? "" : $" --target {target}";
     Console.WriteLine($"[INFO] Building configuration: {cfg}{(target is null ? "" : $" (target: {target})")}{(clangCl ? " (clang-cl)" : "")} \n");
-    var exitCode = Run("cmake", $"--build \"{buildDir}\" --config {cfg}{targetArgs}");
+    var devEnv = clangCl ? LoadVsDevEnvOrReport(p_Config) : null;
+    if (clangCl && devEnv is null) return 1;
+    var exitCode = Run("cmake", $"--build \"{buildDir}\" --config {cfg}{targetArgs}", devEnv);
     Console.WriteLine(exitCode == 0 ? "[OK] Build succeeded." : $"[ERROR] Build failed for configuration {cfg}.");
     return exitCode;
 }
@@ -158,7 +189,9 @@ int RebuildConfig(string p_RootDir, Config p_Config, string[] p_Rest)
     var buildDir = Path.Combine(p_RootDir, clangCl ? p_Config.ClangClBuildDir : p_Config.BuildDir);
     var targetArgs = target is null ? "" : $" --target {target}";
     Console.WriteLine($"[INFO] Rebuilding configuration: {cfg}{(target is null ? "" : $" (target: {target})")}{(clangCl ? " (clang-cl)" : "")} \n");
-    var exitCode = Run("cmake", $"--build \"{buildDir}\" --config {cfg}{targetArgs} --clean-first");
+    var devEnv = clangCl ? LoadVsDevEnvOrReport(p_Config) : null;
+    if (clangCl && devEnv is null) return 1;
+    var exitCode = Run("cmake", $"--build \"{buildDir}\" --config {cfg}{targetArgs} --clean-first", devEnv);
     Console.WriteLine(exitCode == 0 ? "[OK] Rebuild succeeded." : $"[ERROR] Rebuild failed for configuration {cfg}.");
     return exitCode;
 }
@@ -1423,19 +1456,60 @@ bool CheckCommand(string p_Name, string p_ErrorMessage)
 
 bool CheckVisualStudio2022()
 {
-    var programFilesX86 = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86);
-    var vswhere = Path.Combine(programFilesX86, "Microsoft Visual Studio", "Installer", "vswhere.exe");
-    if (File.Exists(vswhere))
+    if (FindVisualStudio2022() is not null)
     {
-        var output = RunCapture(vswhere, "-version \"[17.0,18.0)\" -property installationPath");
-        if (!string.IsNullOrWhiteSpace(output))
-        {
-            Console.WriteLine("[OK] Visual Studio 2022 found.");
-            return true;
-        }
+        Console.WriteLine("[OK] Visual Studio 2022 found.");
+        return true;
     }
     Console.WriteLine("[ERROR] Visual Studio 2022 not found. Install it before building.");
     return false;
+}
+
+string? FindVisualStudio2022()
+{
+    var programFilesX86 = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86);
+    var vswhere = Path.Combine(programFilesX86, "Microsoft Visual Studio", "Installer", "vswhere.exe");
+    if (!File.Exists(vswhere)) return null;
+    var output = RunCapture(vswhere, "-version \"[17.0,18.0)\" -property installationPath")
+        .Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+        .FirstOrDefault();
+    return string.IsNullOrWhiteSpace(output) ? null : output;
+}
+
+// Runs vcvars once and captures the resulting environment, so cmake/ninja/cl/nvcc
+// see the same variables a VS Developer prompt would give them.
+Dictionary<string, string>? LoadVsDevEnv(string p_VsInstall, Config p_Config)
+{
+    var vcvars = Path.Combine(p_VsInstall, p_Config.VsVcvarsRelPath);
+    if (!File.Exists(vcvars))
+    {
+        Console.WriteLine($"[ERROR] {vcvars} not found.");
+        return null;
+    }
+    var output = RunCapture("cmd.exe", $"/d /s /c \"call \"{vcvars}\" >nul && set\"");
+    var env = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+    foreach (var line in output.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+    {
+        var eq = line.IndexOf('=');
+        if (eq > 0) env[line[..eq]] = line[(eq + 1)..];
+    }
+    if (!env.ContainsKey("VCINSTALLDIR"))
+    {
+        Console.WriteLine($"[ERROR] Running {vcvars} did not produce a VS developer environment.");
+        return null;
+    }
+    return env;
+}
+
+Dictionary<string, string>? LoadVsDevEnvOrReport(Config p_Config)
+{
+    var vsInstall = FindVisualStudio2022();
+    if (vsInstall is null)
+    {
+        Console.WriteLine("[ERROR] Visual Studio 2022 not found. Install it before building.");
+        return null;
+    }
+    return LoadVsDevEnv(vsInstall, p_Config);
 }
 
 string RunCapture(string p_Exe, string p_Arguments)
@@ -1501,9 +1575,14 @@ string? FindOnPath(string p_ExeName)
     return null;
 }
 
-int Run(string p_Exe, string p_Arguments)
+int Run(string p_Exe, string p_Arguments, Dictionary<string, string>? p_Env = null)
 {
     var psi = new ProcessStartInfo(p_Exe, p_Arguments) { UseShellExecute = false };
+    if (p_Env is not null)
+    {
+        psi.Environment.Clear();
+        foreach (var (key, value) in p_Env) psi.Environment[key] = value;
+    }
     using var process = Process.Start(psi);
     process!.WaitForExit();
     return process.ExitCode;
@@ -1598,7 +1677,11 @@ Config LoadConfig(string p_RootDir)
         GetString("clangClBuildDir"),
         GetString("clangClBinDir"),
         GetString("cmakeGenerator"),
-        GetString("clangClToolset"),
+        GetString("clangClGenerator"),
+        GetString("clangClCompiler"),
+        GetString("clangClCudaHostCompiler"),
+        GetString("vsVcvarsRelPath"),
+        GetString("vsNinjaRelPath"),
         GetString("defaultConfig"),
         GetString("runTarget"),
         GetStringArray("buildConfigurations"),
@@ -1634,7 +1717,11 @@ record Config(
     string ClangClBuildDir,
     string ClangClBinDir,
     string CmakeGenerator,
-    string ClangClToolset,
+    string ClangClGenerator,
+    string ClangClCompiler,
+    string ClangClCudaHostCompiler,
+    string VsVcvarsRelPath,
+    string VsNinjaRelPath,
     string DefaultConfig,
     string RunTarget,
     string[] BuildConfigurations,

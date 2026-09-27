@@ -3,23 +3,23 @@
 #include "SpectraPlatformRuntime.h"
 
 namespace Spectra::Platform::Runtime::File {
-	enum class FileIOMode final : uint8_t {
+	enum class FileIOMode : uint8_t {
 		SEQUENTIAL, ASYNCHRONOUS
 	};
 
-	enum class FileAccess final : uint8_t {
+	enum class FileAccess : uint8_t {
 		READ, WRITE, READ_WRITE
 	};
 
-	enum class FileOpenMode final : uint8_t {
+	enum class FileOpenMode : uint8_t {
 		CREATE_NEW_FILE, CREATE_ALWAYS_FILE, OPEN_EXISTING_FILE, OPEN_ALWAYS_FILE, TRUNCATE_EXISTING_FILE
 	};
 
-	enum class FileShareMode final : uint8_t {
+	enum class FileShareMode : uint8_t {
 		NONE, READ, WRITE, REMOVE
 	};
 
-	enum class FileSeekOrigin final : uint8_t {
+	enum class FileSeekOrigin : uint8_t {
 		BEGIN, CURRENT, END
 	};
 

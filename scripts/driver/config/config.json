@@ -4,7 +4,11 @@
   "clangClBuildDir": "build-clangcl",
   "clangClBinDir": "bin-clangcl",
   "cmakeGenerator": "Visual Studio 17 2022",
-  "clangClToolset": "ClangCL",
+  "clangClGenerator": "Ninja Multi-Config",
+  "clangClCompiler": "clang-cl",
+  "clangClCudaHostCompiler": "cl",
+  "vsVcvarsRelPath": "VC/Auxiliary/Build/vcvars64.bat",
+  "vsNinjaRelPath": "Common7/IDE/CommonExtensions/Microsoft/CMake/Ninja/ninja.exe",
   "defaultConfig": "Release_win64",
   "runTarget": "SpectraLauncher",
   "buildConfigurations": [

@@ -84,7 +84,7 @@ namespace Spectra::Platform::Runtime::Intrinsic {
 	// =========================================================
 
 	template<typename T, typename Valid = ValidAtomicParameter<T>::Type>
-	SPECTRA_FORCEINLINE SPECTRA_NODISCARD_MSG("Cannot discard an atomic load")
+	SPECTRA_NODISCARD_MSG("Cannot discard an atomic load") SPECTRA_FORCEINLINE
 		Valid atomicLoad(Valid* p_Memory, MemoryOrder v_Ordering) {
 		switch (v_Ordering) {
 		case MemoryOrder::RELAXED:
@@ -107,7 +107,7 @@ namespace Spectra::Platform::Runtime::Intrinsic {
 	// =========================================================
 
 	template<typename T, typename Valid = ValidAtomicParameter<T>::Type>
-	SPECTRA_FORCEINLINE SPECTRA_NODISCARD_MSG("Cannot discard an atomic store")
+	SPECTRA_NODISCARD_MSG("Cannot discard an atomic store") SPECTRA_FORCEINLINE
 		void atomicStore(Valid* p_Memory, Valid v_Value, MemoryOrder v_Ordering) {
 		switch (v_Ordering) {
 		case MemoryOrder::RELAXED:
@@ -134,7 +134,7 @@ namespace Spectra::Platform::Runtime::Intrinsic {
 	// =========================================================
 
 	template<typename T, typename Valid = ValidAtomicParameter<T>::Type>
-	SPECTRA_FORCEINLINE SPECTRA_NODISCARD_MSG("Cannot discard an atomic fetch add")
+	SPECTRA_NODISCARD_MSG("Cannot discard an atomic fetch add") SPECTRA_FORCEINLINE
 		Valid atomicFetchAdd32(Valid* p_Memory, T v_Value, MemoryOrder v_Ordering) {
 		switch (v_Ordering) {
 		case MemoryOrder::RELAXED:
@@ -154,7 +154,7 @@ namespace Spectra::Platform::Runtime::Intrinsic {
 	}
 
 	template<typename T, typename Valid = ValidAtomicParameter<T>::Type>
-	SPECTRA_FORCEINLINE SPECTRA_NODISCARD_MSG("Cannot discard an atomic fetch add")
+	SPECTRA_NODISCARD_MSG("Cannot discard an atomic fetch add") SPECTRA_FORCEINLINE
 		Valid atomicFetchAdd64(Valid* p_Memory, T v_Value, MemoryOrder v_Ordering) {
 		switch (v_Ordering) {
 		case MemoryOrder::RELAXED:
@@ -178,7 +178,7 @@ namespace Spectra::Platform::Runtime::Intrinsic {
 	// =========================================================
 
 	template<typename T, typename Valid = ValidAtomicParameter<T>::Type>
-	SPECTRA_FORCEINLINE SPECTRA_NODISCARD_MSG("Cannot discard an atomic increment")
+	SPECTRA_NODISCARD_MSG("Cannot discard an atomic increment") SPECTRA_FORCEINLINE
 		Valid atomicIncrement32(Valid* p_Memory, MemoryOrder v_Ordering) {
 		switch (v_Ordering) {
 		case MemoryOrder::RELAXED:
@@ -198,7 +198,7 @@ namespace Spectra::Platform::Runtime::Intrinsic {
 	}
 
 	template<typename T, typename Valid = ValidAtomicParameter<T>::Type>
-	SPECTRA_FORCEINLINE SPECTRA_NODISCARD_MSG("Cannot discard an atomic increment")
+	SPECTRA_NODISCARD_MSG("Cannot discard an atomic increment") SPECTRA_FORCEINLINE
 		Valid atomicIncrement64(Valid* p_Memory, MemoryOrder v_Ordering) {
 		switch (v_Ordering) {
 		case MemoryOrder::RELAXED:
@@ -222,7 +222,7 @@ namespace Spectra::Platform::Runtime::Intrinsic {
 	// =========================================================
 
 	template<typename T, typename Valid = ValidAtomicParameter<T>::Type>
-	SPECTRA_FORCEINLINE SPECTRA_NODISCARD_MSG("Cannot discard an atomic decrement")
+	SPECTRA_NODISCARD_MSG("Cannot discard an atomic decrement") SPECTRA_FORCEINLINE
 		Valid atomicDecrement32(Valid* p_Memory, MemoryOrder v_Ordering) {
 		switch (v_Ordering) {
 		case MemoryOrder::RELAXED:
@@ -242,7 +242,7 @@ namespace Spectra::Platform::Runtime::Intrinsic {
 	}
 
 	template<typename T, typename Valid = ValidAtomicParameter<T>::Type>
-	SPECTRA_FORCEINLINE SPECTRA_NODISCARD_MSG("Cannot discard an atomic decrement")
+	SPECTRA_NODISCARD_MSG("Cannot discard an atomic decrement") SPECTRA_FORCEINLINE
 		Valid atomicDecrement64(Valid* p_Memory, MemoryOrder v_Ordering) {
 		switch (v_Ordering) {
 		case MemoryOrder::RELAXED:
@@ -266,7 +266,7 @@ namespace Spectra::Platform::Runtime::Intrinsic {
 	// =========================================================
 
 	template<typename T, typename Valid = ValidAtomicParameter<T>::Type>
-	SPECTRA_FORCEINLINE SPECTRA_NODISCARD_MSG("Cannot discard an atomic exchange")
+	SPECTRA_NODISCARD_MSG("Cannot discard an atomic exchange") SPECTRA_FORCEINLINE
 		Valid atomicExchange32(Valid* p_Memory, T v_Value, MemoryOrder v_Ordering) {
 		switch (v_Ordering) {
 		case MemoryOrder::RELAXED:
@@ -285,7 +285,7 @@ namespace Spectra::Platform::Runtime::Intrinsic {
 	}
 
 	template<typename T, typename Valid = ValidAtomicParameter<T>::Type>
-	SPECTRA_FORCEINLINE SPECTRA_NODISCARD_MSG("Cannot discard an atomic exchange")
+	SPECTRA_NODISCARD_MSG("Cannot discard an atomic exchange") SPECTRA_FORCEINLINE
 		Valid atomicExchange64(Valid* p_Memory, T v_Value, MemoryOrder v_Ordering) {
 		switch (v_Ordering) {
 		case MemoryOrder::RELAXED:
@@ -304,7 +304,7 @@ namespace Spectra::Platform::Runtime::Intrinsic {
 	}
 
 	template<typename T, typename Valid = ValidAtomicParameter<T>::Type>
-	SPECTRA_FORCEINLINE SPECTRA_NODISCARD_MSG("Cannot discard an atomic exchange pointer")
+	SPECTRA_NODISCARD_MSG("Cannot discard an atomic exchange pointer") SPECTRA_FORCEINLINE
 		Valid atomicExchangePointer(Valid* p_Memory, T v_Value, MemoryOrder v_Ordering) {
 		switch (v_Ordering) {
 		case MemoryOrder::RELAXED:
@@ -327,7 +327,7 @@ namespace Spectra::Platform::Runtime::Intrinsic {
 	// =========================================================
 
 	template<typename T, typename Valid = ValidAtomicParameter<T>::Type>
-	SPECTRA_FORCEINLINE SPECTRA_NODISCARD_MSG("Cannot discard an atomic compare exchange")
+	SPECTRA_NODISCARD_MSG("Cannot discard an atomic compare exchange") SPECTRA_FORCEINLINE
 		Valid atomicCompareExchange32(
 			Valid* p_Memory,
 			T* p_Expected,
@@ -412,7 +412,7 @@ namespace Spectra::Platform::Runtime::Intrinsic {
 	}
 
 	template<typename T, typename Valid = ValidAtomicParameter<T>::Type>
-	SPECTRA_FORCEINLINE SPECTRA_NODISCARD_MSG("Cannot discard an atomic compare exchange")
+	SPECTRA_NODISCARD_MSG("Cannot discard an atomic compare exchange") SPECTRA_FORCEINLINE
 		Valid atomicCompareExchange64(
 			Valid* p_Memory,
 			T* p_Expected,
@@ -497,7 +497,7 @@ namespace Spectra::Platform::Runtime::Intrinsic {
 	}
 
 	template<typename T, typename Valid = ValidAtomicParameter<T>::Type>
-	SPECTRA_FORCEINLINE SPECTRA_NODISCARD_MSG("Cannot discard an atomic compare exchange pointer")
+	SPECTRA_NODISCARD_MSG("Cannot discard an atomic compare exchange pointer") SPECTRA_FORCEINLINE
 		Valid atomicCompareExchangePointer(
 			Valid* p_Memory,
 			T* p_Expected,
@@ -586,7 +586,7 @@ namespace Spectra::Platform::Runtime::Intrinsic {
 	// =========================================================
 
 	template<typename T, typename Valid = ValidAtomicParameter<T>::Type>
-	SPECTRA_FORCEINLINE SPECTRA_NODISCARD_MSG("Cannot discard an atomic fetch AND")
+	SPECTRA_NODISCARD_MSG("Cannot discard an atomic fetch AND") SPECTRA_FORCEINLINE
 		Valid atomicFetchAnd32(Valid* p_Memory, T v_Value, MemoryOrder v_Ordering) {
 		switch (v_Ordering) {
 		case MemoryOrder::RELAXED:
@@ -606,7 +606,7 @@ namespace Spectra::Platform::Runtime::Intrinsic {
 	}
 
 	template<typename T, typename Valid = ValidAtomicParameter<T>::Type>
-	SPECTRA_FORCEINLINE SPECTRA_NODISCARD_MSG("Cannot discard an atomic fetch AND")
+	SPECTRA_NODISCARD_MSG("Cannot discard an atomic fetch AND") SPECTRA_FORCEINLINE
 		Valid atomicFetchAnd64(Valid* p_Memory, T v_Value, MemoryOrder v_Ordering) {
 		switch (v_Ordering) {
 		case MemoryOrder::RELAXED:
@@ -630,7 +630,7 @@ namespace Spectra::Platform::Runtime::Intrinsic {
 	// =========================================================
 
 	template<typename T, typename Valid = ValidAtomicParameter<T>::Type>
-	SPECTRA_FORCEINLINE SPECTRA_NODISCARD_MSG("Cannot discard an atomic fetch OR")
+	SPECTRA_NODISCARD_MSG("Cannot discard an atomic fetch OR") SPECTRA_FORCEINLINE
 		Valid atomicFetchOr32(Valid* p_Memory, T v_Value, MemoryOrder v_Ordering) {
 		switch (v_Ordering) {
 		case MemoryOrder::RELAXED:
@@ -650,7 +650,7 @@ namespace Spectra::Platform::Runtime::Intrinsic {
 	}
 
 	template<typename T, typename Valid = ValidAtomicParameter<T>::Type>
-	SPECTRA_FORCEINLINE SPECTRA_NODISCARD_MSG("Cannot discard an atomic fetch OR")
+	SPECTRA_NODISCARD_MSG("Cannot discard an atomic fetch OR") SPECTRA_FORCEINLINE
 		Valid atomicFetchOr64(Valid* p_Memory, T v_Value, MemoryOrder v_Ordering) {
 		switch (v_Ordering) {
 		case MemoryOrder::RELAXED:
@@ -674,7 +674,7 @@ namespace Spectra::Platform::Runtime::Intrinsic {
 	// =========================================================
 
 	template<typename T, typename Valid = ValidAtomicParameter<T>::Type>
-	SPECTRA_FORCEINLINE SPECTRA_NODISCARD_MSG("Cannot discard an atomic fetch XOR")
+	SPECTRA_NODISCARD_MSG("Cannot discard an atomic fetch XOR") SPECTRA_FORCEINLINE
 		Valid atomicFetchXor32(Valid* p_Memory, T v_Value, MemoryOrder v_Ordering) {
 		switch (v_Ordering) {
 		case MemoryOrder::RELAXED:
@@ -694,7 +694,7 @@ namespace Spectra::Platform::Runtime::Intrinsic {
 	}
 
 	template<typename T, typename Valid = ValidAtomicParameter<T>::Type>
-	SPECTRA_FORCEINLINE SPECTRA_NODISCARD_MSG("Cannot discard an atomic fetch XOR")
+	SPECTRA_NODISCARD_MSG("Cannot discard an atomic fetch XOR") SPECTRA_FORCEINLINE
 		Valid atomicFetchXor64(Valid* p_Memory, T v_Value, MemoryOrder v_Ordering) {
 		switch (v_Ordering) {
 		case MemoryOrder::RELAXED:
@@ -718,7 +718,7 @@ namespace Spectra::Platform::Runtime::Intrinsic {
 	// =========================================================
 
 	template<typename T, typename Valid = ValidAtomicParameter<T>::Type>
-	SPECTRA_FORCEINLINE SPECTRA_NODISCARD_MSG("Cannot discard an atomic fetch NAND")
+	SPECTRA_NODISCARD_MSG("Cannot discard an atomic fetch NAND") SPECTRA_FORCEINLINE
 		Valid atomicFetchNand32(Valid* p_Memory, T v_Value, MemoryOrder v_Ordering) {
 		switch (v_Ordering) {
 		case MemoryOrder::RELAXED:
@@ -738,7 +738,7 @@ namespace Spectra::Platform::Runtime::Intrinsic {
 	}
 
 	template<typename T, typename Valid = ValidAtomicParameter<T>::Type>
-	SPECTRA_FORCEINLINE SPECTRA_NODISCARD_MSG("Cannot discard an atomic fetch NAND")
+	SPECTRA_NODISCARD_MSG("Cannot discard an atomic fetch NAND") SPECTRA_FORCEINLINE
 		Valid atomicFetchNand64(Valid* p_Memory, T v_Value, MemoryOrder v_Ordering) {
 		switch (v_Ordering) {
 		case MemoryOrder::RELAXED:
@@ -762,7 +762,7 @@ namespace Spectra::Platform::Runtime::Intrinsic {
 	// =========================================================
 
 	template<typename T, typename Valid = ValidAtomicParameter<T>::Type>
-	SPECTRA_FORCEINLINE SPECTRA_NODISCARD_MSG("Cannot discard an atomic fetch min")
+	SPECTRA_NODISCARD_MSG("Cannot discard an atomic fetch min") SPECTRA_FORCEINLINE
 		Valid atomicFetchMin32(Valid* p_Memory, T v_Value, MemoryOrder v_Ordering) {
 		switch (v_Ordering) {
 		case MemoryOrder::RELAXED:
@@ -782,7 +782,7 @@ namespace Spectra::Platform::Runtime::Intrinsic {
 	}
 
 	template<typename T, typename Valid = ValidAtomicParameter<T>::Type>
-	SPECTRA_FORCEINLINE SPECTRA_NODISCARD_MSG("Cannot discard an atomic fetch min")
+	SPECTRA_NODISCARD_MSG("Cannot discard an atomic fetch min") SPECTRA_FORCEINLINE
 		Valid atomicFetchMin64(Valid* p_Memory, T v_Value, MemoryOrder v_Ordering) {
 		switch (v_Ordering) {
 		case MemoryOrder::RELAXED:
@@ -806,7 +806,7 @@ namespace Spectra::Platform::Runtime::Intrinsic {
 	// =========================================================
 
 	template<typename T, typename Valid = ValidAtomicParameter<T>::Type>
-	SPECTRA_FORCEINLINE SPECTRA_NODISCARD_MSG("Cannot discard an atomic fetch max")
+	SPECTRA_NODISCARD_MSG("Cannot discard an atomic fetch max") SPECTRA_FORCEINLINE
 		Valid atomicFetchMax32(Valid* p_Memory, T v_Value, MemoryOrder v_Ordering) {
 		switch (v_Ordering) {
 		case MemoryOrder::RELAXED:
@@ -826,7 +826,7 @@ namespace Spectra::Platform::Runtime::Intrinsic {
 	}
 
 	template<typename T, typename Valid = ValidAtomicParameter<T>::Type>
-	SPECTRA_FORCEINLINE SPECTRA_NODISCARD_MSG("Cannot discard an atomic fetch max")
+	SPECTRA_NODISCARD_MSG("Cannot discard an atomic fetch max") SPECTRA_FORCEINLINE
 		Valid atomicFetchMax64(Valid* p_Memory, T v_Value, MemoryOrder v_Ordering) {
 		switch (v_Ordering) {
 		case MemoryOrder::RELAXED:
@@ -850,7 +850,7 @@ namespace Spectra::Platform::Runtime::Intrinsic {
 	// =========================================================
 
 	template<typename T, typename Valid = ValidAtomicParameter<T>::Type>
-	SPECTRA_FORCEINLINE SPECTRA_NODISCARD_MSG("Cannot discard an atomic fetch unsigned min")
+	SPECTRA_NODISCARD_MSG("Cannot discard an atomic fetch unsigned min") SPECTRA_FORCEINLINE
 		Valid atomicFetchUnsignedMin32(Valid* p_Memory, T v_Value, MemoryOrder v_Ordering) {
 		switch (v_Ordering) {
 		case MemoryOrder::RELAXED:
@@ -870,7 +870,7 @@ namespace Spectra::Platform::Runtime::Intrinsic {
 	}
 
 	template<typename T, typename Valid = ValidAtomicParameter<T>::Type>
-	SPECTRA_FORCEINLINE SPECTRA_NODISCARD_MSG("Cannot discard an atomic fetch unsigned min")
+	SPECTRA_NODISCARD_MSG("Cannot discard an atomic fetch unsigned min") SPECTRA_FORCEINLINE
 		Valid atomicFetchUnsignedMin64(Valid* p_Memory, T v_Value, MemoryOrder v_Ordering) {
 		switch (v_Ordering) {
 		case MemoryOrder::RELAXED:
@@ -894,7 +894,7 @@ namespace Spectra::Platform::Runtime::Intrinsic {
 	// =========================================================
 
 	template<typename T, typename Valid = ValidAtomicParameter<T>::Type>
-	SPECTRA_FORCEINLINE SPECTRA_NODISCARD_MSG("Cannot discard an atomic fetch unsigned max")
+	SPECTRA_NODISCARD_MSG("Cannot discard an atomic fetch unsigned max") SPECTRA_FORCEINLINE
 		Valid atomicFetchUnsignedMax32(Valid* p_Memory, T v_Value, MemoryOrder v_Ordering) {
 		switch (v_Ordering) {
 		case MemoryOrder::RELAXED:
@@ -914,7 +914,7 @@ namespace Spectra::Platform::Runtime::Intrinsic {
 	}
 
 	template<typename T, typename Valid = ValidAtomicParameter<T>::Type>
-	SPECTRA_FORCEINLINE SPECTRA_NODISCARD_MSG("Cannot discard an atomic fetch unsigned max")
+	SPECTRA_NODISCARD_MSG("Cannot discard an atomic fetch unsigned max") SPECTRA_FORCEINLINE
 		Valid atomicFetchUnsignedMax64(Valid* p_Memory, T v_Value, MemoryOrder v_Ordering) {
 		switch (v_Ordering) {
 		case MemoryOrder::RELAXED:
@@ -938,7 +938,7 @@ namespace Spectra::Platform::Runtime::Intrinsic {
 	// =========================================================
 
 	template<typename T, typename Valid = ValidAtomicParameter<T>::Type>
-	SPECTRA_FORCEINLINE SPECTRA_NODISCARD_MSG("Cannot discard an atomic test and set")
+	SPECTRA_NODISCARD_MSG("Cannot discard an atomic test and set") SPECTRA_FORCEINLINE
 		bool atomicTestAndSet32(Valid* p_Memory, int v_Bit, MemoryOrder v_Ordering) {
 		switch (v_Ordering) {
 		case MemoryOrder::RELAXED:
@@ -958,7 +958,7 @@ namespace Spectra::Platform::Runtime::Intrinsic {
 	}
 
 	template<typename T, typename Valid = ValidAtomicParameter<T>::Type>
-	SPECTRA_FORCEINLINE SPECTRA_NODISCARD_MSG("Cannot discard an atomic test and set")
+	SPECTRA_NODISCARD_MSG("Cannot discard an atomic test and set") SPECTRA_FORCEINLINE
 		bool atomicTestAndSet64(Valid* p_Memory, int v_Bit, MemoryOrder v_Ordering) {
 		switch (v_Ordering) {
 		case MemoryOrder::RELAXED:
@@ -982,7 +982,7 @@ namespace Spectra::Platform::Runtime::Intrinsic {
 	// =========================================================
 
 	template<typename T, typename Valid = ValidAtomicParameter<T>::Type>
-	SPECTRA_FORCEINLINE SPECTRA_NODISCARD_MSG("Cannot discard an atomic test and reset")
+	SPECTRA_NODISCARD_MSG("Cannot discard an atomic test and reset") SPECTRA_FORCEINLINE
 		bool atomicTestAndReset32(Valid* p_Memory, int v_Bit, MemoryOrder v_Ordering) {
 		switch (v_Ordering) {
 		case MemoryOrder::RELAXED:
@@ -1002,7 +1002,7 @@ namespace Spectra::Platform::Runtime::Intrinsic {
 	}
 
 	template<typename T, typename Valid = ValidAtomicParameter<T>::Type>
-	SPECTRA_FORCEINLINE SPECTRA_NODISCARD_MSG("Cannot discard an atomic test and reset")
+	SPECTRA_NODISCARD_MSG("Cannot discard an atomic test and reset") SPECTRA_FORCEINLINE
 		bool atomicTestAndReset64(Valid* p_Memory, int v_Bit, MemoryOrder v_Ordering) {
 		switch (v_Ordering) {
 		case MemoryOrder::RELAXED:
@@ -1026,7 +1026,7 @@ namespace Spectra::Platform::Runtime::Intrinsic {
 	// =========================================================
 
 	template<typename T, typename Valid = ValidAtomicParameter<T>::Type>
-	SPECTRA_FORCEINLINE SPECTRA_NODISCARD_MSG("Cannot discard an atomic interlocked test and set")
+	SPECTRA_NODISCARD_MSG("Cannot discard an atomic interlocked test and set") SPECTRA_FORCEINLINE
 		bool atomicInterlockedTestAndSet(Valid* p_Memory, int v_Bit, MemoryOrder v_Ordering) {
 		switch (v_Ordering) {
 		case MemoryOrder::RELAXED:
@@ -1050,7 +1050,7 @@ namespace Spectra::Platform::Runtime::Intrinsic {
 	// =========================================================
 
 	template<typename T, typename Valid = ValidAtomicParameter<T>::Type>
-	SPECTRA_FORCEINLINE SPECTRA_NODISCARD_MSG("Cannot discard an atomic interlocked test and reset")
+	SPECTRA_NODISCARD_MSG("Cannot discard an atomic interlocked test and reset") SPECTRA_FORCEINLINE
 		bool atomicInterlockedTestAndReset(Valid* p_Memory, int v_Bit, MemoryOrder v_Ordering) {
 		switch (v_Ordering) {
 		case MemoryOrder::RELAXED:
@@ -1074,7 +1074,7 @@ namespace Spectra::Platform::Runtime::Intrinsic {
 // =========================================================
 
 	template<typename T, typename Valid = ValidAtomicParameter<T>::Type>
-	SPECTRA_FORCEINLINE SPECTRA_NODISCARD_MSG("Cannot discard an atomic clear")
+	SPECTRA_NODISCARD_MSG("Cannot discard an atomic clear") SPECTRA_FORCEINLINE
 		bool atomicClear(Valid* p_Memory, int v_Bit, MemoryOrder v_Ordering) {
 		switch (v_Ordering) {
 		case MemoryOrder::RELAXED:
@@ -1541,9 +1541,9 @@ namespace Spectra::Platform::Runtime::Intrinsic {
 		bool multiplyFullWidth(
 			int16_t a,
 			int16_t b,
-			int16_t* hi,
-			int16_t* lo) noexcept {
-		return Spec_MUL_FULL_OVERFLOW_I16(a, b, hi, lo) != 0;
+			int16_t* lo,
+			int16_t* hi) noexcept {
+		return Spec_MUL_FULL_OVERFLOW_I16(a, b, lo, hi) != 0;
 	}
 
 	SPECTRA_FORCEINLINE

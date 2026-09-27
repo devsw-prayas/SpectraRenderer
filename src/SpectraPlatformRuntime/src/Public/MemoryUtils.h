@@ -5,15 +5,15 @@ namespace Spectra::Platform::Runtime::Memory {
 
 	constexpr uint32_t INVALID_NUMA_NODE = UINT32_MAX;
 
-	enum class SPECTRA_RUNTIME_API MemoryState final : uint8_t {
+	enum class SPECTRA_RUNTIME_API MemoryState : uint8_t {
 		UNINITIALIZED, RESERVE, COMMIT, DECOMMIT, RELEASE, PROTECT
 	};
 
-	enum class SPECTRA_RUNTIME_API MemoryProtect final : uint8_t {
+	enum class SPECTRA_RUNTIME_API MemoryProtect : uint8_t {
 		NO_ACCESS, READ_ONLY, READ_WRITE, EXECUTE, EXECUTE_READ, EXECUTE_READ_WRITE, GUARD
 	};
 
-	enum class SPECTRA_RUNTIME_API MemoryFlags final : uint8_t {
+	enum class SPECTRA_RUNTIME_API MemoryFlags : uint8_t {
 		NONE, LARGE_PAGES
 	};
 

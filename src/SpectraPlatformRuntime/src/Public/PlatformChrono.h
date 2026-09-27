@@ -2,7 +2,7 @@
 #include "SpectraPlatformRuntime.h"
 
 namespace Spectra::Platform::Runtime::Chrono {
-	enum class SPECTRA_RUNTIME_API ClockDomain final : uint8_t {
+	enum class SPECTRA_RUNTIME_API ClockDomain : uint8_t {
 		MONOTONIC, WALL, CYCLE
 	};
 
