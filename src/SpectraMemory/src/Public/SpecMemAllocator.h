@@ -144,34 +144,41 @@ namespace Spectra::Memory::Allocators {
 
 		// ---- Typed (T != void) ----
 		// Forward scaffolding only - not consumed by any concrete allocator yet.
+		// Member templates on U so a dllexported IAllocator<void> subclass doesn't force
+		// instantiating them (clang-cl ignores the requires-clause when exporting).
 
+		template<typename U = T>
 		SPEC_MEM_NODISCARD_MSG("Cannot discard allocated block pointer")
-			T* allocate(size_t v_Count = 1) requires (!std::is_void_v<T>) {
+			U* allocate(size_t v_Count = 1) requires (!std::is_void_v<U>) {
 			return static_cast<derived_*>(this)->allocateImpl(v_Count);
 		}
 
 		// Pure-bump default: forwards straight to the Arena, same role as the Raw
 		// tier's allocateImpl default.
-		T* allocateImpl(size_t v_Count) requires (!std::is_void_v<T>) {
-			return static_cast<T*>(m_UnderlyingArena.allocate(v_Count * sizeof(T), alignof(T)));
+		template<typename U = T>
+		U* allocateImpl(size_t v_Count) requires (!std::is_void_v<U>) {
+			return static_cast<U*>(m_UnderlyingArena.allocate(v_Count * sizeof(U), alignof(U)));
 		}
 
 		// Placement-new at a caller-supplied, already-allocated pointer only.
-		template<typename... Args>
-		T* emplace(T* p_Ptr, Args&&... v_Args) requires (!std::is_void_v<T>) {
+		template<typename U = T, typename... Args>
+		U* emplace(U* p_Ptr, Args&&... v_Args) requires (!std::is_void_v<U>) {
 			SPEC_MEM_ASSERT(p_Ptr != nullptr);
-			return ::new (p_Ptr) T(std::forward<Args>(v_Args)...);
+			return ::new (p_Ptr) U(std::forward<Args>(v_Args)...);
 		}
 
-		void destroy(T* p_Ptr, size_t v_Count = 1) requires (!std::is_void_v<T>) {
+		template<typename U = T>
+		void destroy(U* p_Ptr, size_t v_Count = 1) requires (!std::is_void_v<U>) {
 			for (size_t i = 0; i < v_Count; ++i)
-				p_Ptr[i].~T();
+				p_Ptr[i].~U();
 		}
 
-		void deallocate(T* p_Ptr, size_t v_Count = 1) requires (!std::is_void_v<T>) {
+		template<typename U = T>
+		void deallocate(U* p_Ptr, size_t v_Count = 1) requires (!std::is_void_v<U>) {
 			static_cast<derived_*>(this)->deallocateImpl(p_Ptr, v_Count);
 		}
 
-		void deallocateImpl(T*, size_t) noexcept requires (!std::is_void_v<T>) {}
+		template<typename U = T>
+		void deallocateImpl(U*, size_t) noexcept requires (!std::is_void_v<U>) {}
 	};
 }

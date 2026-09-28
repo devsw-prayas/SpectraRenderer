@@ -79,10 +79,10 @@ else()
     _spectra_cfg(DEBUG_KERBECS_ES_WIN64   "-O0 -g")
 endif()
 
-# Overridable so a clang-cl configure (a separate build tree, since a single
-# CMake cache can't mix toolsets) can land in its own output directory instead
-# of silently overwriting the default MSVC build's binaries under the same
-# configuration names. See driver.bat's `cmake-init -clangcl`.
+# Overridable so the clang-cl build (its own Ninja tree, since a CMake cache is
+# tied to one generator and compiler) lands in its own output directory instead
+# of overwriting the default MSVC build's binaries under the same configuration
+# names. See driver.bat's `cmake-init -clangcl`.
 set(SPECTRA_BIN_SUBDIR "bin" CACHE STRING "Top-level output directory name under the repo root")
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/${SPECTRA_BIN_SUBDIR}/$<CONFIG>)
 
