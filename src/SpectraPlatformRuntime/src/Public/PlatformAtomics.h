@@ -178,13 +178,13 @@ namespace Spectra::Platform::Runtime::Atomic {
 		}
 
 		SPECTRA_FORCEINLINE
-			Valid increment(Valid v_Value = 1, Intrinsic::MemoryOrder v_Ordering = Intrinsic::MemoryOrder::SEQ_CST) noexcept {
+			Valid increment(Intrinsic::MemoryOrder v_Ordering = Intrinsic::MemoryOrder::SEQ_CST) noexcept {
 			return Intrinsic::atomicIncrement64<Valid>(&m_Value, v_Ordering
 			);
 		}
 
 		SPECTRA_FORCEINLINE
-			Valid decrement(Valid v_Value = 1, Intrinsic::MemoryOrder v_Ordering = Intrinsic::MemoryOrder::SEQ_CST) noexcept {
+			Valid decrement(Intrinsic::MemoryOrder v_Ordering = Intrinsic::MemoryOrder::SEQ_CST) noexcept {
 			return Intrinsic::atomicDecrement64<Valid>(&m_Value, v_Ordering);
 		}
 

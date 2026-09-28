@@ -76,6 +76,7 @@ namespace Spectra::Cuda::Internal {
 
 	CUctx_flags_enum CUDA_InternalHelpers::toCudaContextCreationFlags(Utils::ContextCreationFlags flag) {
 		switch (flag) {
+		case Utils::ContextCreationFlags::NONE: return static_cast<CUctx_flags_enum>(0);
 		case Utils::ContextCreationFlags::MAP_HOST: return CU_CTX_MAP_HOST;
 		case Utils::ContextCreationFlags::LMEM_RESIZE_TO_MAX: return CU_CTX_LMEM_RESIZE_TO_MAX;
 		}
@@ -587,17 +588,6 @@ namespace Spectra::Cuda::Internal {
 		case Utils::FunctionCacheConfig::PREFER_EQUAL: return CU_FUNC_CACHE_PREFER_EQUAL;
 		}
 		SPEC_CUDA_BK_ASSERT(false && "Invalid CacheConfig");
-		SPEC_CUDA_BK_TRAP();
-		SPEC_CUDA_BK_UNREACHABLE();
-	}
-
-	CUsharedconfig CUDA_InternalHelpers::toCudaSharedMemConfig(Utils::SharedMemConfig v_Config) {
-		switch (v_Config) {
-		case Utils::SharedMemConfig::DEFAULT_BANK_SIZE: return CU_SHARED_MEM_CONFIG_DEFAULT_BANK_SIZE;
-		case Utils::SharedMemConfig::FOUR_BYTE_BANK_SIZE: return CU_SHARED_MEM_CONFIG_FOUR_BYTE_BANK_SIZE;
-		case Utils::SharedMemConfig::EIGHT_BYTE_BANK_SIZE: return CU_SHARED_MEM_CONFIG_EIGHT_BYTE_BANK_SIZE;
-		}
-		SPEC_CUDA_BK_ASSERT(false && "Invalid SharedMemConfig");
 		SPEC_CUDA_BK_TRAP();
 		SPEC_CUDA_BK_UNREACHABLE();
 	}

@@ -16,7 +16,6 @@ namespace Spectra::Cuda::Compute {
 		static int  getFunctionAttribute(const GpuFunction& ro_Function, FunctionAttribute v_Attribute);
 		
 		static void setFunctionCacheConfig(const GpuFunction& ro_Function, FunctionCacheConfig v_Config);
-		static void setFunctionSharedMemConfig(const GpuFunction& ro_Function, SharedMemConfig v_Config);
 
 		// -------------------------------------------------------------------------
 		// Occupancy Calculators

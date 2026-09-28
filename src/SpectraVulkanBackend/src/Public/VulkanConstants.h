@@ -9,7 +9,7 @@ namespace Spectra::Vulkan::Utils {
 	inline constexpr uint32_t VK_SUPPORTED_LAYERS_COUNT = 1;
 	inline constexpr uint32_t MAX_INSTANCE_EXT          = 128;
 
-	enum class SPEC_VK_BK_RUNTIME_API VulkanExtensions : uint8_t {
+	enum class VulkanExtensions : uint8_t {
 		VK_SURFACE,
 		VK_WIN32_SURFACE,
 		VK_GET_PHYSICAL_DEVICE_PROPERTIES,
@@ -44,12 +44,12 @@ namespace Spectra::Vulkan::Utils {
 		NONE
 	};
 
-	enum class SPEC_VK_BK_RUNTIME_API VulkanLayers : uint8_t {
+	enum class VulkanLayers : uint8_t {
 		VK_VALIDATION,
 		NONE
 	};
 
-	enum class SPEC_VK_BK_RUNTIME_API ExtensionRequirement : uint8_t {
+	enum class ExtensionRequirement : uint8_t {
 		REQUIRED,
 		NON_ESSENTIAL
 	};

@@ -65,7 +65,7 @@ namespace Spectra::Platform::Runtime::Memory {
 			for (ULONG node = 0; node <= highestNode; ++node) {
 				ULONGLONG mask = 0;
 
-				if (GetNumaNodeProcessorMask(node, &mask) && mask != 0) {
+				if (GetNumaNodeProcessorMask(static_cast<UCHAR>(node), &mask) && mask != 0) {
 					activeCount++;
 				}
 			}

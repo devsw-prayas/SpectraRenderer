@@ -65,7 +65,6 @@ namespace Spectra::Cuda::Internal {
 		static CUjitInputType toCudaJitInputType(Utils::JitInputType v_Type);
 		static CUfunction_attribute toCudaFunctionAttr(Utils::FunctionAttribute v_Attr);
 		static CUfunc_cache toCudaCacheConfig(Utils::FunctionCacheConfig v_Config);
-		static CUsharedconfig toCudaSharedMemConfig(Utils::SharedMemConfig v_Config);
 	};
 
 	class CUDA_PackingFunctions final {

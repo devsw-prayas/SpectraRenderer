@@ -115,7 +115,7 @@ namespace Spectra::Cuda::Utils {
 	// OptiX Core Enums
 	// =========================================================
 
-	enum class SPEC_CUDA_BK_RUNTIME_API OptixLogLevel : uint8_t {
+	enum class OptixLogLevel : uint8_t {
 		LVL_DISABLE = 0,
 		LVL_FATAL   = 1,
 		LVL_ERROR   = 2,
@@ -123,12 +123,12 @@ namespace Spectra::Cuda::Utils {
 		LVL_PRINT   = 4
 	};
 
-	enum class SPEC_CUDA_BK_RUNTIME_API OptixValidationMode : uint8_t {
+	enum class OptixValidationMode : uint8_t {
 		VALIDATION_OFF = 0,
 		VALIDATION_ON  = 1
 	};
 
-	enum class SPEC_CUDA_BK_RUNTIME_API OptixCompileOptiLevel : uint8_t {
+	enum class OptixCompileOptiLevel : uint8_t {
 		LEVEL_0,
 		LEVEL_1,
 		LEVEL_2,
@@ -136,7 +136,7 @@ namespace Spectra::Cuda::Utils {
 		DEFAULT = LEVEL_3
 	};
 
-	enum class SPEC_CUDA_BK_RUNTIME_API OptixCompileDebugLvl : uint8_t {
+	enum class OptixCompileDebugLvl : uint8_t {
 		LEVEL_NONE,
 		LEVEL_MINIMAL,
 		LEVEL_MODERATE,
@@ -144,7 +144,7 @@ namespace Spectra::Cuda::Utils {
 		DEFAULT = LEVEL_NONE
 	};
 
-	enum class SPEC_CUDA_BK_RUNTIME_API OptixProgramGroupKind : uint8_t {
+	enum class OptixProgramGroupKind : uint8_t {
 		RAYGEN,
 		MISS,
 		EXCEPTION,
@@ -152,19 +152,19 @@ namespace Spectra::Cuda::Utils {
 		CALLABLES
 	};
 
-	enum class SPEC_CUDA_BK_RUNTIME_API OptixBuildInType : uint8_t {
+	enum class OptixBuildInType : uint8_t {
 		TRIANGLES,
 		CUSTOM_PRIMITIVES,
 		INSTANCES,
 		INSTANCE_POINTERS
 	};
 
-	enum class SPEC_CUDA_BK_RUNTIME_API OptixBuildOperation : uint8_t {
+	enum class OptixBuildOperation : uint8_t {
 		BUILD,
 		UPDATE
 	};
 
-	enum class SPEC_CUDA_BK_RUNTIME_API OptixBuildFlags : uint8_t {
+	enum class OptixBuildFlags : uint8_t {
 		NONE                       = 0,
 		ALLOW_UPDATE               = 1 << 0,
 		ALLOW_COMPACTION           = 1 << 1,

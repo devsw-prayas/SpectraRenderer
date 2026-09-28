@@ -4,7 +4,7 @@
 #include "SpecCudaDiagnostics.h"
 
 namespace Spectra::Cuda::Utils {
-	enum class SPEC_CUDA_BK_RUNTIME_API CudaDeviceAttribute : uint8_t {
+	enum class CudaDeviceAttribute : uint8_t {
 		COMPUTE_CAPABILITY_MAJOR,               // Major SM version (architecture generation)
 		COMPUTE_CAPABILITY_MINOR,               // Minor SM version (architecture revision)
 
@@ -32,20 +32,20 @@ namespace Spectra::Cuda::Utils {
 		CONCURRENT_MANAGED_ACCESS               // GPU can access managed memory concurrently with CPU (0/1); false on Windows WDDM
 	};
 
-	enum class SPEC_CUDA_BK_RUNTIME_API	ContextSchedulingFlags : uint8_t {
+	enum class ContextSchedulingFlags : uint8_t {
 		SCHEDULE_AUTO,
 		SCHEDULE_SPIN,
 		SCHEDULE_YIELD,
 		SCHEDULE_BLOCKING_SYNC
 	};
 
-	enum class SPEC_CUDA_BK_RUNTIME_API ContextCreationFlags : uint8_t {
+	enum class ContextCreationFlags : uint8_t {
 		NONE,
 		MAP_HOST,
 		LMEM_RESIZE_TO_MAX
 	};
 
-	enum class SPEC_CUDA_BK_RUNTIME_API ExecAffinityType : uint8_t {
+	enum class ExecAffinityType : uint8_t {
 		SM_COUNT = 0
 	};
 
@@ -79,13 +79,13 @@ namespace Spectra::Cuda::Utils {
 	SPEC_CUDA_BK_STATIC_ASSERT(std::is_trivially_copyable_v<CtxCreateParams>,        "CtxCreateParams must be trivially copyable");
 	SPEC_CUDA_BK_STATIC_ASSERT(std::is_trivially_move_assignable_v<CtxCreateParams>, "CtxCreateParams must be trivially move assignable");
 
-	enum class SPEC_CUDA_BK_RUNTIME_API HostAllocFlags : uint8_t {
+	enum class HostAllocFlags : uint8_t {
 		ALLOC_PORTABLE,
 		ALLOC_DEVICE_MAP,
 		ALLOC_WRITE_COMBINED
 	};
 
-	enum class SPEC_CUDA_BK_RUNTIME_API HostRegisterFlags : uint8_t {
+	enum class HostRegisterFlags : uint8_t {
 		REG_PORTABLE,
 		REG_DEVICE_MAP,
 		REG_IO_MEMORY,
@@ -108,29 +108,29 @@ namespace Spectra::Cuda::Utils {
 		CPU, GPU
 	};
 
-	enum class SPEC_CUDA_BK_RUNTIME_API AllocationType : uint8_t {
+	enum class AllocationType : uint8_t {
 		INVALID,
 		PINNED,
 	};
 
-	enum class SPEC_CUDA_BK_RUNTIME_API AllocationHandleType : uint8_t {
+	enum class AllocationHandleType : uint8_t {
 		NONE,
 		WIN32_HANDLE,
 		FABRIC_HANDLE
 	};
 
-	enum class SPEC_CUDA_BK_RUNTIME_API AccessFlagBits : uint8_t {
+	enum class AccessFlagBits : uint8_t {
 		NONE = 0,
 		READ = 1 << 0,
 		READWRITE = 1 << 1
 	};
 
-	enum class SPEC_CUDA_BK_RUNTIME_API AllocationGranularityOption : uint8_t {
+	enum class AllocationGranularityOption : uint8_t {
 		MINIMUM,
 		RECOMMENDED
 	};
 
-	enum class SPEC_CUDA_BK_RUNTIME_API ArrayFormat : uint8_t {
+	enum class ArrayFormat : uint8_t {
 		FP32_ARRAY,
 		FP16_ARRAY,
 		UINT8_ARRAY,
@@ -138,17 +138,17 @@ namespace Spectra::Cuda::Utils {
 		UINT32_ARRAY
 	};
 
-	enum class SPEC_CUDA_BK_RUNTIME_API ArrayFlags : uint8_t {
+	enum class ArrayFlags : uint8_t {
 		TEXTURE_WRITE,
 		SURFACE_WRITE
 	};
 
-	enum class SPEC_CUDA_BK_RUNTIME_API StreamFlags : uint8_t {
+	enum class StreamFlags : uint8_t {
 		DEFAULT,
 		NON_BLOCKING
 	};
 
-	enum class SPEC_CUDA_BK_RUNTIME_API EventFlags : uint8_t {
+	enum class EventFlags : uint8_t {
 		DEFAULT = 0,
 		BLOCKING_SYNC = 1 << 0,
 		DISABLE_TIMING = 1 << 1,
@@ -434,7 +434,7 @@ namespace Spectra::Cuda::Utils {
 	SPEC_CUDA_BK_RUNTIME_API void setArrayFormat(Array3dDesc& ro_Desc, ArrayFormat v_Format);
 	SPEC_CUDA_BK_RUNTIME_API void setArrayFlags(Array3dDesc& ro_Desc, ArrayFlags v_Flags);
 
-	enum class SPEC_CUDA_BK_RUNTIME_API CopyMemoryType : uint8_t {
+	enum class CopyMemoryType : uint8_t {
 		HOST,
 		DEVICE,
 		ARRAY
@@ -495,32 +495,32 @@ namespace Spectra::Cuda::Utils {
 	// Arrays & Textures
 	// -------------------------------------------------------------------------
 
-	enum class SPEC_CUDA_BK_RUNTIME_API ResourceType : uint8_t {
+	enum class ResourceType : uint8_t {
 		ARRAY,
 		MIPMAPPED_ARRAY,
 		LINEAR,
 		PITCH_2D
 	};
 
-	enum class SPEC_CUDA_BK_RUNTIME_API TexAddressMode : uint8_t {
+	enum class TexAddressMode : uint8_t {
 		WRAP,
 		CLAMP,
 		MIRROR,
 		BORDER
 	};
 
-	enum class SPEC_CUDA_BK_RUNTIME_API TexFilterMode : uint8_t {
+	enum class TexFilterMode : uint8_t {
 		POINT,
 		LINEAR_FILTER
 	};
 
-	enum class SPEC_CUDA_BK_RUNTIME_API TexFlags : uint8_t {
+	enum class TexFlags : uint8_t {
 		NORMALIZED_COORDS = 1 << 0,
 		READ_AS_INTEGER   = 1 << 1,
 		SRGB              = 1 << 2
 	};
 
-	enum class SPEC_CUDA_BK_RUNTIME_API ResourceViewFormat : uint8_t {
+	enum class ResourceViewFormat : uint8_t {
 		NONE,
 		UINT_1X8,  UINT_2X8,  UINT_4X8,
 		SINT_1X8,  SINT_2X8,  SINT_4X8,
@@ -664,13 +664,13 @@ namespace Spectra::Cuda::Utils {
 	// GPU Streams and Stuff
 	// -------------------------------------------------------------------------
 
-	enum class SPEC_CUDA_BK_RUNTIME_API StreamCaptureMode : uint8_t {
+	enum class StreamCaptureMode : uint8_t {
 		GLOBAL,
 		THREAD_LOCAL,
 		RELAXED
 	};
 
-	enum class SPEC_CUDA_BK_RUNTIME_API StreamCaptureStatus : uint8_t {
+	enum class StreamCaptureStatus : uint8_t {
 		NONE,
 		ACTIVE,
 		INVALIDATED
@@ -849,7 +849,7 @@ namespace Spectra::Cuda::Utils {
 	// Kernel Configuration & Launch
 	// -------------------------------------------------------------------------
 
-	enum class SPEC_CUDA_BK_RUNTIME_API FunctionAttribute : uint8_t {
+	enum class FunctionAttribute : uint8_t {
 		MAX_THREADS_PER_BLOCK,
 		SHARED_SIZE_BYTES,
 		CONST_SIZE_BYTES,
@@ -862,17 +862,11 @@ namespace Spectra::Cuda::Utils {
 		PREFERRED_SHARED_MEMORY_CARVEOUT
 	};
 
-	enum class SPEC_CUDA_BK_RUNTIME_API FunctionCacheConfig : uint8_t {
+	enum class FunctionCacheConfig : uint8_t {
 		PREFER_NONE,
 		PREFER_SHARED,
 		PREFER_L1,
 		PREFER_EQUAL
-	};
-
-	enum class SPEC_CUDA_BK_RUNTIME_API SharedMemConfig : uint8_t {
-		DEFAULT_BANK_SIZE,
-		FOUR_BYTE_BANK_SIZE,
-		EIGHT_BYTE_BANK_SIZE
 	};
 
 	struct SPEC_CUDA_BK_RUNTIME_API LaunchDimension final {
@@ -983,7 +977,7 @@ namespace Spectra::Cuda::Utils {
 	SPEC_CUDA_BK_STATIC_ASSERT(std::is_trivially_copyable_v<GpuLinkState>, "GpuLinkState must be trivially copyable");
 	SPEC_CUDA_BK_STATIC_ASSERT(std::is_trivially_move_assignable_v<GpuLinkState>, "GpuLinkState must be trivially move assignable");
 
-	enum class SPEC_CUDA_BK_RUNTIME_API JitOptimizationLevel : uint8_t {
+	enum class JitOptimizationLevel : uint8_t {
 		O0 = 0,
 		O1 = 1,
 		O2 = 2,
@@ -992,7 +986,7 @@ namespace Spectra::Cuda::Utils {
 		DEFAULT_MAX = 5 // Internal sentinel to mean we set 4
 	};
 
-	enum class SPEC_CUDA_BK_RUNTIME_API JitTarget : uint8_t {
+	enum class JitTarget : uint8_t {
 		TARGET_AUTO,
 		TARGET_SM_80, // Ampere
 		TARGET_SM_86, // Ampere RTX
@@ -1000,13 +994,13 @@ namespace Spectra::Cuda::Utils {
 		TARGET_SM_90  // Hopper
 	};
 
-	enum class SPEC_CUDA_BK_RUNTIME_API JitCacheMode : uint8_t {
+	enum class JitCacheMode : uint8_t {
 		NONE, // Compile with no -dlcm flag specified
 		CA,   // Compile with L1 cache enabled (-dlcm=ca)
 		CG    // Compile with L1 cache disabled (-dlcm=cg)
 	};
 
-	enum class SPEC_CUDA_BK_RUNTIME_API JitInputType : uint8_t {
+	enum class JitInputType : uint8_t {
 		CUBIN,
 		PTX,
 		FATBIN,

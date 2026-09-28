@@ -11,15 +11,15 @@ namespace Spectra::Platform::Runtime::Windows {
 		struct WindowDropTargetImpl;
 	}
 
-	enum class SPECTRA_RUNTIME_API WindowLifecycle : uint8_t {
+	enum class WindowLifecycle : uint8_t {
 		CREATED, SHOWN, DESTROYED
 	};
 
-	enum class SPECTRA_RUNTIME_API WindowVisualState : uint8_t {
+	enum class WindowVisualState : uint8_t {
 		RESTORED, MINIMIZED, MAXIMIZED, HIDDEN
 	};
 
-	enum class SPECTRA_RUNTIME_API WindowStyleFlags : uint32_t {
+	enum class WindowStyleFlags : uint32_t {
 		NONE = 0,
 		RESIZABLE = 1 << 0,
 		MINIMIZABLE = 1 << 1,
@@ -61,7 +61,7 @@ namespace Spectra::Platform::Runtime::Windows {
 		return r_Lhs;
 	}
 
-	enum class SPECTRA_RUNTIME_API WindowEventType : uint8_t {
+	enum class WindowEventType : uint8_t {
 		CLOSE = 0,
 		RESIZE = 1,
 		MOVE = 2,
@@ -82,13 +82,13 @@ namespace Spectra::Platform::Runtime::Windows {
 		DROP = 17,
 	};
 
-	enum class SPECTRA_RUNTIME_API WindowHitTestResult : uint8_t {
+	enum class WindowHitTestResult : uint8_t {
 		CLIENT = 0,
 		CAPTION = 1,
 		NOWHERE = 2,
 	};
 
-	enum class SPECTRA_RUNTIME_API KeyCode : uint16_t {
+	enum class KeyCode : uint16_t {
 		KC_UNKNOWN,
 
 		KC_BACKSPACE,
@@ -220,7 +220,7 @@ namespace Spectra::Platform::Runtime::Windows {
 		KC_APOSTROPHE
 	};
 
-	enum class SPECTRA_RUNTIME_API KeyModifierFlags : uint16_t {
+	enum class KeyModifierFlags : uint16_t {
 		NONE = 0,
 		SHIFT = 1 << 0,
 		CONTROL = 1 << 1,
@@ -269,7 +269,7 @@ namespace Spectra::Platform::Runtime::Windows {
 		return r_Lhs;
 	}
 
-	enum class SPECTRA_RUNTIME_API MouseButton : uint8_t {
+	enum class MouseButton : uint8_t {
 		LEFT = 0,
 		RIGHT = 1,
 		MIDDLE = 2,
@@ -277,7 +277,7 @@ namespace Spectra::Platform::Runtime::Windows {
 		X2 = 4
 	};
 
-	enum class SPECTRA_RUNTIME_API RawInputDeviceType : uint8_t {
+	enum class RawInputDeviceType : uint8_t {
 		MOUSE,
 		KEYBOARD,
 		HID

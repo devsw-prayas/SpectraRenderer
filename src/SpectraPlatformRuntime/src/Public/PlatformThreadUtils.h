@@ -19,7 +19,7 @@ namespace Spectra::Platform::Runtime::Thread {
 	using Name = const char*;
 	using ProcessorIdx = size_t;
 
-	enum class SPECTRA_RUNTIME_API Priority : int8_t {
+	enum class Priority : int8_t {
 		PRIORITY_IDLE = -15,
 		PRIORITY_LOWEST = -2,
 		PRIORITY_BELOW_NORMAL = -1,
@@ -29,7 +29,7 @@ namespace Spectra::Platform::Runtime::Thread {
 		PRIORITY_TIME_CRITICAL = 15,
 	};
 
-	enum class SPECTRA_RUNTIME_API ThreadState : uint8_t {
+	enum class ThreadState : uint8_t {
 		CREATED, RUNNING, SEALED, REAPED
 	};
 

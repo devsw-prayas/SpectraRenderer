@@ -70,7 +70,7 @@ namespace Spectra::Platform::Runtime::Intrinsic {
 			>;
 	};
 
-	enum class SPECTRA_RUNTIME_API MemoryOrder : std::uint8_t {
+	enum class MemoryOrder : std::uint8_t {
 		RELAXED = SPECTRA_MEMORY_ORDER_RELAXED,
 		CONSUME = SPECTRA_MEMORY_ORDER_CONSUME,
 		ACQUIRE = SPECTRA_MEMORY_ORDER_ACQUIRE,
@@ -107,7 +107,7 @@ namespace Spectra::Platform::Runtime::Intrinsic {
 	// =========================================================
 
 	template<typename T, typename Valid = ValidAtomicParameter<T>::Type>
-	SPECTRA_NODISCARD_MSG("Cannot discard an atomic store") SPECTRA_FORCEINLINE
+	SPECTRA_FORCEINLINE
 		void atomicStore(Valid* p_Memory, Valid v_Value, MemoryOrder v_Ordering) {
 		switch (v_Ordering) {
 		case MemoryOrder::RELAXED:

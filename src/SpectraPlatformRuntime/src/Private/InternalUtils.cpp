@@ -123,7 +123,7 @@ namespace Spectra::Platform::Runtime::Internal {
 
 	GROUP_AFFINITY ThreadMappings::fromAffinityDesc(const Thread::AffinityDesc& ro_Desc) {
 		GROUP_AFFINITY affinity{};
-		affinity.Group = ro_Desc.m_GroupId;
+		affinity.Group = static_cast<WORD>(ro_Desc.m_GroupId);
 		affinity.Mask = ro_Desc.m_AffMask;
 		return affinity;
 	}

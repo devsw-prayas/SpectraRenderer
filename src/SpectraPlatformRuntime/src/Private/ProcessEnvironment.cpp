@@ -51,7 +51,7 @@ namespace Spectra::Platform::Runtime::Environment {
                     const auto& proc = entry->Processor;
                     for (WORD i = 0; i < proc.GroupCount; ++i) {
                         g_CpuInfo.m_LogicalCoreCount +=
-                            Spec_POPCOUNT64(proc.GroupMask[i].Mask);
+                            static_cast<uint32_t>(Spec_POPCOUNT64(proc.GroupMask[i].Mask));
                     }
                     break;
                 }

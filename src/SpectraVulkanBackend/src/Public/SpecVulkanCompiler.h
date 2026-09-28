@@ -88,8 +88,19 @@ namespace Spectra::Vulkan {
 #define SPEC_VK_BK_PRAGMA(x)
 #endif
 
-#define SPEC_VK_BK_DIAGNOSTIC_PUSH SPEC_VK_BK_PRAGMA(diagnostic push)
-#define SPEC_VK_BK_DIAGNOSTIC_POP  SPEC_VK_BK_PRAGMA(diagnostic pop)
+#if SPEC_VK_BK_COMPILER_MSVC
+#define SPEC_VK_BK_DIAGNOSTIC_PUSH SPEC_VK_BK_PRAGMA(warning(push))
+#define SPEC_VK_BK_DIAGNOSTIC_POP  SPEC_VK_BK_PRAGMA(warning(pop))
+#elif SPEC_VK_BK_COMPILER_CLANG
+#define SPEC_VK_BK_DIAGNOSTIC_PUSH SPEC_VK_BK_PRAGMA(clang diagnostic push)
+#define SPEC_VK_BK_DIAGNOSTIC_POP  SPEC_VK_BK_PRAGMA(clang diagnostic pop)
+#elif SPEC_VK_BK_COMPILER_GCC
+#define SPEC_VK_BK_DIAGNOSTIC_PUSH SPEC_VK_BK_PRAGMA(GCC diagnostic push)
+#define SPEC_VK_BK_DIAGNOSTIC_POP  SPEC_VK_BK_PRAGMA(GCC diagnostic pop)
+#else
+#define SPEC_VK_BK_DIAGNOSTIC_PUSH
+#define SPEC_VK_BK_DIAGNOSTIC_POP
+#endif
 
 #if SPEC_VK_BK_COMPILER_MSVC
 #define SPEC_VK_BK_DISABLE_WARNING(w) SPEC_VK_BK_PRAGMA(warning(disable : w))

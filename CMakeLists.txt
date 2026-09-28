@@ -121,6 +121,10 @@ else()
     endif()
 endif()
 
+# C4251 (dll-interface on exported members) and C4324 (padding from alignas) are by design
+# in an all-DLL, alignas-heavy codebase built by one toolchain at a time.
+add_compile_options($<$<AND:$<COMPILE_LANGUAGE:CXX>,$<CXX_COMPILER_FRONTEND_VARIANT:MSVC>>:/wd4251$<SEMICOLON>/wd4324>)
+
 add_subdirectory(common/Corium)
 add_subdirectory(common/StormSTL)
 add_subdirectory(common/Kerbecs)
@@ -152,8 +156,8 @@ add_subdirectory(src/SpectraInstrumentation)
 
 foreach(target ${SPECTRA_STL_ARCH_CONSUMERS})
     target_compile_options(${target} PRIVATE
-        $<$<AND:$<COMPILE_LANGUAGE:CXX>,$<CXX_COMPILER_ID:MSVC>>:${SPECTRA_STL_ARCH_FLAG} /W4 /permissive->
-        $<$<AND:$<COMPILE_LANGUAGE:CXX>,$<NOT:$<CXX_COMPILER_ID:MSVC>>>:${SPECTRA_STL_ARCH_FLAG} -Wall -Wextra -Wpedantic>
+        $<$<AND:$<COMPILE_LANGUAGE:CXX>,$<CXX_COMPILER_FRONTEND_VARIANT:MSVC>>:${SPECTRA_STL_ARCH_FLAG} /W4 /permissive->
+        $<$<AND:$<COMPILE_LANGUAGE:CXX>,$<NOT:$<CXX_COMPILER_FRONTEND_VARIANT:MSVC>>>:${SPECTRA_STL_ARCH_FLAG} -Wall -Wextra -Wpedantic>
     )
 endforeach()
 

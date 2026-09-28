@@ -37,16 +37,6 @@ namespace Spectra::Cuda::Compute {
 			Instrumentation::otherwise(Internal::trapCudaError));
 	}
 
-	void DeviceCompute::setFunctionSharedMemConfig(const GpuFunction& ro_Function, SharedMemConfig v_Config) {
-		SPEC_CUDA_BK_ASSERT(ro_Function.isValid() && "Invalid Function Handle");
-		Instrumentation::staticSwitch(cuFuncSetSharedMemConfig(
-				static_cast<CUfunction>(ro_Function.m_FunctionHandle),
-				Internal::CUDA_InternalHelpers::toCudaSharedMemConfig(v_Config)
-			),
-			Instrumentation::caseOf<CUDA_SUCCESS>([]{}),
-			Instrumentation::otherwise(Internal::trapCudaError));
-	}
-
 	OccupancyMaxBlockSizeResult DeviceCompute::calculateMaxPotentialBlockSize(
 		const GpuFunction& ro_Function,
 		size_t v_DynamicSMemSize,
