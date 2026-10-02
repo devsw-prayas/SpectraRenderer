@@ -25,6 +25,7 @@ src/             Engine and application modules
 | **Kerbecs** | Memory and thread sanitation with selective shadowing |
 | **Leibniz** | SIMD-optimized math and numerical computation |
 | **Hades-Benchmark** | Performance benchmarking framework |
+| **Valhalla** | Codegen-driven C++20 reflection: annotation macros, Valhalla-Gen (C#) scanner, CHD type registry |
 
 Each library is self-contained and can be used independently outside of Spectra.
 
@@ -42,6 +43,7 @@ Each library is self-contained and can be used independently outside of Spectra.
 | **SpectraMemory** | Virtual memory and address space management |
 | **SpectraFileSystem** | File I/O and asset access |
 | **SpectraRHI** | Render hardware interface abstraction layer |
+| **SpectraInstrumentation** | Engine instrumentation and diagnostics (boots before SpectraMemory) |
 | **SpectraProfiler** | Engine-side instrumentation and profiling |
 | **SpectraEditor** | Editor application |
 | **SpectraLauncher** | Application launcher |

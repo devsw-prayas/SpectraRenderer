@@ -1,9 +1,25 @@
-# General OS files
+# OS
 .DS_Store
 Thumbs.db
 desktop.ini
 
-# Compiled binaries
+# Build trees and outputs
+/build/
+/bin/
+/build-clangcl/
+/bin-clangcl/
+/pdb/
+/pdb-clangcl/
+/build_ninja/
+/obj/
+/intermediate/
+/Debug/
+/Release/
+/x64/
+/x86/
+/Testing/
+
+# Binaries and linker/compiler intermediates
 *.exe
 *.dll
 *.so
@@ -12,92 +28,62 @@ desktop.ini
 *.a
 *.out
 *.app
+*.obj
+*.o
+*.o.*
 *.pdb
 *.idb
-*.exp
-*.obj
-*.dll.recipe
 *.ilk
-*.recipe
-
-# Build and intermediate files
-/build/
-/bin/
-/build-clangcl/
-/bin-clangcl/
-/obj/
-/intermediate/
-/DerivedDataCache/
-/Saved/
-/Binaries/
-/Debug/
-/Release/
-/x64/
-/x86/
-
-# Unreal Engine specific
-*.uprojectdirs
-*.sln
-*.VC.db
-*.VC.opendb
-*.VC.VC.opendb
-*.vcxproj
-*.filters
-*.suo
-*.ipch
-*.cache
-*.log
-*.tlog
-*.o
-*.rsp
+*.exp
+*.iobj
+*.ipdb
 *.pch
-*.pyo
-*.pyc
-*.pycache/
+*.ipch
+*.recipe
+*.dll.recipe
+*.rsp
+*.tlog
+*.lastbuildstate
+*.log
 
-# CMake
+# CMake (only what it generates; hand-written *.cmake modules stay trackable)
 CMakeCache.txt
 CMakeFiles/
 CMakeScripts/
 cmake_install.cmake
+CTestTestfile.cmake
 Makefile
-*.cmake
 *.dir/
 
-# Visual Studio specific
-.vscode/
+# Visual Studio / VS Code (solutions and projects are CMake-generated)
 .vs/
+.vscode/
+*.sln
+*.vcxproj
+*.filters
 *.user
+*.suo
 *.ncb
 *.sdf
+*.opensdf
 *.opendb
 *.VC.db
 *.VC.opendb
-*.code-workspace
-
-# Unreal Engine auto-generated files
-*.generated.h
-*.generated.cpp
-*.log
-*.sav
 *.aps
 *.aps.xml
-*.sdf
-*.tlog
-*.lastbuildstate
-*.o.*
-*.iobj
-*.ipdb
-*.opensdf
-*.sln
-*.suo
+*.code-workspace
+*.cache
 
-# Unreal Engine asset caches
-*.uasset
-*.umap
-*.upk
+# Python
+*.pyc
+*.pyo
+__pycache__/
 
-# Unreal Engine backup files
+# Generated sources (driver.bat header generation, Valhalla-Gen)
+*.generated.h
+*.generated.cpp
+
+# Editor backups
 *.bak
 *.backup
 
@@ -106,10 +92,6 @@ tests/*/generated/
 
 # Adopted-suite marker (driver.bat hades find-suite/init-suite, written to cwd)
 .hades-suite
-
-# Standalone Ninja build tree (Linux cross-testing) and stray CTest output
-/build_ninja/
-/Testing/
 
 # Claude
 .claude/

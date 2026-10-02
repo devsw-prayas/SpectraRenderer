@@ -45,9 +45,7 @@ target_compile_options(SpectraMemory PRIVATE
 
 target_link_libraries(SpectraMemory SpectraPlatformRuntime)
 
-# +---------------------------------------------------------------------------+
-# All sizes are mentioned in GiB, unless stated
-# +---------------------------------------------------------------------------+
+# Sizes in GiB unless stated.
 
 target_compile_definitions(SpectraMemory PRIVATE SPECTRA_VA_PER_NODE_GIB=256)
 target_compile_definitions(SpectraMemory PRIVATE SPECTRA_VA_MAX_NUMA_NODES=4)
@@ -55,9 +53,7 @@ target_compile_definitions(SpectraMemory PRIVATE SPECTRA_VA_MAX_NUMA_NODES=4)
 target_compile_definitions(SpectraMemory PUBLIC SPEC_MEM_PER_THREAD_TLS_MIN_SIZE=2)         # In MiB
 target_compile_definitions(SpectraMemory PUBLIC SPEC_MEM_PER_THREAD_TLS_MAX_SIZE=100)       # In MiB
 
-# +---------------------------------------------------------------------------+
-# Safe memory reclamation limits (Hazard Pointers / EBR)
-# +---------------------------------------------------------------------------
+# Safe memory reclamation limits (hazard pointers / EBR).
 
 target_compile_definitions(SpectraMemory PUBLIC SPECTRA_MAX_EBR_INSTANCES=32)
 target_compile_definitions(SpectraMemory PUBLIC SPECTRA_MAX_EBR_PARTICIPANTS=64)

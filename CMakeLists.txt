@@ -10,6 +10,9 @@ endif()
 
 project(Spectra)
 
+# No vcpkg dependencies; opt out of a user-wide `vcpkg integrate install` (its post-build step needs pwsh).
+set(CMAKE_VS_GLOBALS "VcpkgEnabled=false")
+
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
@@ -26,18 +29,9 @@ set(CMAKE_CONFIGURATION_TYPES
 )
 
 if(MSVC)
-    # FORCE-written every configure on purpose: these are derived build types,
-    # not user-tunable knobs. Edit them here, never in the CMake cache.
-    #
-    #   /Z7             debug info inside each .obj/.lib. No scattered vc*.pdb in
-    #                   build/, no /FS contention under /MP. The only PDB produced
-    #                   is the per-.dll/.exe linker PDB, in bin/<config>/ (see
-    #                   CMAKE_PDB_OUTPUT_DIRECTORY below).
-    #   /DEBUG          emits that linker PDB; doesn't change codegen.
-    #   /OPT:REF        drops unreferenced funcs/data (needs /Gy, set globally).
-    #   /OPT:NOICF      keeps identical small funcs distinct so stack traces don't
-    #                   mislabel them.
-    #   /INCREMENTAL:NO required alongside /OPT:*; also silences LNK4075.
+    # FORCE-written: derived build types, edit here rather than in the cache.
+    # /Z7 keeps debug info in the .obj (no vc*.pdb, no /FS contention under /MP), so the linker PDB is the only one.
+    # /OPT:NOICF keeps identical functions distinct so stack traces stay accurate; /INCREMENTAL:NO is required with /OPT.
     macro(_spectra_cfg NAME CXX LINK)
         set(CMAKE_CXX_FLAGS_${NAME}           "${CXX}"  CACHE STRING "" FORCE)
         set(CMAKE_EXE_LINKER_FLAGS_${NAME}    "${LINK}" CACHE STRING "" FORCE)
@@ -52,8 +46,7 @@ if(MSVC)
     _spectra_cfg(RELEASE_WIN64            "/O2 /Z7 /DNDEBUG /MD"  "${_spectra_link_opt}")
     _spectra_cfg(RELEASE_KERBECS_NS_WIN64 "/O2 /Z7 /DNDEBUG /MD"  "${_spectra_link_opt}")
     _spectra_cfg(RELEASE_KERBECS_ES_WIN64 "/O2 /Z7 /DNDEBUG /MD"  "${_spectra_link_opt}")
-    # ReleaseNoOpt: NDEBUG (asserts compiled out) but /Od, to isolate
-    # /O2-exposed UB from genuine error paths. No /OPT:* on an unoptimised build.
+    # ReleaseNoOpt: asserts off but /Od, to tell /O2-exposed UB apart from real error paths.
     _spectra_cfg(RELEASENOOPT_WIN64       "/Od /Z7 /DNDEBUG /MD"  "${_spectra_link_plain}")
 
     _spectra_cfg(DEBUG_WIN64              "/Od /Z7 /MDd"          "${_spectra_link_plain}")
@@ -63,8 +56,7 @@ if(MSVC)
     set(CMAKE_MSVC_RUNTIME_LIBRARY
         "MultiThreaded$<$<CONFIG:Debug_win64,Debug_Kerbecs_NS_win64,Debug_Kerbecs_ES_win64>:Debug>DLL")
 else()
-    # GCC/Clang. Config names kept identical to the MSVC set: driver.bat
-    # validates -c against them and bin/<config>/ is keyed on them.
+    # Same config names as MSVC: driver.bat validates -c against them.
     macro(_spectra_cfg NAME CXX)
         set(CMAKE_CXX_FLAGS_${NAME} "${CXX}" CACHE STRING "" FORCE)
     endmacro()
@@ -79,28 +71,21 @@ else()
     _spectra_cfg(DEBUG_KERBECS_ES_WIN64   "-O0 -g")
 endif()
 
-# Overridable so the clang-cl build (its own Ninja tree, since a CMake cache is
-# tied to one generator and compiler) lands in its own output directory instead
-# of overwriting the default MSVC build's binaries under the same configuration
-# names. See driver.bat's `cmake-init -clangcl`.
+# Overridden by `driver.bat cmake-init -clangcl` so clang-cl output doesn't overwrite the MSVC binaries.
 set(SPECTRA_BIN_SUBDIR "bin" CACHE STRING "Top-level output directory name under the repo root")
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/${SPECTRA_BIN_SUBDIR}/$<CONFIG>)
 
-# Linker PDBs (one per .dll/.exe) land beside their binary, not scattered
-# through build/. With /Z7 this is the only PDB the build produces.
-set(CMAKE_PDB_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/${SPECTRA_BIN_SUBDIR}/$<CONFIG>)
+# PDBs stay out of bin/; binaries embed their absolute path. bin -> pdb, bin-clangcl -> pdb-clangcl.
+string(REGEX REPLACE "^bin" "pdb" _spectra_pdb_default "${SPECTRA_BIN_SUBDIR}")
+set(SPECTRA_PDB_SUBDIR "${_spectra_pdb_default}" CACHE STRING "Top-level linker PDB directory name under the repo root")
+set(CMAKE_PDB_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/${SPECTRA_PDB_SUBDIR}/$<CONFIG>)
 
-# Must be set before add_subdirectory(common/StormSTL): it reads these via option() as soon
-# as it's processed. No FORCE, so a -D override on the cmake invocation sticks across
-# cmake-init reruns instead of getting reset.
+# Set before add_subdirectory(common/StormSTL), which reads them via option(). No FORCE, so -D overrides stick.
 set(STL_PREFER_SSE    OFF CACHE BOOL "Prefer SSE in StormSTL vectorized ops")
 set(STL_PREFER_AVX    ON  CACHE BOOL "Prefer AVX in StormSTL vectorized ops")
 set(STL_PREFER_AVX512 OFF CACHE BOOL "Prefer AVX512f in StormSTL vectorized ops")
 
-# Targets that include StormSTL's header-only vectorized ops directly, and so need to
-# compile with the same /arch as StormSTL itself. Otherwise they silently compile the
-# SSE/AVX2 path regardless of the STL_PREFER_* selection above. Add/remove names here as
-# that changes; targets not listed don't pay for an /arch they don't need.
+# Targets that inline StormSTL's vectorized headers need its /arch, or they silently get the SSE/AVX2 path.
 set(SPECTRA_STL_ARCH_CONSUMERS SpectraLauncher)
 
 if(MSVC)
@@ -121,8 +106,7 @@ else()
     endif()
 endif()
 
-# C4251 (dll-interface on exported members) and C4324 (padding from alignas) are by design
-# in an all-DLL, alignas-heavy codebase built by one toolchain at a time.
+# C4251/C4324 are by design in an all-DLL, alignas-heavy codebase built by one toolchain at a time.
 add_compile_options($<$<AND:$<COMPILE_LANGUAGE:CXX>,$<CXX_COMPILER_FRONTEND_VARIANT:MSVC>>:/wd4251$<SEMICOLON>/wd4324>)
 
 add_subdirectory(common/Corium)
@@ -202,7 +186,6 @@ set_target_properties(SpectraEditor          PROPERTIES FOLDER "Editor")
 set_target_properties(SpectraLauncher        PROPERTIES FOLDER "Launcher")
 set_target_properties(SpectraPlatformRuntime PROPERTIES FOLDER "Runtime")
 
-# Global Compiler / Linker Options
 if(MSVC)
     add_compile_options(/MP /Gy /Zc:inline)
 else()

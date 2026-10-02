@@ -350,9 +350,6 @@ namespace Spectra::Platform::Runtime::Windows {
 			return 0;
 		}
 
-		// TODO: WM_DROPFILES / OLE drag-drop translation into DropEvent - blocked on
-		// EnableDragDrop's IDropTarget implementation.
-
 		if (v_Msg == WM_NCDESTROY) {
 			SetWindowLongPtrW(v_Hwnd, GWLP_USERDATA, 0);
 		}

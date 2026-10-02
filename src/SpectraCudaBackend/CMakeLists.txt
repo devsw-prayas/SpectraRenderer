@@ -54,12 +54,13 @@ if (SPECTRA_ENABLE_CUDA)
     target_link_libraries(SpectraCudaBackend PRIVATE
         CUDA::cuda_driver
     )
+    # CUDA 13's cuda.lib pulls in LIBCMT; everything else uses the DLL CRT.
+    target_link_options(SpectraCudaBackend PRIVATE $<$<CXX_COMPILER_FRONTEND_VARIANT:MSVC>:/NODEFAULTLIB:LIBCMT>)
     target_compile_definitions(SpectraCudaBackend PRIVATE
         SPECTRA_CUDA_AVAILABLE
         CUDA_NO_RUNTIME_API
     )
 
-    # OptiX configuration
     find_path(OPTIX_INCLUDE_DIR optix.h
         PATHS
         $ENV{OPTIX_PATH}/include
@@ -80,7 +81,6 @@ if (SPECTRA_ENABLE_CUDA)
     endif()
 endif()
 
-# Ensure CUDA targets are optimized and matched to Host architecture
 set_target_properties(SpectraCudaBackend PROPERTIES 
     CUDA_SEPARABLE_COMPILATION ON
     CUDA_STANDARD 17
