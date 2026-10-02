@@ -1,0 +1,140 @@
+# Hades suite manifest
+[[test]]
+id = "memset-matches-reference-size-sweep"
+fixture = "MemsetMatchesReferenceSizeSweep"
+kind = "correctness"
+
+[[test]]
+id = "memset-matches-reference-alignment-sweep"
+fixture = "MemsetMatchesReferenceAlignmentSweep"
+kind = "correctness"
+
+[[test]]
+id = "memset-large-streaming-path-matches-reference"
+fixture = "MemsetLargeStreamingPathMatchesReference"
+kind = "correctness"
+
+[[test]]
+id = "memset-zero-size-writes-nothing"
+fixture = "MemsetZeroSizeWritesNothing"
+kind = "correctness"
+
+[[test]]
+id = "memcopy-matches-reference-size-sweep"
+fixture = "MemcopyMatchesReferenceSizeSweep"
+kind = "correctness"
+
+[[test]]
+id = "memcopy-matches-reference-alignment-sweep"
+fixture = "MemcopyMatchesReferenceAlignmentSweep"
+kind = "correctness"
+
+[[test]]
+id = "memcopy-large-streaming-path-matches-reference"
+fixture = "MemcopyLargeStreamingPathMatchesReference"
+kind = "correctness"
+
+[[test]]
+id = "memcopy-zero-size-writes-nothing"
+fixture = "MemcopyZeroSizeWritesNothing"
+kind = "correctness"
+
+[[test]]
+id = "memcopy-does-not-modify-source"
+fixture = "MemcopyDoesNotModifySource"
+kind = "correctness"
+
+[[test]]
+id = "memequal-identical-buffers-return-true-size-sweep"
+fixture = "MemequalIdenticalBuffersReturnTrueSizeSweep"
+kind = "correctness"
+
+[[test]]
+id = "memequal-single-byte-difference-detected-at-every-position"
+fixture = "MemequalSingleByteDifferenceDetectedAtEveryPosition"
+kind = "correctness"
+
+[[test]]
+id = "memcompare-sign-matches-reference-size-sweep"
+fixture = "MemcompareSignMatchesReferenceSizeSweep"
+kind = "correctness"
+
+[[test]]
+id = "memcompare-uses-unsigned-byte-ordering"
+fixture = "MemcompareUsesUnsignedByteOrdering"
+kind = "correctness"
+
+[[test]]
+id = "memcompare-reports-first-differing-byte"
+fixture = "MemcompareReportsFirstDifferingByte"
+kind = "correctness"
+
+[[test]]
+id = "memfindbyte-matches-memchr-size-sweep"
+fixture = "MemfindbyteMatchesMemchrSizeSweep"
+kind = "correctness"
+
+[[test]]
+id = "memfindbyte-returns-first-of-multiple-occurrences"
+fixture = "MemfindbyteReturnsFirstOfMultipleOccurrences"
+kind = "correctness"
+
+[[test]]
+id = "memfindbyte-alignment-sweep"
+fixture = "MemfindbyteAlignmentSweep"
+kind = "correctness"
+
+[[test]]
+id = "memfindbyte-const-and-mutable-overloads-agree"
+fixture = "MemfindbyteConstAndMutableOverloadsAgree"
+kind = "correctness"
+
+[[test]]
+id = "memfindbyte-finds-zero-and-0xff-needles"
+fixture = "MemfindbyteFindsZeroAnd0xffNeedles"
+kind = "correctness"
+
+[[test]]
+id = "prefetch-calls-do-not-alter-memory"
+fixture = "PrefetchCallsDoNotAlterMemory"
+kind = "correctness"
+
+[[test]]
+id = "memset-throughput-l1"
+fixture = "MemsetThroughputL1"
+kind = "performance"
+
+[[test]]
+id = "memset-throughput-l2"
+fixture = "MemsetThroughputL2"
+kind = "performance"
+
+[[test]]
+id = "memset-throughput-dram"
+fixture = "MemsetThroughputDram"
+kind = "performance"
+
+[[test]]
+id = "memcopy-throughput-l1"
+fixture = "MemcopyThroughputL1"
+kind = "performance"
+
+[[test]]
+id = "memcopy-throughput-l2"
+fixture = "MemcopyThroughputL2"
+kind = "performance"
+
+[[test]]
+id = "memcopy-throughput-dram"
+fixture = "MemcopyThroughputDram"
+kind = "performance"
+
+[[test]]
+id = "memequal-throughput-l2"
+fixture = "MemequalThroughputL2"
+kind = "performance"
+
+[[test]]
+id = "memfindbyte-throughput-l2"
+fixture = "MemfindbyteThroughputL2"
+kind = "performance"
