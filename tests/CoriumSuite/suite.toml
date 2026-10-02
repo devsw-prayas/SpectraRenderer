@@ -279,3 +279,8 @@ id = "affinityfactory-rejects-mask-outside-node-in-debug"
 fixture = "AffinityFactoryRejectsMaskOutsideNodeInDebug"
 kind = "correctness"
 
+
+[[test]]
+id = "framestackdesc-validate-enforces-provenance-rules"
+fixture = "FrameStackDescValidateEnforcesProvenanceRules"
+kind = "correctness"
