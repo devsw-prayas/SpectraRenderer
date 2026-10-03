@@ -34,6 +34,7 @@ return command switch
     "cu-check" => CuCheck(rootDir, config, rest),
     "vk-check" => VkCheck(rootDir, config, rest),
     "header-gen" => HeaderGen(rest),
+    "pair-gen" => PairGen(rootDir, rest),
     "exec-gen" => ExecGen(rootDir, config, rest),
     "build" => BuildConfig(rootDir, config, rest),
     "rebuild" => RebuildConfig(rootDir, config, rest),
@@ -59,6 +60,7 @@ void PrintUsage()
     Console.WriteLine("  cu-check [-d]                                          Check for CUDA toolkit (-d: install if missing)");
     Console.WriteLine("  vk-check [-d]                                          Check for Vulkan SDK (-d: install if missing)");
     Console.WriteLine("  header-gen -p <Prefix> -np <Namespace> -dir <path>     Generate Compiler.h/Diagnostic.h pair");
+    Console.WriteLine("  pair-gen -n <Name> -m <Module> [-np <Namespace>]       Add Name.h (src/Public) + Name.cpp (src/Private) to an existing module; -m is a module path or a name under src/");
     Console.WriteLine("  exec-gen                                               Regenerate <Module>.generated.h from config/spectra-err.json + spectra-exec.json (also runs automatically inside cmake-init)");
     Console.WriteLine("  build -c <Configuration> [-t <Target>] [-clangcl]      cmake --build (optionally a single target/submodule; -clangcl: build the clang-cl tree)");
     Console.WriteLine("  rebuild -c <Configuration> [-t <Target>] [-clangcl]    cmake --build --clean-first (optionally a single target/submodule; -clangcl: rebuild the clang-cl tree)");
@@ -773,6 +775,70 @@ int HeaderGen(string[] p_Rest)
 
     File.WriteAllText(diagnosticPath, DiagnosticTemplate(prefixUpper, moduleHeader, compilerFileName));
     Console.WriteLine($"[OK] Wrote {diagnosticPath}");
+
+    return 0;
+}
+
+// pair-gen
+
+int PairGen(string p_RootDir, string[] p_Rest)
+{
+    var name = GetFlagValue(p_Rest, "-n");
+    var module = GetFlagValue(p_Rest, "-m");
+    var nsArg = GetFlagValue(p_Rest, "-np");
+
+    if (name is null || module is null)
+    {
+        Console.WriteLine("[ERROR] Usage: pair-gen -n <Name> -m <Module> [-np <Namespace>]");
+        return 1;
+    }
+
+    if (!System.Text.RegularExpressions.Regex.IsMatch(name, "^[A-Za-z_][A-Za-z0-9_]*$"))
+    {
+        Console.WriteLine($"[ERROR] '{name}' is not a valid file/identifier name.");
+        return 1;
+    }
+
+    var moduleRoot = Directory.Exists(module) ? Path.GetFullPath(module) : Path.Combine(p_RootDir, "src", module);
+    var publicDir = Path.Combine(moduleRoot, "src", "Public");
+    var privateDir = Path.Combine(moduleRoot, "src", "Private");
+
+    if (!Directory.Exists(publicDir) || !Directory.Exists(privateDir))
+    {
+        Console.WriteLine($"[ERROR] {moduleRoot} is not a module: expected src/Public and src/Private to both exist.");
+        return 1;
+    }
+
+    var moduleName = new DirectoryInfo(moduleRoot).Name;
+    var ns = nsArg ?? (moduleName.StartsWith("Spectra") && moduleName.Length > 7 ? moduleName[7..] : moduleName);
+    var headerPath = Path.Combine(publicDir, $"{name}.h");
+    var sourcePath = Path.Combine(privateDir, $"{name}.cpp");
+
+    if (File.Exists(headerPath) || File.Exists(sourcePath))
+    {
+        Console.WriteLine($"[ERROR] {name}.h or {name}.cpp already exists in {moduleName}; refusing to overwrite.");
+        return 1;
+    }
+
+    File.WriteAllText(headerPath, $$"""
+#pragma once
+#include "{{moduleName}}.h"
+
+namespace Spectra::{{ns}} {
+
+}
+""" + "\n");
+    Console.WriteLine($"[OK] Wrote {headerPath}");
+
+    File.WriteAllText(sourcePath, $$"""
+#include "{{moduleName}}.h"
+#include "{{name}}.h"
+
+namespace Spectra::{{ns}} {
+
+}
+""" + "\n");
+    Console.WriteLine($"[OK] Wrote {sourcePath}");
 
     return 0;
 }

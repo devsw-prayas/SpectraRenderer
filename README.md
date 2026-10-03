@@ -120,6 +120,7 @@ driver.bat <command> [options]
 | `cu-check [-d]` | Check for the CUDA toolkit (`-d` installs via `scripts/cuda.bat` if missing) |
 | `vk-check [-d]` | Check for the Vulkan SDK (`-d` installs via `scripts/vulkan.bat` if missing) |
 | `header-gen -p <Prefix> -np <Namespace> -dir <path>` | Generate a module's `Compiler.h`/`Diagnostic.h` pair |
+| `pair-gen -n <Name> -m <Module> [-np <Namespace>]` | Add `Name.h` (`src/Public`) and `Name.cpp` (`src/Private`) to an existing module; errors if either folder is missing or either file already exists |
 | `build -c <Configuration> [-t <Target>]` | `cmake --build` for an already-configured tree; `-t` restricts it to a single CMake target (e.g. a `common/` submodule like `Kerbecs` or `Corium`, or any `src/` module) instead of the whole solution |
 | `rebuild -c <Configuration> [-t <Target>]` | Same, with `--clean-first` |
 | `run -c <Configuration>` | Launch the configured run target (default `SpectraLauncher`) from `bin/<Configuration>/` |
