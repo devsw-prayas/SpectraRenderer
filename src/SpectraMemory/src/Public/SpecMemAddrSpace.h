@@ -85,7 +85,7 @@ namespace Spectra::Memory::Internal {
 	//   +------------------------------------------------------------+
 	//   | GENERAL HEAP / TLSF (24 GiB)                                |
 	//   | Global SpectraHeap instance. Persistent trait.              |
-	extern VARegion g_TlsfHeap[MAX_NUMA_NODES];
+	extern SPEC_MEM_RUNTIME_API VARegion g_TlsfHeap[MAX_NUMA_NODES];
 	//   +------------------------------------------------------------+
 
 	//   +------------------------------------------------------------+

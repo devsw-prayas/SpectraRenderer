@@ -55,7 +55,8 @@ namespace Spectra::Memory {
 		VirtualMemoryDesc commitDesc{};
 		initMemoryDesc(commitDesc);
 		setTargetAddress(commitDesc, static_cast<uint8_t*>(ro_Handle.m_Memory.m_BaseAddress) + ro_Handle.m_CommittedSize);
-		setSize(commitDesc, v_Offset - ro_Handle.m_CommittedSize);
+		// +1: v_Offset itself must be covered, else a byte that starts a fresh page stays reserved.
+		setSize(commitDesc, v_Offset + 1 - ro_Handle.m_CommittedSize);
 		setNumaNode(commitDesc, static_cast<uint32_t>(ro_Handle.m_NumaNode));
 		setMemoryState(commitDesc, MemoryState::COMMIT);
 		setProtection(commitDesc, MemoryProtect::READ_WRITE);

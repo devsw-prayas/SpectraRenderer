@@ -47,8 +47,8 @@ target_link_libraries(SpectraMemory SpectraPlatformRuntime)
 
 # Sizes in GiB unless stated.
 
-target_compile_definitions(SpectraMemory PRIVATE SPECTRA_VA_PER_NODE_GIB=256)
-target_compile_definitions(SpectraMemory PRIVATE SPECTRA_VA_MAX_NUMA_NODES=4)
+target_compile_definitions(SpectraMemory PUBLIC SPECTRA_VA_PER_NODE_GIB=256)
+target_compile_definitions(SpectraMemory PUBLIC SPECTRA_VA_MAX_NUMA_NODES=4)
 
 target_compile_definitions(SpectraMemory PUBLIC SPEC_MEM_PER_THREAD_TLS_MIN_SIZE=2)         # In MiB
 target_compile_definitions(SpectraMemory PUBLIC SPEC_MEM_PER_THREAD_TLS_MAX_SIZE=100)       # In MiB
@@ -60,5 +60,10 @@ target_compile_definitions(SpectraMemory PUBLIC SPECTRA_MAX_EBR_PARTICIPANTS=64)
 target_compile_definitions(SpectraMemory PUBLIC SPECTRA_MAX_HAZARD_PTRS_PER_THREAD=16)
 target_compile_definitions(SpectraMemory PUBLIC SPECTRA_MAX_RETIRED_PER_THREAD=256)
 target_compile_definitions(SpectraMemory PUBLIC SPECTRA_MAX_SHARED_CTRL_BLOCKS=1048576)
+
+# TLSF heap knobs.
+
+target_compile_definitions(SpectraMemory PUBLIC SPECTRA_TLSF_SL_LOG2=5)
+target_compile_definitions(SpectraMemory PUBLIC SPECTRA_TLSF_ALIGN_LOG2=4)
 
 

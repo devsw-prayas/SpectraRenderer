@@ -16,3 +16,4 @@
 #endif
 
 #include <cstdint>
+#include <bit>
