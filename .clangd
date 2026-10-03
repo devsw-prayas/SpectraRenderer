@@ -1,0 +1,6 @@
+# Compile database comes from a Ninja configure (the VS generator can't emit one):
+#   cmake -S . -B build_ninja -G Ninja -DCMAKE_BUILD_TYPE=Debug_win64 -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+CompileFlags:
+  CompilationDatabase: build_ninja
+  # MSVC PCH flags point at .pch files clangd can't read; the /FI forced include still brings the PCH header in.
+  Remove: [/Yu*, /Yc*, /Fp*]
