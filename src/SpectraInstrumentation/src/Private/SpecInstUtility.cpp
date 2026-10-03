@@ -1,6 +1,7 @@
 #include "SpectraInstrumentation.h"
 #include "SpecInstUtility.h"
 #include "PlatformMemory.h"
+#include "ProcessEnvironment.h"
 
 namespace Spectra::Instrumentation::Utils {
 	Region slice(Region& ro_Region, size_t v_Len) {
@@ -53,7 +54,8 @@ namespace Spectra::Instrumentation::Utils {
 		if (info.m_State == MemoryState::COMMIT) return true;
 		if (info.m_State != MemoryState::RESERVE) return false;
 
-		const size_t v_CommitSize = PlatformVirtualMemory::alignToPage(v_Offset - ro_Handle.m_CommittedSize);
+		// +1: v_Offset itself must be covered, else a byte that starts a fresh page stays reserved.
+		const size_t v_CommitSize = PlatformVirtualMemory::alignToPage(v_Offset + 1 - ro_Handle.m_CommittedSize);
 
 		VirtualMemoryDesc commitDesc{};
 		initMemoryDesc(commitDesc);
@@ -73,15 +75,15 @@ namespace Spectra::Instrumentation::Utils {
 		return RegionHandle{ ro_Region };
 	}
 
-	void* InstrumentationAllocator::allocate(size_t v_Bytes) {
-		SPEC_INST_ASSERT(m_Cursor + v_Bytes <= m_Handle.m_Memory.m_TotalSize);
+	Region InstrumentationVACarver::carve(size_t v_Size, size_t v_Alignment) {
+		using Spectra::Platform::Runtime::Environment::PlatformTermination;
+		SPEC_INST_ASSERT(v_Size != 0 && v_Alignment != 0 && (v_Alignment & (v_Alignment - 1)) == 0);
 
-		const size_t v_Offset = m_Cursor;
-		const bool v_Committed = commitPageIfNeeded(m_Handle, v_Offset + v_Bytes - 1);
-		SPEC_INST_ASSERT(v_Committed);
+		const size_t offset = (m_Watermark + v_Alignment - 1) & ~(v_Alignment - 1);
+		if (offset + v_Size > m_Handle.m_Memory.m_TotalSize || offset + v_Size < offset) PlatformTermination::terminate();
+		if (!commitPageIfNeeded(m_Handle, offset + v_Size - 1)) PlatformTermination::terminate();
 
-		auto* p_Ptr = static_cast<uint8_t*>(m_Handle.m_Memory.m_BaseAddress) + v_Offset;
-		m_Cursor += v_Bytes;
-		return p_Ptr;
+		m_Watermark = offset + v_Size;
+		return Region{ static_cast<uint8_t*>(m_Handle.m_Memory.m_BaseAddress) + offset, v_Size };
 	}
 }

@@ -19,6 +19,10 @@ namespace Spectra::Instrumentation::Internal {
 	Utils::Region g_InstrumentationCore;
 	Utils::Region g_UpperNullGuard;
 
+	namespace {
+		Utils::InstrumentationVACarver s_coreCarver;
+	}
+
 	// -------------------------------------------------------------------------
 	// init() -- carves g_InstrumentationMemory into the regions declared in
 	// SpecInstAddrSpace.h, in the same on-disk order as the box comments there.
@@ -64,6 +68,12 @@ namespace Spectra::Instrumentation::Internal {
 		Utils::lockGuard(g_LowerNullGuard);
 		Utils::lockGuard(g_UpperNullGuard);
 
+		s_coreCarver = Utils::InstrumentationVACarver{ g_InstrumentationCore };
 		return true;
+	}
+
+	Utils::InstrumentationVACarver& coreCarver() {
+		SPEC_INST_DEBUG_ASSERT(g_InstrumentationCore.isValid());
+		return s_coreCarver;
 	}
 }

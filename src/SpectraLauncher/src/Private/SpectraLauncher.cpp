@@ -8,6 +8,11 @@
 #define ALLOW_SYSCALL
 #include <SpectraSyscalls.h>
 
+#include <SpecInstAddrSpace.h>
+#include <SpecInstImage.h>
+#include <SpecInstMacros.h>
+#include <FrameRecords.h>
+
 #include <SpecMemAddrSpace.h>
 #include <SpectraHeap.h>
 
@@ -34,6 +39,57 @@ namespace {
 		size_t m_Size;
 		uint8_t m_Tag;
 	};
+
+	struct CountingScope {
+		static inline int s_live = 0;
+		static inline int s_maxLive = 0;
+		explicit CountingScope(int v_Tag) { SPEC_INST_UNUSED(v_Tag); if (++s_live > s_maxLive) s_maxLive = s_live; }
+		~CountingScope() { --s_live; }
+	};
+
+	bool runInstrumentationCheck() {
+		using namespace Spectra::Instrumentation;
+		printf("[inst] carver, image-relative offsets, scope macros\n");
+		int fail = 0;
+		const auto check = [&](bool v_Ok, const char* p_What) {
+			if (v_Ok) return;
+			++fail;
+			printf("[inst] FAIL  %s\n", p_What);
+		};
+
+		Utils::InstrumentationVACarver& carver = Internal::coreCarver();
+		const Utils::Region callee = carver.carve(kCalleeMainCapacity * sizeof(CalleeFrameRecord), alignof(CalleeFrameRecord));
+		const Utils::Region err = carver.carve(kErrStackCapacity * sizeof(ErrContext), 64);
+		const Utils::Region exec = carver.carve(kExecPoolCapacity * sizeof(InstrumentedException), 4096);
+		check(callee.isValid() && err.isValid() && exec.isValid(), "carves valid");
+		check(reinterpret_cast<uintptr_t>(err.m_BaseAddr) % 64 == 0 && reinterpret_cast<uintptr_t>(exec.m_BaseAddr) % 4096 == 0, "carve alignment");
+		check(static_cast<uint8_t*>(err.m_BaseAddr) >= static_cast<uint8_t*>(callee.m_BaseAddr) + callee.m_MaxSize, "carves don't overlap");
+
+		// Touch first and last byte of each carve: faults here mean commit missed a page.
+		for (const Utils::Region& region : { callee, err, exec }) {
+			auto* bytes = static_cast<uint8_t*>(region.m_BaseAddr);
+			bytes[0] = 0xAB;
+			bytes[region.m_MaxSize - 1] = 0xCD;
+			check(bytes[0] == 0xAB && bytes[region.m_MaxSize - 1] == 0xCD, "carved bytes writable");
+		}
+
+		static const char* s_label = "SpectraLauncher::runInstrumentationCheck";
+		const uint64_t offset = imageRelativeOffset(s_label);
+		check(reinterpret_cast<const char*>(currentImageBase() + offset) == s_label, "offset round-trips to the label");
+		check(offset < (uint64_t{ 1 } << 32), "label lies inside this image");
+		// For checking the offline round trip with spectra-resolve.
+		printf("[inst] label offset 0x%llX\n", static_cast<unsigned long long>(offset));
+
+		SPEC_INST_SCOPE_BEGIN(CountingScope, 1)
+			SPEC_INST_SCOPE_BEGIN(CountingScope, 2)
+				check(CountingScope::s_live == (SPECTRA_INSTRUMENTATION_ENABLED ? 2 : 0), "nested scopes alive");
+			SPEC_INST_SCOPE_END()
+		SPEC_INST_SCOPE_END()
+		check(CountingScope::s_live == 0, "scopes destroyed at END");
+
+		printf("[inst] %s (carved %zu KiB)\n", fail == 0 ? "passed" : "FAILED", carver.used() / 1024);
+		return fail == 0;
+	}
 
 	bool runHeapCheck() {
 		using namespace Spectra::Memory;
@@ -258,6 +314,13 @@ static void runWindowThread() {
 int main(int v_Argc, char** p_Argv) {
 	printf("=== SpectraLauncher ===\n\n");
 
+	// Load-bearing order: Instrumentation's own VA must exist before SpectraMemory boots.
+	if (!Spectra::Instrumentation::Internal::init()) {
+		printf("[main] SpectraInstrumentation address space init failed\n");
+		return 1;
+	}
+	const bool instOk = runInstrumentationCheck();
+
 	if (!Spectra::Memory::Internal::init()) {
 		printf("[main] SpectraMemory address space init failed\n");
 		return 1;
@@ -270,5 +333,5 @@ int main(int v_Argc, char** p_Argv) {
 	for (int i = 1; i < v_Argc; ++i)
 		if (std::strcmp(p_Argv[i], "--window") == 0) runWindowThread();
 
-	return heapOk ? 0 : 1;
+	return instOk && heapOk ? 0 : 1;
 }

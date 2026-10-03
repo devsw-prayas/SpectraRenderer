@@ -52,38 +52,25 @@ namespace Spectra::Instrumentation::Utils {
 
 	SPEC_INST_RUNTIME_API RegionHandle createHandle(Region& ro_Region);
 
-	class SPEC_INST_RUNTIME_API InstrumentationAllocator {
+	// Single-tier on purpose: one flat block doesn't need SpectraMemory's claim/carve split.
+	// Over-budget terminates rather than returning an invalid region.
+	class SPEC_INST_RUNTIME_API InstrumentationVACarver final {
 		RegionHandle m_Handle;
-		// Logical bump position - deliberately NOT m_Handle.m_CommittedSize, which
-		// commitPageIfNeeded owns as the OS-committed high-water mark (same split
-		// as SpectraMemory's LinearArena/StackArena).
-		size_t m_Cursor;
+		size_t m_Watermark = 0;
 	public:
-		explicit InstrumentationAllocator(const RegionHandle& ro_Handle) : m_Handle(ro_Handle), m_Cursor(0) {}
+		InstrumentationVACarver() = default;
+		explicit InstrumentationVACarver(const Region& ro_Region) : m_Handle(ro_Region) {}
 
-		void* allocate(size_t v_Bytes);
-		void reset() const {}
+		InstrumentationVACarver(const InstrumentationVACarver&) = delete;
+		InstrumentationVACarver& operator=(const InstrumentationVACarver&) = delete;
 
-		template<typename T>
-		T* allocate(size_t v_Count) {
-			return static_cast<T*>(allocate(v_Count * sizeof(T)));
-		}
+		InstrumentationVACarver(InstrumentationVACarver&&) noexcept = default;
+		InstrumentationVACarver& operator=(InstrumentationVACarver&&) noexcept = default;
 
-		template<typename T, typename...Args>
-		void construct(T* p_Mem, Args&&...u_Args) {
-			new (p_Mem) T(std::forward<Args>(u_Args)...);
-		}
+		// v_Alignment must be a power of two.
+		SPEC_INST_NODISCARD Region carve(size_t v_Size, size_t v_Alignment);
 
-		template<typename T>
-		void destroy(T* p_Mem) const {
-			p_Mem->~T();
-		}
-
-		template<typename T>
-		T* constructAt(size_t v_Count) {
-			T* p_Mem = allocate<T>(v_Count);
-			for (size_t i = 0; i < v_Count; ++i) construct(p_Mem + i);
-			return p_Mem;
-		}
+		SPEC_INST_NODISCARD size_t used() const { return m_Watermark; }
+		SPEC_INST_NODISCARD size_t capacity() const { return m_Handle.m_Memory.m_TotalSize; }
 	};
 }

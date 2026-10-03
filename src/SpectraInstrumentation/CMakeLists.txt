@@ -26,6 +26,10 @@ source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES
 
 target_compile_definitions(SpectraInstrumentation PRIVATE SPECTRA_INSTRUMENTATION_SHARED)
 
+# OFF = pure path-tracer build: every SPEC_INST_SCOPE_BEGIN collapses to a bare brace pair.
+option(SPECTRA_INSTRUMENTATION "Compile instrumentation scopes in" ON)
+target_compile_definitions(SpectraInstrumentation PUBLIC SPECTRA_INSTRUMENTATION_ENABLED=$<BOOL:${SPECTRA_INSTRUMENTATION}>)
+
 target_include_directories(SpectraInstrumentation
     PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}/src/Public

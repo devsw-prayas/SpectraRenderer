@@ -47,4 +47,7 @@ namespace Spectra::Instrumentation::Internal {
 
 	// Call this before anything else. SpectraMemory's own init() runs after this.
 	SPEC_INST_RUNTIME_API bool init();
+
+	// Shared so every frame view lands in the same region. Valid only after init().
+	SPEC_INST_RUNTIME_API Utils::InstrumentationVACarver& coreCarver();
 }

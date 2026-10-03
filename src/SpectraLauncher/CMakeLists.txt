@@ -22,6 +22,6 @@ target_include_directories(SpectraLauncher PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/src/Public
 )
 
-target_link_libraries(SpectraLauncher StormSTL Corium SpectraPlatformRuntime SpectraMemory Hades-Core Leibniz Kerbecs)
+target_link_libraries(SpectraLauncher StormSTL Corium SpectraPlatformRuntime SpectraInstrumentation SpectraMemory Hades-Core Leibniz Kerbecs)
 
 target_precompile_headers(SpectraLauncher PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src/Public/SpectraLauncher.h)
