@@ -43,7 +43,7 @@ target_compile_options(SpectraMemory PRIVATE
     $<$<AND:$<COMPILE_LANGUAGE:CXX>,$<NOT:$<CXX_COMPILER_FRONTEND_VARIANT:MSVC>>>:-mavx2 -Wall -Wextra -Wpedantic>
 )
 
-target_link_libraries(SpectraMemory SpectraPlatformRuntime)
+target_link_libraries(SpectraMemory SpectraPlatformRuntime Corium)
 
 # Sizes in GiB unless stated.
 
