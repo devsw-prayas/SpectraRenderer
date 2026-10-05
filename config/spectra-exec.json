@@ -46,9 +46,20 @@
       "module": "SpectraPlatformRuntime",
       "exec_module_id": "0x02",
       "exec_domain_name": "PlatformRuntime",
-      "exec_codes": []
+      "exec_codes": [
+        { "code": "0x01", "name": "InvalidState", "message": "Memory descriptor state is invalid for this operation" },
+        { "code": "0x02", "name": "InvalidSize", "message": "Memory descriptor size is zero, misaligned or otherwise invalid" },
+        { "code": "0x03", "name": "InvalidTarget", "message": "Memory descriptor target address is null, misaligned or not the handle base" },
+        { "code": "0x04", "name": "InvalidHandle", "message": "Virtual memory handle is invalid" },
+        { "code": "0x05", "name": "RangeOutsideHandle", "message": "Requested range lies outside the virtual memory handle" },
+        { "code": "0x06", "name": "InvalidNumaNode", "message": "NUMA node is out of range" },
+        { "code": "0x07", "name": "ReserveFailed", "message": "Virtual address reservation failed" },
+        { "code": "0x08", "name": "CommitFailed", "message": "Virtual memory commit failed" },
+        { "code": "0x09", "name": "QueryFailed", "message": "Virtual memory page query failed" },
+        { "code": "0x0A", "name": "SystemMemoryQueryFailed", "message": "System available-memory query failed" }
+      ]
     },
-    {
+    { 
       "module": "SpectraVulkanBackend",
       "exec_module_id": "0x03",
       "exec_domain_name": "Vulkan",

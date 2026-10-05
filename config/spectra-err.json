@@ -38,7 +38,12 @@
       "module": "SpectraPlatformRuntime",
       "err_module_id": "0x02",
       "err_domain_name": "PlatformRuntime",
-      "err_codes": []
+      "err_codes": [
+        { "code": "0x01", "name": "SystemMemoryInitFailed", "message": "System memory baseline query failed at init" },
+        { "code": "0x02", "name": "DecommitFailed", "message": "Virtual memory decommit failed" },
+        { "code": "0x03", "name": "ReleaseFailed", "message": "Virtual memory release failed" },
+        { "code": "0x04", "name": "CommitAddressMismatch", "message": "Commit returned an address different from the requested target" }
+      ]
     },
     {
       "module": "SpectraVulkanBackend",
