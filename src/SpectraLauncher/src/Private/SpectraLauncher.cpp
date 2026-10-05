@@ -1,6 +1,9 @@
 #include "SpectraLauncher.h"
 
 #include <CoriumRuntime.h>
+#include <CoriumFactory.h>
+#include <CoriumThread.h>
+#include <CoriumFrame.h>
 
 #include <PlatformWindowing.h>
 #include <WindowUtils.h>
@@ -21,6 +24,7 @@
 #include <cstring>
 #include <atomic>
 #include <thread>
+#include <memory>
 
 namespace {
 	// Fixed-seed xorshift so a failing run replays exactly.
@@ -89,6 +93,38 @@ namespace {
 
 		printf("[inst] %s (carved %zu KiB)\n", fail == 0 ? "passed" : "FAILED", carver.used() / 1024);
 		return fail == 0;
+	}
+
+	// Factory threads go through attachThreadState, which must leave a 64-aligned native context
+	// (handle + register blob) bound as both nativeContext() and currentFrame().
+	bool runFrameAttachCheck() {
+		using namespace Corium::Core;
+		printf("[frame] native context on attach/detach\n");
+
+		const bool mainUnattached = Frame::this_thread::currentFrame() == nullptr;
+
+		static std::atomic<int> s_result{ 0 };
+		Factory::AffinityFactory factory(0, 0x1);
+		const ThreadHandle handle = factory.createAndStart(createClosure<void()>([]() {
+			Frame::FrameHandle* current = Frame::this_thread::currentFrame();
+			if (!current) { s_result.store(2); return; }
+
+			Frame::FrameHandle& native = Frame::this_thread::nativeContext();
+			auto* bytes = reinterpret_cast<std::byte*>(current);
+			const bool ok = current == std::addressof(native)
+				&& reinterpret_cast<uintptr_t>(current) % 64 == 0
+				&& static_cast<std::byte*>(current->m_RegBlob) == bytes + sizeof(Frame::FrameHandle);
+
+			// The context switch writes the whole blob, so it must be ours to write.
+			std::memset(current->m_RegBlob, 0xAB, Corium::Memory::Internal::FrameRegBlobSize);
+			s_result.store(ok ? 1 : 3);
+		}), "FrameAttachCheck");
+
+		const bool joined = NativeThread::joinThread(handle);
+		const int result = s_result.load();
+		const bool ok = mainUnattached && joined && result == 1;
+		printf("[frame] %s (main unattached=%d, joined=%d, thread result=%d)\n", ok ? "passed" : "FAILED", mainUnattached, joined, result);
+		return ok;
 	}
 
 	bool runHeapCheck() {
@@ -311,6 +347,27 @@ static void runWindowThread() {
 	PlatformWindow::shutdown();
 }
 
+void runFrames() {
+	using namespace Corium::Core::Factory;
+	using namespace Corium::Core::Utils;
+	using namespace Corium::Core::Frame;
+	DefaultThreadFactory factory{};
+	FrameStackDesc desc{};
+	init(desc);
+	validate(desc);
+	auto frame = NativeFrame::createFrame(buildClosure<void()>([]() { 
+		printf("Hello world from a Frame! Gonna kill it now!\n");
+		NativeFrame::yieldToNative(this_thread::currentFrame(), true);
+	}, 0), desc);
+	auto handle = factory.createAndStart(buildClosure<void()>([&frame]() { 
+		printf("This is a random ahh thread \n");
+		NativeFrame::switchTo(this_thread::currentFrame(), frame.value(), false);
+		printf("And That frame vanished, boom!");
+	}, 0), "Random Ahh thread");
+
+	Corium::Core::NativeThread::joinThread(handle);
+}
+
 int main(int v_Argc, char** p_Argv) {
 	printf("=== SpectraLauncher ===\n\n");
 
@@ -329,9 +386,11 @@ int main(int v_Argc, char** p_Argv) {
 
 	Corium::CoriumRuntime::initRuntime();
 	printf("[main] Runtime initialised.\n");
+	const bool frameOk = runFrameAttachCheck();
 
 	for (int i = 1; i < v_Argc; ++i)
 		if (std::strcmp(p_Argv[i], "--window") == 0) runWindowThread();
 
-	return instOk && heapOk ? 0 : 1;
+	runFrames();
+	return instOk && heapOk && frameOk ? 0 : 1;
 }
