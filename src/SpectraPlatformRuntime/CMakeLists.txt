@@ -39,6 +39,11 @@ target_include_directories(SpectraPlatformRuntime
         ${CMAKE_CURRENT_SOURCE_DIR}/src/Internal
 )
 
+# PlatformAtomics.h wraps Corium's header-only atomics. Corium is linked privately (consumers do not inherit the link);
+# its include path is exposed so a consumer of the wrapper header can resolve <CoriumAtomics.h>.
+target_link_libraries(SpectraPlatformRuntime PRIVATE Corium)
+target_include_directories(SpectraPlatformRuntime PUBLIC $<TARGET_PROPERTY:Corium,INTERFACE_INCLUDE_DIRECTORIES>)
+
 target_precompile_headers(SpectraPlatformRuntime PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src/Public/SpectraPlatformRuntime.h)
 
 if(WIN32)

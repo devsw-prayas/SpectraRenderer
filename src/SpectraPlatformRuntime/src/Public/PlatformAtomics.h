@@ -1,6 +1,106 @@
 #pragma once
 #include "SpectraPlatformRuntime.h"
-#include "SpectraAtomics.h"
+#include "SpectraDiagnostics.h"
+#include <CoriumAtomics.h>
+#include <type_traits>
+
+// Spectra's atomics are a wrapper over Corium's header-only atomics. Spectra keeps its own class API and semantics:
+// compareExchange writes the OBSERVED value back through the expected pointer (Corium's legacy shim leaves it untouched),
+// and operands never widen (no 1/2-byte value is promoted to 4 bytes).
+namespace Spectra::Platform::Runtime::Intrinsic {
+	namespace Corium_ = ::Corium::Core::Atomics;
+
+	using MemoryOrder = ::Corium::Atomics::MemoryOrder;
+
+	template<typename T>
+	struct ValidAtomicParameter final {
+	private:
+		using Decayed = std::remove_cv_t<std::remove_reference_t<T>>;
+
+	public:
+		SPECTRA_STATIC_ASSERT(std::is_trivially_copyable_v<Decayed>, "Atomic type must be trivially copyable.");
+		SPECTRA_STATIC_ASSERT(sizeof(Decayed) <= 8, "Atomic type exceeds supported size (64-bit max).");
+
+		// Pointers travel as uintptr_t; everything else keeps its own width as an unsigned integer.
+		using Type = std::conditional_t<std::is_pointer_v<Decayed>, uintptr_t,
+			std::conditional_t<(sizeof(Decayed) == 1), uint8_t,
+			std::conditional_t<(sizeof(Decayed) == 2), uint16_t,
+			std::conditional_t<(sizeof(Decayed) == 4), uint32_t, uint64_t>>>>;
+	};
+
+	template<typename T, typename Valid = ValidAtomicParameter<T>::Type>
+	SPECTRA_NODISCARD_MSG("Cannot discard an atomic load") SPECTRA_FORCEINLINE
+		Valid atomicLoad(Valid* p_Memory, MemoryOrder v_Ordering) { return Corium_::atomicLoad<Valid>(p_Memory, v_Ordering); }
+
+	template<typename T, typename Valid = ValidAtomicParameter<T>::Type>
+	SPECTRA_FORCEINLINE
+		void atomicStore(Valid* p_Memory, Valid v_Value, MemoryOrder v_Ordering) { Corium_::atomicStore<Valid>(p_Memory, v_Value, v_Ordering); }
+
+	template<typename T, typename Valid = ValidAtomicParameter<T>::Type>
+	SPECTRA_FORCEINLINE
+		Valid atomicExchange32(Valid* p_Memory, T v_Value, MemoryOrder v_Ordering) { return Corium_::atomicExchange32<Valid>(p_Memory, static_cast<Valid>(v_Value), v_Ordering); }
+
+	template<typename T, typename Valid = ValidAtomicParameter<T>::Type>
+	SPECTRA_FORCEINLINE
+		Valid atomicExchange64(Valid* p_Memory, T v_Value, MemoryOrder v_Ordering) { return Corium_::atomicExchange64<Valid>(p_Memory, static_cast<Valid>(v_Value), v_Ordering); }
+
+	// Returns the observed value and writes it through p_Expected (success iff it equals what the caller expected).
+	template<typename T, typename Valid = ValidAtomicParameter<T>::Type>
+	SPECTRA_FORCEINLINE
+		Valid atomicCompareExchange32(Valid* p_Memory, T* p_Expected, T v_Desired, MemoryOrder v_Success, MemoryOrder v_Failure) {
+		Valid expected = static_cast<Valid>(*p_Expected);
+		const Valid observed = Corium_::atomicCompareExchange32<Valid>(p_Memory, &expected, static_cast<Valid>(v_Desired), v_Success, v_Failure);
+		*p_Expected = static_cast<T>(observed);
+		return observed;
+	}
+
+	template<typename T, typename Valid = ValidAtomicParameter<T>::Type>
+	SPECTRA_FORCEINLINE
+		Valid atomicCompareExchange64(Valid* p_Memory, T* p_Expected, T v_Desired, MemoryOrder v_Success, MemoryOrder v_Failure) {
+		Valid expected = static_cast<Valid>(*p_Expected);
+		const Valid observed = Corium_::atomicCompareExchange64<Valid>(p_Memory, &expected, static_cast<Valid>(v_Desired), v_Success, v_Failure);
+		*p_Expected = static_cast<T>(observed);
+		return observed;
+	}
+
+	template<typename T, typename Valid = ValidAtomicParameter<T>::Type>
+	SPECTRA_FORCEINLINE Valid atomicFetchAdd32(Valid* p_Memory, T v_Value, MemoryOrder v_Ordering) { return Corium_::atomicFetchAdd32<Valid>(p_Memory, static_cast<Valid>(v_Value), v_Ordering); }
+	template<typename T, typename Valid = ValidAtomicParameter<T>::Type>
+	SPECTRA_FORCEINLINE Valid atomicFetchAdd64(Valid* p_Memory, T v_Value, MemoryOrder v_Ordering) { return Corium_::atomicFetchAdd64<Valid>(p_Memory, static_cast<Valid>(v_Value), v_Ordering); }
+
+	template<typename T, typename Valid = ValidAtomicParameter<T>::Type>
+	SPECTRA_FORCEINLINE Valid atomicIncrement32(Valid* p_Memory, MemoryOrder v_Ordering) { return Corium_::atomicIncrement32<Valid>(p_Memory, v_Ordering); }
+	template<typename T, typename Valid = ValidAtomicParameter<T>::Type>
+	SPECTRA_FORCEINLINE Valid atomicIncrement64(Valid* p_Memory, MemoryOrder v_Ordering) { return Corium_::atomicIncrement64<Valid>(p_Memory, v_Ordering); }
+	template<typename T, typename Valid = ValidAtomicParameter<T>::Type>
+	SPECTRA_FORCEINLINE Valid atomicDecrement32(Valid* p_Memory, MemoryOrder v_Ordering) { return Corium_::atomicDecrement32<Valid>(p_Memory, v_Ordering); }
+	template<typename T, typename Valid = ValidAtomicParameter<T>::Type>
+	SPECTRA_FORCEINLINE Valid atomicDecrement64(Valid* p_Memory, MemoryOrder v_Ordering) { return Corium_::atomicDecrement64<Valid>(p_Memory, v_Ordering); }
+
+	template<typename T, typename Valid = ValidAtomicParameter<T>::Type>
+	SPECTRA_FORCEINLINE Valid atomicFetchAnd32(Valid* p_Memory, T v_Value, MemoryOrder v_Ordering) { return Corium_::atomicFetchAnd<Valid>(p_Memory, static_cast<Valid>(v_Value), v_Ordering); }
+	template<typename T, typename Valid = ValidAtomicParameter<T>::Type>
+	SPECTRA_FORCEINLINE Valid atomicFetchAnd64(Valid* p_Memory, T v_Value, MemoryOrder v_Ordering) { return Corium_::atomicFetchAnd<Valid>(p_Memory, static_cast<Valid>(v_Value), v_Ordering); }
+	template<typename T, typename Valid = ValidAtomicParameter<T>::Type>
+	SPECTRA_FORCEINLINE Valid atomicFetchOr32(Valid* p_Memory, T v_Value, MemoryOrder v_Ordering) { return Corium_::atomicFetchOr<Valid>(p_Memory, static_cast<Valid>(v_Value), v_Ordering); }
+	template<typename T, typename Valid = ValidAtomicParameter<T>::Type>
+	SPECTRA_FORCEINLINE Valid atomicFetchOr64(Valid* p_Memory, T v_Value, MemoryOrder v_Ordering) { return Corium_::atomicFetchOr<Valid>(p_Memory, static_cast<Valid>(v_Value), v_Ordering); }
+	template<typename T, typename Valid = ValidAtomicParameter<T>::Type>
+	SPECTRA_FORCEINLINE Valid atomicFetchXor32(Valid* p_Memory, T v_Value, MemoryOrder v_Ordering) { return Corium_::atomicFetchXor<Valid>(p_Memory, static_cast<Valid>(v_Value), v_Ordering); }
+	template<typename T, typename Valid = ValidAtomicParameter<T>::Type>
+	SPECTRA_FORCEINLINE Valid atomicFetchXor64(Valid* p_Memory, T v_Value, MemoryOrder v_Ordering) { return Corium_::atomicFetchXor<Valid>(p_Memory, static_cast<Valid>(v_Value), v_Ordering); }
+	template<typename T, typename Valid = ValidAtomicParameter<T>::Type>
+	SPECTRA_FORCEINLINE Valid atomicFetchNand32(Valid* p_Memory, T v_Value, MemoryOrder v_Ordering) { return Corium_::atomicFetchNand<Valid>(p_Memory, static_cast<Valid>(v_Value), v_Ordering); }
+	template<typename T, typename Valid = ValidAtomicParameter<T>::Type>
+	SPECTRA_FORCEINLINE Valid atomicFetchNand64(Valid* p_Memory, T v_Value, MemoryOrder v_Ordering) { return Corium_::atomicFetchNand<Valid>(p_Memory, static_cast<Valid>(v_Value), v_Ordering); }
+
+	template<typename T, typename Valid = ValidAtomicParameter<T>::Type>
+	SPECTRA_FORCEINLINE bool atomicTestAndSet32(Valid* p_Memory, int v_Bit, MemoryOrder v_Ordering) { return Corium_::atomicTestAndSet<Valid>(p_Memory, v_Bit, v_Ordering); }
+	template<typename T, typename Valid = ValidAtomicParameter<T>::Type>
+	SPECTRA_FORCEINLINE bool atomicTestAndSet64(Valid* p_Memory, int v_Bit, MemoryOrder v_Ordering) { return Corium_::atomicTestAndSet<Valid>(p_Memory, v_Bit, v_Ordering); }
+	template<typename T, typename Valid = ValidAtomicParameter<T>::Type>
+	SPECTRA_FORCEINLINE bool atomicClear(Valid* p_Memory, int v_Bit, MemoryOrder v_Ordering) { return Corium_::atomicClear<Valid>(p_Memory, v_Bit, v_Ordering); }
+}
 #include "SpectraCompiler.h"
 
 namespace Spectra::Platform::Runtime::Atomic {
@@ -189,13 +289,13 @@ namespace Spectra::Platform::Runtime::Atomic {
 		}
 
 		SPECTRA_FORCEINLINE
-			Valid fetchAnd(Intrinsic::MemoryOrder v_Ordering = Intrinsic::MemoryOrder::SEQ_CST) noexcept {
-			return Intrinsic::atomicFetchAnd64<Valid>(&m_Value, v_Ordering);
+			Valid fetchAnd(Valid v_Value, Intrinsic::MemoryOrder v_Ordering = Intrinsic::MemoryOrder::SEQ_CST) noexcept {
+			return Intrinsic::atomicFetchAnd64<Valid>(&m_Value, v_Value, v_Ordering);
 		}
 
 		SPECTRA_FORCEINLINE
-			Valid fetchOr(Intrinsic::MemoryOrder v_Ordering = Intrinsic::MemoryOrder::SEQ_CST) noexcept {
-			return Intrinsic::atomicFetchOr64<Valid>(&m_Value, v_Ordering);
+			Valid fetchOr(Valid v_Value, Intrinsic::MemoryOrder v_Ordering = Intrinsic::MemoryOrder::SEQ_CST) noexcept {
+			return Intrinsic::atomicFetchOr64<Valid>(&m_Value, v_Value, v_Ordering);
 		}
 
 		SPECTRA_FORCEINLINE
