@@ -284,7 +284,9 @@ namespace Spectra::Platform::Runtime::Memory {
 		DWORD protect = PAGE_NOACCESS;
 
 		if (ro_Desc.m_Flags == MemoryFlags::LARGE_PAGES && g_MemoryCapabilities.m_SupportsLargePages) {
-			allocType |= MEM_LARGE_PAGES;
+			// MEM_LARGE_PAGES is only valid together with MEM_COMMIT, and the pages cannot be committed in part later.
+			allocType |= MEM_COMMIT | MEM_LARGE_PAGES;
+			protect = PAGE_READWRITE;
 		}
 
 		void* base = nullptr;
