@@ -9,7 +9,7 @@
 #include <CoriumThread.h>
 #include <CoriumEnvironment.h>
 #include <CoriumRuntime.h>
-#include <AtomicVariable.h>
+#include <AtomicVar.h>
 #include <atomic>
 
 class DefaultThreadFactoryCreateAndStartLaunchesRealThread final

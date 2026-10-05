@@ -284,3 +284,8 @@ kind = "correctness"
 id = "framestackdesc-validate-enforces-provenance-rules"
 fixture = "FrameStackDescValidateEnforcesProvenanceRules"
 kind = "correctness"
+
+[[test]]
+id = "atomics-all-widths-are-exact"
+fixture = "AtomicsAllWidthsAreExact"
+kind = "correctness"

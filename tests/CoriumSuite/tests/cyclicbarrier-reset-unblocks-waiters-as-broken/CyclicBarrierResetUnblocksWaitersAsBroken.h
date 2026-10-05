@@ -9,7 +9,7 @@
 #include <CoriumFactory.h>
 #include <CoriumDiagnostics.h>
 #include <CoriumRuntime.h>
-#include <AtomicVariable.h>
+#include <AtomicVar.h>
 
 class CyclicBarrierResetUnblocksWaitersAsBroken final
 	: public Hades::Runtime::IFixture<CyclicBarrierResetUnblocksWaitersAsBroken, Hades::Runtime::NullDeviceAdapter> {

@@ -10,7 +10,7 @@
 #include <CoriumFactory.h>
 #include <CoriumDiagnostics.h>
 #include <CoriumRuntime.h>
-#include <AtomicVariable.h>
+#include <AtomicVar.h>
 
 class CriticalSectionTryLockFailsWhileHeldByOtherThread final
 	: public Hades::Runtime::IFixture<CriticalSectionTryLockFailsWhileHeldByOtherThread, Hades::Runtime::NullDeviceAdapter> {

@@ -5,7 +5,7 @@
 #include <HadesChrono.h>
 #include <HadesHash.h>
 
-#include <AtomicVariable.h>
+#include <AtomicVar.h>
 #include <CoriumFactory.h>
 #include <CoriumThread.h>
 #include <CoriumDiagnostics.h>

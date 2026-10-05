@@ -12,7 +12,7 @@
 #include <CoriumEnvironment.h>
 #include <CoriumChrono.h>
 #include <CoriumRuntime.h>
-#include <AtomicVariable.h>
+#include <AtomicVar.h>
 #include <atomic>
 #include <thread>
 #include <chrono>

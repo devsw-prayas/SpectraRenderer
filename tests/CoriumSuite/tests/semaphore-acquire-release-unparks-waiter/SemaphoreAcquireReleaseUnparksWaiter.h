@@ -10,7 +10,7 @@
 #include <CoriumThread.h>
 #include <CoriumDiagnostics.h>
 #include <CoriumRuntime.h>
-#include <AtomicVariable.h>
+#include <AtomicVar.h>
 #include <atomic>
 
 class SemaphoreAcquireReleaseUnparksWaiter final

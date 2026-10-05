@@ -8,7 +8,7 @@
 #include <CoriumSync.h>
 #include <CoriumFactory.h>
 #include <CoriumDiagnostics.h>
-#include <AtomicVariable.h>
+#include <AtomicVar.h>
 #include <CoriumRuntime.h>
 
 class CyclicBarrierAwaitReleasesAllParties final
