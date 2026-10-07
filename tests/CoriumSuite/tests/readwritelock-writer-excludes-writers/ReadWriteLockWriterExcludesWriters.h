@@ -37,7 +37,7 @@ public:
 
 		// Spawned thread attempts to acquire write lock while write lock is held
 		Corium::Core::ThreadHandle handle = m_Factory->createAndStart(
-			Corium::Core::createClosure<void()>([this]() {
+			Corium::Core::makeClosure<void()>([this]() {
 				bool success = m_RwLock->tryLockWrite();
 				if (success) {
 					m_WriterAcquired->store(true, std::memory_order_release);

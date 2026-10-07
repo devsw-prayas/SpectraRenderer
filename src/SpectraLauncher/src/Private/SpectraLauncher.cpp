@@ -25,6 +25,7 @@
 #include <atomic>
 #include <thread>
 #include <memory>
+#include <windows.h>
 
 namespace {
 	// Fixed-seed xorshift so a failing run replays exactly.
@@ -105,7 +106,7 @@ namespace {
 
 		static std::atomic<int> s_result{ 0 };
 		Factory::AffinityFactory factory(0, 0x1);
-		const ThreadHandle handle = factory.createAndStart(createClosure<void()>([]() {
+		const ThreadHandle handle = factory.createAndStart(makeClosure<void()>([]() {
 			Frame::FrameHandle* current = Frame::this_thread::currentFrame();
 			if (!current) { s_result.store(2); return; }
 
@@ -125,6 +126,184 @@ namespace {
 		const bool ok = mainUnattached && joined && result == 1;
 		printf("[frame] %s (main unattached=%d, joined=%d, thread result=%d)\n", ok ? "passed" : "FAILED", mainUnattached, joined, result);
 		return ok;
+	}
+
+	// Suspend a frame on thread A, resume it on thread B. Only frame-owned state (its stack) may survive the hop;
+	// the thread id is read fresh after the resume and must differ.
+	bool runFrameMigrationCheck() {
+		using namespace Corium::Core;
+		printf("[frame] migration: suspend on A, resume on B\n");
+
+		// CALLEE_OWNED so the handle outlives TERMINATED and can be checked; a pool block would be released on landing.
+		alignas(64) static std::byte s_stack[256 * 1024];
+		static std::atomic<int> s_yielded{ 0 };
+		static std::atomic<int> s_migrated{ -1 };
+		static std::atomic<int> s_canaryOk{ -1 };
+		static std::atomic<int> s_claimSpins{ 0 };
+		static std::atomic<int> s_terminated{ 0 };
+
+		Frame::FrameStackDesc desc{};
+		Frame::init(desc);
+		Frame::setProvenance(desc, Frame::Provenance::CALLEE_OWNED);
+		Frame::setMemoryLocation(desc, s_stack);
+		Frame::setStackSize(desc, sizeof(s_stack));
+		if (!Frame::validate(desc)) {
+			printf("[frame] FAILED (desc did not validate)\n");
+			return false;
+		}
+
+		// Named, not a temporary: the frame keeps a FunctionView into it.
+		auto entry = Utils::makeClosure<void()>([]() {
+			const std::thread::id before = std::this_thread::get_id();
+			volatile uint64_t canary = 0x5EC7'4A11'C0DE'F00Dull;
+			Frame::NativeFrame::yieldToNative(Frame::this_thread::currentFrame(), false);
+			// Resumed: fresh carrier-side reads only.
+			s_migrated.store(std::this_thread::get_id() != before ? 1 : 0);
+			s_canaryOk.store(canary == 0x5EC7'4A11'C0DE'F00Dull ? 1 : 0);
+		}, 0);
+		auto created = Frame::NativeFrame::createFrame(std::move(entry), desc);
+		if (!created) {
+			printf("[frame] FAILED (createFrame)\n");
+			return false;
+		}
+		Frame::FrameHandle* frame = created.value();
+
+		Factory::DefaultThreadFactory factory{};
+		const ThreadHandle a = factory.createAndStart(makeClosure<void()>([frame]() {
+			Frame::this_thread::captureFrame(frame);
+			// Back on A's native context: afterSwitch has published SUSPENDED by now.
+			s_yielded.store(1, std::memory_order_release);
+		}), "MigrateA");
+
+		const ThreadHandle b = factory.createAndStart(makeClosure<void()>([frame]() {
+			// Without this the frame could still be READY and B would simply run it first.
+			while (s_yielded.load(std::memory_order_acquire) == 0) std::this_thread::yield();
+			while (!Frame::this_thread::tryCaptureFrame(frame)) {
+				s_claimSpins.fetch_add(1, std::memory_order_relaxed);
+				_mm_pause();
+			}
+			s_terminated.store(Corium::Atomics::load<Corium::Atomics::MemoryOrder::ACQUIRE>(&frame->m_State) == Frame::FrameState::TERMINATED ? 1 : 0);
+		}), "MigrateB");
+
+		const bool joined = NativeThread::joinThread(a) && NativeThread::joinThread(b);
+		const bool ok = joined && s_migrated.load() == 1 && s_canaryOk.load() == 1 && s_terminated.load() == 1;
+		printf("[frame] %s (joined=%d, migrated=%d, canary=%d, terminated=%d, claim spins=%d)\n", ok ? "passed" : "FAILED",
+			joined, s_migrated.load(), s_canaryOk.load(), s_terminated.load(), s_claimSpins.load());
+		return ok;
+	}
+
+	// Frame path: createFrame takes ownership of the closure, so a temporary must stay valid until the frame runs.
+	// The destructor case catches a closure destroyed early: its capture would read as poisoned.
+	struct PoisonOnDestroy {
+		uint64_t m_Value;
+		~PoisonOnDestroy() { m_Value = 0xDEADDEADDEADDEADull; }
+	};
+
+	// TEB stack bounds are swapped on every frame switch. Without them the dispatcher rejects a frame's stack as
+	// out of bounds: any exception kills the process unhandled and stack walks return nothing (2026-10-06 experiment).
+	// __try lives alone in its own function: MSVC forbids it next to objects that need unwinding.
+	CORIUM_NOINLINE int sehCatchesAccessViolation() {
+		__try {
+			*static_cast<volatile int*>(nullptr) = 1;
+		} __except (GetExceptionCode() == EXCEPTION_ACCESS_VIOLATION ? EXCEPTION_EXECUTE_HANDLER : EXCEPTION_CONTINUE_SEARCH) {
+			return 1;
+		}
+		return 0;
+	}
+
+	CORIUM_NOINLINE int cppCatchesThrow(int v_Value) {
+		try {
+			if (v_Value != 0) throw v_Value;
+		} catch (int caught) {
+			return caught == v_Value ? 1 : 0;
+		}
+		return 0;
+	}
+
+	bool runFrameExceptionCheck() {
+		using namespace Corium::Core;
+		printf("[frame] exceptions and stack walks inside a frame\n");
+
+		static std::atomic<int> s_cpp{ -1 };
+		static std::atomic<int> s_seh{ -1 };
+		static std::atomic<int> s_depth{ -1 };
+		static std::atomic<int> s_boundsOk{ -1 };
+
+		Frame::FrameStackDesc desc{};
+		Frame::init(desc);
+		Frame::validate(desc);
+
+		auto created = Frame::NativeFrame::createFrame(Utils::makeClosure<void()>([]() {
+			// The TEB must describe this frame's stack while it runs.
+			NT_TIB* tib = reinterpret_cast<NT_TIB*>(NtCurrentTeb());
+			volatile int local = 0;
+			const auto here = reinterpret_cast<uintptr_t>(&local);
+			s_boundsOk.store(here < reinterpret_cast<uintptr_t>(tib->StackBase) && here >= reinterpret_cast<uintptr_t>(tib->StackLimit) ? 1 : 0);
+
+			s_cpp.store(cppCatchesThrow(42));
+			s_seh.store(sehCatchesAccessViolation());
+
+			void* trace[32] = {};
+			s_depth.store(static_cast<int>(RtlCaptureStackBackTrace(0, 32, trace, nullptr)));
+		}), desc);
+		if (!created) {
+			printf("[frame] FAILED (createFrame)\n");
+			return false;
+		}
+
+		Frame::FrameHandle* frame = created.value();
+		Factory::DefaultThreadFactory factory{};
+		const ThreadHandle t = factory.createAndStart(makeClosure<void()>([frame]() {
+			Frame::this_thread::captureFrame(frame);
+		}), "FrameExceptionCheck");
+		const bool joined = NativeThread::joinThread(t);
+
+		const bool ok = joined && s_boundsOk.load() == 1 && s_cpp.load() == 1 && s_seh.load() == 1 && s_depth.load() > 0;
+		printf("[frame] %s (TEB bounds=%d, C++ throw=%d, SEH AV=%d, stack walk depth=%d)\n", ok ? "passed" : "FAILED",
+			s_boundsOk.load(), s_cpp.load(), s_seh.load(), s_depth.load());
+		return ok;
+	}
+
+	bool runFrameCaptureCheck() {
+		using namespace Corium::Core;
+		printf("[frame] capturing closures through createFrame\n");
+
+		Frame::FrameStackDesc desc{};
+		Frame::init(desc);
+		Frame::validate(desc);
+
+		static std::atomic<uint64_t> s_seen{ 0 };
+		// Runtime values, so the captures are real reads from closure storage, not folded constants.
+		volatile uint64_t va = 0x1111'2222'3333'4444ull, vb = 0x5555'6666'7777'8888ull;
+		const uint64_t a = va, b = vb;
+
+		const auto runOn = [](Frame::FrameHandle* p_Frame) {
+			Factory::DefaultThreadFactory factory{};
+			NativeThread::joinThread(factory.createAndStart(makeClosure<void()>([p_Frame]() {
+				Frame::this_thread::captureFrame(p_Frame);
+			}), "CaptureCheck"));
+		};
+		const auto report = [](const char* p_Name, uint64_t v_Expected) {
+			const uint64_t seen = s_seen.exchange(0);
+			printf("[frame]   %-22s expected=%016llx seen=%016llx %s\n", p_Name, (unsigned long long)v_Expected,
+				(unsigned long long)seen, seen == v_Expected ? "ok" : "MISMATCH");
+			return seen == v_Expected;
+		};
+
+		auto named = Utils::makeClosure<void()>([a, b]() { s_seen.store(a ^ b); }, 0);
+		runOn(Frame::NativeFrame::createFrame(std::move(named), desc).value());
+		const bool namedOk = report("named, plain", a ^ b);
+
+		// Separate statement: the temporary closure dies at the semicolon, before the frame runs.
+		auto f2 = Frame::NativeFrame::createFrame(Utils::makeClosure<void()>([a, b]() { s_seen.store(a ^ b); }, 0), desc);
+		runOn(f2.value());
+		const bool tempPlainOk = report("temporary, plain", a ^ b);
+
+		auto f3 = Frame::NativeFrame::createFrame(Utils::makeClosure<void()>([p = PoisonOnDestroy{ a }]() { s_seen.store(p.m_Value); }, 0), desc);
+		runOn(f3.value());
+		const bool tempDtorOk = report("temporary, with dtor", a);
+
+		return namedOk && tempPlainOk && tempDtorOk;
 	}
 
 	bool runHeapCheck() {
@@ -347,25 +526,30 @@ static void runWindowThread() {
 	PlatformWindow::shutdown();
 }
 
+using namespace Corium::Core::Factory;
+using namespace Corium::Core::Utils;
+using namespace Corium::Core::Frame;
+
 void runFrames() {
-	using namespace Corium::Core::Factory;
-	using namespace Corium::Core::Utils;
-	using namespace Corium::Core::Frame;
 	DefaultThreadFactory factory{};
 	FrameStackDesc desc{};
 	init(desc);
 	validate(desc);
-	auto frame = NativeFrame::createFrame(buildClosure<void()>([]() { 
+	auto frame = NativeFrame::createFrame(makeClosure<void()>([]() { 
 		printf("Hello world from a Frame! Gonna kill it now!\n");
 		NativeFrame::yieldToNative(this_thread::currentFrame(), true);
 	}, 0), desc);
-	auto handle = factory.createAndStart(buildClosure<void()>([&frame]() { 
+	auto handle = factory.createAndStart(makeClosure<void()>([&frame]() { 
 		printf("This is a random ahh thread \n");
 		NativeFrame::switchTo(this_thread::currentFrame(), frame.value(), false);
 		printf("And That frame vanished, boom!");
 	}, 0), "Random Ahh thread");
 
-	Corium::Core::NativeThread::joinThread(handle);
+	Corium::Core::NativeThread::joinThread(handle); 
+}
+
+void tebCrossTransition() {
+	
 }
 
 int main(int v_Argc, char** p_Argv) {
@@ -386,7 +570,7 @@ int main(int v_Argc, char** p_Argv) {
 
 	Corium::CoriumRuntime::initRuntime();
 	printf("[main] Runtime initialised.\n");
-	const bool frameOk = runFrameAttachCheck();
+	const bool frameOk = runFrameAttachCheck() && runFrameMigrationCheck() && runFrameCaptureCheck() && runFrameExceptionCheck();
 
 	for (int i = 1; i < v_Argc; ++i)
 		if (std::strcmp(p_Argv[i], "--window") == 0) runWindowThread();

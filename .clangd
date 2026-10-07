@@ -1,4 +1,6 @@
-# Compile database comes from a Ninja configure (the VS generator can't emit one):
+# Compile database comes from a Ninja configure (the VS generator can't emit one). Either opt in to
+# refreshing it on every VS configure:   cmake -DSPECTRA_CLANGD_DB=ON build
+# or run it by hand from a VS developer prompt:
 #   cmake -S . -B build_ninja -G Ninja -DCMAKE_BUILD_TYPE=Debug_win64 -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
 CompileFlags:
   CompilationDatabase: build_ninja

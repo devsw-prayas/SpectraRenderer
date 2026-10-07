@@ -35,7 +35,7 @@ public:
 		using namespace Corium::Core;
 
 		m_Handle = m_Factory.createAndStart(
-			createClosure<void()>([this]() {
+			makeClosure<void()>([this]() {
 				m_Latch.await();
 			}),
 			"IsAliveTestThread"

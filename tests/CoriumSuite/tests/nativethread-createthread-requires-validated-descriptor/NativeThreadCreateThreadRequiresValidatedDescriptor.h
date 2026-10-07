@@ -37,7 +37,7 @@ public:
 		Factory::AThreadFactory& baseFactory = m_Factory;
 
 		m_Handle = baseFactory.createAndStart(
-			createClosure<void()>([this]() {
+			makeClosure<void()>([this]() {
 				m_Latch.await();
 			}),
 			"TestValidatedDesc"

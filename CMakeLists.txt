@@ -192,3 +192,30 @@ else()
     add_compile_options(-ffunction-sections -fdata-sections)
     add_link_options(LINKER:--gc-sections)
 endif()
+
+# clangd needs compile_commands.json, which the VS generator can't emit. Mirror every VS (re)configure
+# into a Ninja configure at build_ninja/ (see .clangd) so the database never goes stale. Only from the
+# VS generator, so the nested Ninja configure of this same file can't recurse.
+option(SPECTRA_CLANGD_DB "Refresh build_ninja/compile_commands.json on every Visual Studio configure (opt-in, adds ~25 s per reconfigure)" OFF)
+if(SPECTRA_CLANGD_DB AND CMAKE_GENERATOR MATCHES "Visual Studio" AND CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
+    # cl.exe is <VS>/VC/Tools/MSVC/<ver>/bin/...; its environment script is <VS>/VC/Auxiliary/Build/vcvars64.bat.
+    string(REGEX REPLACE "/VC/Tools/.*$" "/VC/Auxiliary/Build/vcvars64.bat" _spectra_vcvars "${CMAKE_CXX_COMPILER}")
+    if(EXISTS "${_spectra_vcvars}")
+        file(TO_NATIVE_PATH "${_spectra_vcvars}" _spectra_vcvars_native)
+        file(TO_NATIVE_PATH "${CMAKE_COMMAND}" _spectra_cmake_native)
+        set(_spectra_clangd_script "${CMAKE_BINARY_DIR}/refresh_clangd_db.bat")
+        file(WRITE "${_spectra_clangd_script}"
+            "@call \"${_spectra_vcvars_native}\" >nul 2>&1
+"
+            "\"${_spectra_cmake_native}\" -S \"${CMAKE_SOURCE_DIR}\" -B \"${CMAKE_SOURCE_DIR}/build_ninja\" -G Ninja"
+            " -DCMAKE_BUILD_TYPE=Debug_win64 -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+")
+        message(STATUS "Refreshing clangd compile database (build_ninja/)")
+        execute_process(COMMAND cmd /c "${_spectra_clangd_script}" RESULT_VARIABLE _spectra_clangd_result OUTPUT_QUIET ERROR_QUIET)
+        if(NOT _spectra_clangd_result EQUAL 0)
+            message(WARNING "clangd compile database refresh failed (${_spectra_clangd_result}); run ${_spectra_clangd_script} to see why.")
+        endif()
+    else()
+        message(WARNING "SPECTRA_CLANGD_DB: vcvars64.bat not found next to ${CMAKE_CXX_COMPILER}; clangd database not refreshed.")
+    endif()
+endif()

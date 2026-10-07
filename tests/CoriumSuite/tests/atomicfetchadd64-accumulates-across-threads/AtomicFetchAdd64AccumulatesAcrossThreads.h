@@ -38,7 +38,7 @@ public:
 
 		for (uint32_t i = 0; i < m_numThreads; ++i) {
 			m_threads[i] = threadFactory.createAndStart(
-				Corium::Core::createClosure<void()>([this]() {
+				Corium::Core::makeClosure<void()>([this]() {
 					for (uint64_t j = 0; j < m_incrementsPerThread; ++j) {
 						m_Counter.fetchAdd(1);
 					}

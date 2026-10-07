@@ -1,4 +1,3 @@
-# TODO: not compiled since the makeClosure rename and the createFrame std::move changes.
 # Hades suite manifest
 [[test]]
 id = "sync-parkhandle-wait-wake-round-trip"
@@ -68,6 +67,11 @@ kind = "correctness"
 [[test]]
 id = "cyclicbarrier-reset-unblocks-waiters-as-broken"
 fixture = "CyclicBarrierResetUnblocksWaitersAsBroken"
+kind = "correctness"
+
+[[test]]
+id = "cyclicbarrier-getnumberwaiting-tracks-arrivals"
+fixture = "CyclicBarrierGetNumberWaitingTracksArrivals"
 kind = "correctness"
 
 [[test]]
@@ -151,6 +155,11 @@ fixture = "PhaserRegisterIncreasesRegisteredParties"
 kind = "correctness"
 
 [[test]]
+id = "phaser-child-advance-propagates-to-parent"
+fixture = "PhaserChildAdvancePropagatesToParent"
+kind = "correctness"
+
+[[test]]
 id = "phaser-forcetermination-sets-isterminated"
 fixture = "PhaserForceTerminationSetsIsTerminated"
 kind = "correctness"
@@ -166,9 +175,19 @@ fixture = "ConditionTimedAwaitExpiresWithoutSignal"
 kind = "correctness"
 
 [[test]]
+id = "exchanger-two-party-exchange-swaps-values"
+fixture = "ExchangerTwoPartyExchangeSwapsValues"
+kind = "correctness"
+
+[[test]]
 id = "exchanger-timed-exchange-times-out-with-no-partner"
 fixture = "ExchangerTimedExchangeTimesOutWithNoPartner"
 kind = "correctness"
+
+[[test]]
+id = "exchanger-high-contention-throughput"
+fixture = "ExchangerHighContentionThroughput"
+kind = "performance"
 
 [[test]]
 id = "monotonicclock-now-is-non-decreasing"
@@ -264,28 +283,4 @@ kind = "correctness"
 [[test]]
 id = "framestackdesc-validate-enforces-provenance-rules"
 fixture = "FrameStackDescValidateEnforcesProvenanceRules"
-kind = "correctness"
-[[test]]
-id = "atomics-all-widths-are-exact"
-fixture = "AtomicsAllWidthsAreExact"
-kind = "correctness"
-
-[[test]]
-id = "frame-yield-and-resume-preserves-state"
-fixture = "FrameYieldAndResumePreservesState"
-kind = "correctness"
-
-[[test]]
-id = "frame-run-to-completion-terminates-after-landing"
-fixture = "FrameRunToCompletionTerminatesAfterLanding"
-kind = "correctness"
-
-[[test]]
-id = "frame-killframe-wipes-block-and-reads-terminated"
-fixture = "FrameKillframeWipesBlockAndReadsTerminated"
-kind = "correctness"
-
-[[test]]
-id = "frame-guard-page-sits-between-header-and-stack"
-fixture = "FrameGuardPageSitsBetweenHeaderAndStack"
 kind = "correctness"

@@ -28,7 +28,7 @@ public:
 
 	void executeImpl() noexcept {
 		Corium::Core::ThreadHandle handle = m_Factory->createAndStart(
-			Corium::Core::createClosure<void()>([this]() {
+			Corium::Core::makeClosure<void()>([this]() {
 				m_ThreadRan->store(true, std::memory_order_release);
 			}),
 			"TestPriorityThread"

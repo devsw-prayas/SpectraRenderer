@@ -35,7 +35,7 @@ public:
 		m_Awakened.store(false, std::memory_order_relaxed);
 
 		m_Handle = m_Factory.createAndStart(
-			Corium::Core::createClosure<void()>([this]() {
+			Corium::Core::makeClosure<void()>([this]() {
 				m_Lock.lock();
 				m_ThreadStarted.store(true, std::memory_order_release);
 				m_Cond.await();

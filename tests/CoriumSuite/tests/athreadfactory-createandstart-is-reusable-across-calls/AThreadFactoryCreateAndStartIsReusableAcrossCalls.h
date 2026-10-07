@@ -37,7 +37,7 @@ public:
 		using namespace Corium::Core;
 
 		m_handle1 = m_factory.createAndStart(
-			createClosure<void()>([this]() {
+			makeClosure<void()>([this]() {
 				m_firstRan.store(true, std::memory_order_release);
 			}),
 			"TestReusableThread1"
@@ -47,7 +47,7 @@ public:
 		CORIUM_ASSERT(m_joined1 && "First thread failed to join");
 
 		m_handle2 = m_factory.createAndStart(
-			createClosure<void()>([this]() {
+			makeClosure<void()>([this]() {
 				m_secondRan.store(true, std::memory_order_release);
 			}),
 			"TestReusableThread2"

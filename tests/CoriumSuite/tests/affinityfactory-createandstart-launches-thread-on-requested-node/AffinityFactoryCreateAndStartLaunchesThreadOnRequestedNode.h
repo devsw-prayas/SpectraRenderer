@@ -40,7 +40,7 @@ public:
 		using namespace Corium::Core;
 
 		m_handle = m_factory->createAndStart(
-			createClosure<void()>([this]() {
+			makeClosure<void()>([this]() {
 				m_threadRan.store(true, std::memory_order_release);
 			}),
 			"TestAffinityThread"

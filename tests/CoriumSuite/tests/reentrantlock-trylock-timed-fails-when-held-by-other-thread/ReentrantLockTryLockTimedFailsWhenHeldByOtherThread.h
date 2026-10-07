@@ -42,7 +42,7 @@ public:
 
 		m_Lock.lock();
 
-		m_Handle = m_Factory.createAndStart(Corium::Core::createClosure<void()>([this]() {
+		m_Handle = m_Factory.createAndStart(Corium::Core::makeClosure<void()>([this]() {
 			m_ThreadStarted.store(true, Corium::Core::Atomics::MemoryOrder::RELEASE);
 			bool res = m_Lock.tryLock(Corium::Core::Chrono::until(1_ms));
 			m_TryLockResult.store(res, Corium::Core::Atomics::MemoryOrder::RELEASE);

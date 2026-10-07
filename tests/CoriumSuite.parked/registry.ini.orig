@@ -111,6 +111,14 @@ hash = Hades::Runtime::FnvChainHashAccumulator
 extra_link_dir = C:/StormWeaver/Development/Graphics Programming/SpectraRenderer/common/Corium
 extra_link_target = Corium
 
+[CyclicBarrierGetNumberWaitingTracksArrivals]
+header = tests/cyclicbarrier-getnumberwaiting-tracks-arrivals/CyclicBarrierGetNumberWaitingTracksArrivals.h
+adapter = Hades::Runtime::NullDeviceAdapter
+chrono = Hades::Runtime::Chrono::SteadyClockChronoPoint
+hash = Hades::Runtime::FnvChainHashAccumulator
+extra_link_dir = C:/StormWeaver/Development/Graphics Programming/SpectraRenderer/common/Corium
+extra_link_target = Corium
+
 [CyclicBarrierGetPartiesReflectsConstructorArg]
 header = tests/cyclicbarrier-getparties-reflects-constructor-arg/CyclicBarrierGetPartiesReflectsConstructorArg.h
 adapter = Hades::Runtime::NullDeviceAdapter
@@ -239,6 +247,14 @@ hash = Hades::Runtime::FnvChainHashAccumulator
 extra_link_dir = C:/StormWeaver/Development/Graphics Programming/SpectraRenderer/common/Corium
 extra_link_target = Corium
 
+[PhaserChildAdvancePropagatesToParent]
+header = tests/phaser-child-advance-propagates-to-parent/PhaserChildAdvancePropagatesToParent.h
+adapter = Hades::Runtime::NullDeviceAdapter
+chrono = Hades::Runtime::Chrono::SteadyClockChronoPoint
+hash = Hades::Runtime::FnvChainHashAccumulator
+extra_link_dir = C:/StormWeaver/Development/Graphics Programming/SpectraRenderer/common/Corium
+extra_link_target = Corium
+
 [PhaserForceTerminationSetsIsTerminated]
 header = tests/phaser-forcetermination-sets-isterminated/PhaserForceTerminationSetsIsTerminated.h
 adapter = Hades::Runtime::NullDeviceAdapter
@@ -263,8 +279,24 @@ hash = Hades::Runtime::FnvChainHashAccumulator
 extra_link_dir = C:/StormWeaver/Development/Graphics Programming/SpectraRenderer/common/Corium
 extra_link_target = Corium
 
+[ExchangerTwoPartyExchangeSwapsValues]
+header = tests/exchanger-two-party-exchange-swaps-values/ExchangerTwoPartyExchangeSwapsValues.h
+adapter = Hades::Runtime::NullDeviceAdapter
+chrono = Hades::Runtime::Chrono::SteadyClockChronoPoint
+hash = Hades::Runtime::FnvChainHashAccumulator
+extra_link_dir = C:/StormWeaver/Development/Graphics Programming/SpectraRenderer/common/Corium
+extra_link_target = Corium
+
 [ExchangerTimedExchangeTimesOutWithNoPartner]
 header = tests/exchanger-timed-exchange-times-out-with-no-partner/ExchangerTimedExchangeTimesOutWithNoPartner.h
+adapter = Hades::Runtime::NullDeviceAdapter
+chrono = Hades::Runtime::Chrono::SteadyClockChronoPoint
+hash = Hades::Runtime::FnvChainHashAccumulator
+extra_link_dir = C:/StormWeaver/Development/Graphics Programming/SpectraRenderer/common/Corium
+extra_link_target = Corium
+
+[ExchangerHighContentionThroughput]
+header = tests/exchanger-high-contention-throughput/ExchangerHighContentionThroughput.h
 adapter = Hades::Runtime::NullDeviceAdapter
 chrono = Hades::Runtime::Chrono::SteadyClockChronoPoint
 hash = Hades::Runtime::FnvChainHashAccumulator
@@ -418,46 +450,6 @@ extra_link_target = Corium
 
 [FrameStackDescValidateEnforcesProvenanceRules]
 header = tests/framestackdesc-validate-enforces-provenance-rules/FrameStackDescValidateEnforcesProvenanceRules.h
-adapter = Hades::Runtime::NullDeviceAdapter
-chrono = Hades::Runtime::Chrono::SteadyClockChronoPoint
-hash = Hades::Runtime::FnvChainHashAccumulator
-extra_link_dir = C:/StormWeaver/Development/Graphics Programming/SpectraRenderer/common/Corium
-extra_link_target = Corium
-
-[AtomicsAllWidthsAreExact]
-header = tests/atomics-all-widths-are-exact/AtomicsAllWidthsAreExact.h
-adapter = Hades::Runtime::NullDeviceAdapter
-chrono = Hades::Runtime::Chrono::SteadyClockChronoPoint
-hash = Hades::Runtime::FnvChainHashAccumulator
-extra_link_dir = C:/StormWeaver/Development/Graphics Programming/SpectraRenderer/common/Corium
-extra_link_target = Corium
-
-[FrameYieldAndResumePreservesState]
-header = tests/frame-yield-and-resume-preserves-state/FrameYieldAndResumePreservesState.h
-adapter = Hades::Runtime::NullDeviceAdapter
-chrono = Hades::Runtime::Chrono::SteadyClockChronoPoint
-hash = Hades::Runtime::FnvChainHashAccumulator
-extra_link_dir = C:/StormWeaver/Development/Graphics Programming/SpectraRenderer/common/Corium
-extra_link_target = Corium
-
-[FrameRunToCompletionTerminatesAfterLanding]
-header = tests/frame-run-to-completion-terminates-after-landing/FrameRunToCompletionTerminatesAfterLanding.h
-adapter = Hades::Runtime::NullDeviceAdapter
-chrono = Hades::Runtime::Chrono::SteadyClockChronoPoint
-hash = Hades::Runtime::FnvChainHashAccumulator
-extra_link_dir = C:/StormWeaver/Development/Graphics Programming/SpectraRenderer/common/Corium
-extra_link_target = Corium
-
-[FrameKillframeWipesBlockAndReadsTerminated]
-header = tests/frame-killframe-wipes-block-and-reads-terminated/FrameKillframeWipesBlockAndReadsTerminated.h
-adapter = Hades::Runtime::NullDeviceAdapter
-chrono = Hades::Runtime::Chrono::SteadyClockChronoPoint
-hash = Hades::Runtime::FnvChainHashAccumulator
-extra_link_dir = C:/StormWeaver/Development/Graphics Programming/SpectraRenderer/common/Corium
-extra_link_target = Corium
-
-[FrameGuardPageSitsBetweenHeaderAndStack]
-header = tests/frame-guard-page-sits-between-header-and-stack/FrameGuardPageSitsBetweenHeaderAndStack.h
 adapter = Hades::Runtime::NullDeviceAdapter
 chrono = Hades::Runtime::Chrono::SteadyClockChronoPoint
 hash = Hades::Runtime::FnvChainHashAccumulator

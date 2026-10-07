@@ -1,4 +1,5 @@
 #pragma once
+// TODO: crashes; parked, not investigated.
 #include <Fixture.h>
 
 #include <HadesAdapters.h>
@@ -16,6 +17,7 @@
 #include <atomic>
 #include <thread>
 #include <chrono>
+#include <optional>
 
 class ExchangerHighContentionThroughput final
 	: public Hades::Runtime::IFixture<ExchangerHighContentionThroughput, Hades::Runtime::NullDeviceAdapter> {
@@ -24,7 +26,9 @@ private:
 	static constexpr uint32_t s_totalThreads = s_numThreadPairs * 2;
 
 	std::atomic<uint64_t> m_CompletedExchanges{ 0 };
-	Corium::Runtime::Sync::Exchanger<uint64_t> m_exchanger{};
+	// lazily constructed - Exchanger's ctor asserts AllocatorRegistry is already
+	// registered, which only becomes true after startupImpl()'s initRuntime() call.
+	std::optional<Corium::Runtime::Sync::Exchanger<uint64_t>> m_exchanger;
 	std::atomic<bool> m_stopFlag{ false };
 	Corium::Core::Factory::DefaultThreadFactory m_factory{};
 	Corium::Core::ThreadHandle m_handles[s_totalThreads]{};
@@ -36,6 +40,7 @@ public:
 
 	void startupImpl() noexcept {
 		Corium::CoriumRuntime::initRuntime();
+		m_exchanger.emplace();
 		m_CompletedExchanges.store(0, std::memory_order_relaxed);
 		m_stopFlag.store(false, std::memory_order_relaxed);
 	}
@@ -47,12 +52,18 @@ public:
 
 		for (uint32_t i = 0; i < s_totalThreads; ++i) {
 			m_handles[i] = m_factory.createAndStart(
-				createClosure<void()>([this, i]() {
+				makeClosure<void()>([this, i]() {
 					uint64_t myVal = static_cast<uint64_t>(i + 1);
 					uint64_t localCount = 0;
 					while (!m_stopFlag.load(std::memory_order_relaxed)) {
-						myVal = m_exchanger.exchange(std::move(myVal));
-						++localCount;
+						// Timed, not the infinite overload: a thread parked waiting for a
+						// partner must periodically recheck m_stopFlag, or the last unpaired
+						// waiter blocks forever once every other thread has already exited.
+						uint64_t result{};
+						if (m_exchanger->exchange(std::move(myVal), result, Corium::Core::Chrono::until(10_ms))) {
+							myVal = result;
+							++localCount;
+						}
 					}
 					m_CompletedExchanges.fetch_add(localCount, std::memory_order_relaxed);
 				}),

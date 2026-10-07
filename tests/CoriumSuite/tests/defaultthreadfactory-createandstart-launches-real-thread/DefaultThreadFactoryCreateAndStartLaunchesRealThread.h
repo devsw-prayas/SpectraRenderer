@@ -38,7 +38,7 @@ public:
 		Factory::AThreadFactory& baseFactory = m_factory;
 
 		m_handle = baseFactory.createAndStart(
-			createClosure<void()>([this]() {
+			makeClosure<void()>([this]() {
 				m_threadRan.store(true, std::memory_order_release);
 			}),
 			"TestDefaultThread"

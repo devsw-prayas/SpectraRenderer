@@ -37,7 +37,7 @@ public:
 		using namespace Corium::Core;
 
 		m_Handle = m_Factory.createAndStart(
-			createClosure<void()>([this]() {
+			makeClosure<void()>([this]() {
 				std::this_thread::sleep_for(std::chrono::milliseconds(10));
 				m_Flag.store(true, Atomics::MemoryOrder::RELEASE);
 			}),

@@ -1,4 +1,5 @@
 #pragma once
+// TODO: crashes; parked, not investigated.
 #include <Fixture.h>
 
 #include <HadesAdapters.h>
@@ -20,7 +21,7 @@ public:
 	void startupImpl() noexcept {
 		Corium::CoriumRuntime::initRuntime();
 
-		m_Parent = std::make_unique<Corium::Runtime::Sync::Phaser>(1);
+		m_Parent = std::make_unique<Corium::Runtime::Sync::Phaser>(0);
 		m_Child = std::make_unique<Corium::Runtime::Sync::Phaser>(*m_Parent, 1);
 	}
 

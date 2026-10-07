@@ -35,7 +35,7 @@ public:
 	}
 
 	void executeImpl() noexcept {
-		m_t1 = m_factory.createAndStart(Corium::Core::createClosure<void()>([this]() {
+		m_t1 = m_factory.createAndStart(Corium::Core::makeClosure<void()>([this]() {
 			m_threadStarted.store(true, Corium::Core::Atomics::MemoryOrder::RELEASE);
 			m_barrier.await();
 			m_threadReturned.store(true, Corium::Core::Atomics::MemoryOrder::RELEASE);

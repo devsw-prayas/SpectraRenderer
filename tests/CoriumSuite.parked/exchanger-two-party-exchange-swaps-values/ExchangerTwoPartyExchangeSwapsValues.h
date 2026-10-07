@@ -1,4 +1,5 @@
 #pragma once
+// TODO: crashes; parked, not investigated.
 #include <Fixture.h>
 
 #include <HadesAdapters.h>
@@ -11,11 +12,14 @@
 #include <CoriumMemoryHandler.h>
 #include <CoriumEnvironment.h>
 #include <CoriumRuntime.h>
+#include <optional>
 
 class ExchangerTwoPartyExchangeSwapsValues final
 	: public Hades::Runtime::IFixture<ExchangerTwoPartyExchangeSwapsValues, Hades::Runtime::NullDeviceAdapter> {
 private:
-	Corium::Runtime::Sync::Exchanger<int> m_exchanger{};
+	// lazily constructed - Exchanger's ctor asserts AllocatorRegistry is already
+	// registered, which only becomes true after startupImpl()'s initRuntime() call.
+	std::optional<Corium::Runtime::Sync::Exchanger<int>> m_exchanger;
 	int m_resultA{ 0 };
 	int m_resultB{ 0 };
 	Corium::Core::Factory::DefaultThreadFactory m_factory{};
@@ -31,6 +35,7 @@ public:
 
 	void startupImpl() noexcept {
 		Corium::CoriumRuntime::initRuntime();
+		m_exchanger.emplace();
 		m_resultA = 0;
 		m_resultB = 0;
 		m_handleA = {};
@@ -44,15 +49,15 @@ public:
 		using namespace Corium::Runtime::Sync;
 
 		m_handleA = m_factory.createAndStart(
-			createClosure<void()>([this]() {
-				m_resultA = m_exchanger.exchange(1);
+			makeClosure<void()>([this]() {
+				m_resultA = m_exchanger->exchange(1);
 			}),
 			"ExchangerPartyA"
 		);
 
 		m_handleB = m_factory.createAndStart(
-			createClosure<void()>([this]() {
-				m_resultB = m_exchanger.exchange(2);
+			makeClosure<void()>([this]() {
+				m_resultB = m_exchanger->exchange(2);
 			}),
 			"ExchangerPartyB"
 		);

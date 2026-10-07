@@ -33,12 +33,12 @@ public:
 	}
 
 	void executeImpl() noexcept {
-		m_T1 = m_Factory.createAndStart(Corium::Core::createClosure<void()>([this]() {
+		m_T1 = m_Factory.createAndStart(Corium::Core::makeClosure<void()>([this]() {
 			m_ArrivedCount.fetchAdd(1, Corium::Core::Atomics::MemoryOrder::RELAXED);
 			m_Barrier.await();
 		}), "BarrierParty1");
 
-		m_T2 = m_Factory.createAndStart(Corium::Core::createClosure<void()>([this]() {
+		m_T2 = m_Factory.createAndStart(Corium::Core::makeClosure<void()>([this]() {
 			m_ArrivedCount.fetchAdd(1, Corium::Core::Atomics::MemoryOrder::RELAXED);
 			m_Barrier.await();
 		}), "BarrierParty2");

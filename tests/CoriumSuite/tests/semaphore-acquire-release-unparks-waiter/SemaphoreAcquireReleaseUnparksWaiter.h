@@ -37,7 +37,7 @@ public:
 		using namespace Corium::Core;
 
 		m_Handle = m_Factory.createAndStart(
-			createClosure<void()>([this]() {
+			makeClosure<void()>([this]() {
 				m_Sem.acquire();
 				m_Acquired.store(true, std::memory_order_release);
 			}),
