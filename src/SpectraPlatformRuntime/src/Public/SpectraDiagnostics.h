@@ -1,13 +1,15 @@
 #pragma once
 #include <SpectraCompiler.h>
 
-#if defined(_DEBUG) || defined(DEBUG)
+// SPECTRA_DEBUG_CHECKS (0/1) comes from SPECTRA_ENABLE_DEBUG_CHECKS=ON/OFF; unset (AUTO) follows _DEBUG.
+#if defined(SPECTRA_DEBUG_CHECKS)
+#define SPECTRA_BUILD_DEBUG SPECTRA_DEBUG_CHECKS
+#elif defined(_DEBUG)
 #define SPECTRA_BUILD_DEBUG 1
-#define SPECTRA_BUILD_RELEASE 0
 #else
 #define SPECTRA_BUILD_DEBUG 0
-#define SPECTRA_BUILD_RELEASE 1
 #endif
+#define SPECTRA_BUILD_RELEASE (!SPECTRA_BUILD_DEBUG)
 
 #if SPECTRA_BUILD_DEBUG
 #define SPECTRA_ASSERT(expr)                        \

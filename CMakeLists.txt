@@ -109,6 +109,9 @@ endif()
 # C4251/C4324 are by design in an all-DLL, alignas-heavy codebase built by one toolchain at a time.
 add_compile_options($<$<AND:$<COMPILE_LANGUAGE:CXX>,$<CXX_COMPILER_FRONTEND_VARIANT:MSVC>>:/wd4251$<SEMICOLON>/wd4324>)
 
+# Spectra's CUDA backend needs Corium's CUDA layer; Corium alone would only auto-detect it.
+set(CORIUM_ENABLE_CUDA ON CACHE BOOL "Enable CUDA GPU backend")
+
 add_subdirectory(common/Corium)
 add_subdirectory(common/StormSTL)
 add_subdirectory(common/Kerbecs)

@@ -2,13 +2,15 @@
 #include "SpectraInstrumentation.h"
 #include "SpecInstCompiler.h"
 
-#if defined(_DEBUG) || defined(DEBUG)
+// SPEC_INST_DEBUG_CHECKS (0/1) comes from SPEC_INST_ENABLE_DEBUG_CHECKS=ON/OFF; unset (AUTO) follows _DEBUG.
+#if defined(SPEC_INST_DEBUG_CHECKS)
+#define SPEC_INST_BUILD_DEBUG SPEC_INST_DEBUG_CHECKS
+#elif defined(_DEBUG)
 #define SPEC_INST_BUILD_DEBUG 1
-#define SPEC_INST_BUILD_RELEASE 0
 #else
 #define SPEC_INST_BUILD_DEBUG 0
-#define SPEC_INST_BUILD_RELEASE 1
 #endif
+#define SPEC_INST_BUILD_RELEASE (!SPEC_INST_BUILD_DEBUG)
 
 #if SPEC_INST_BUILD_DEBUG
 

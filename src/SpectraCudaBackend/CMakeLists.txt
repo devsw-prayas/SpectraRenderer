@@ -37,6 +37,15 @@ target_compile_definitions(SpectraCudaBackend PRIVATE
     SPEC_CUDA_BK_SHARED
 )
 
+# AUTO follows _DEBUG (set by the debug CRT); ON/OFF pin it. Module-scoped, so it never collides with a host's DEBUG.
+set(SPEC_CUDA_BK_ENABLE_DEBUG_CHECKS AUTO CACHE STRING "SpectraCudaBackend asserts: AUTO (follow _DEBUG), ON or OFF")
+set_property(CACHE SPEC_CUDA_BK_ENABLE_DEBUG_CHECKS PROPERTY STRINGS AUTO ON OFF)
+if (SPEC_CUDA_BK_ENABLE_DEBUG_CHECKS STREQUAL "ON")
+    target_compile_definitions(SpectraCudaBackend PUBLIC SPEC_CUDA_BK_DEBUG_CHECKS=1)
+elseif (SPEC_CUDA_BK_ENABLE_DEBUG_CHECKS STREQUAL "OFF")
+    target_compile_definitions(SpectraCudaBackend PUBLIC SPEC_CUDA_BK_DEBUG_CHECKS=0)
+endif()
+
 target_link_libraries(SpectraCudaBackend PRIVATE SpectraInstrumentation)
 
 target_precompile_headers(SpectraCudaBackend PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src/Public/SpectraCudaBackend.h)

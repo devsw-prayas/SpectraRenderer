@@ -2,13 +2,15 @@
 #include "SpectraVulkanBackend.h"
 #include "SpecVulkanCompiler.h"
 
-#if defined(_DEBUG) || defined(DEBUG)
+// SPEC_VK_BK_DEBUG_CHECKS (0/1) comes from SPEC_VK_BK_ENABLE_DEBUG_CHECKS=ON/OFF; unset (AUTO) follows _DEBUG.
+#if defined(SPEC_VK_BK_DEBUG_CHECKS)
+#define SPEC_VK_BK_BUILD_DEBUG SPEC_VK_BK_DEBUG_CHECKS
+#elif defined(_DEBUG)
 #define SPEC_VK_BK_BUILD_DEBUG 1
-#define SPEC_VK_BK_BUILD_RELEASE 0
 #else
 #define SPEC_VK_BK_BUILD_DEBUG 0
-#define SPEC_VK_BK_BUILD_RELEASE 1
 #endif
+#define SPEC_VK_BK_BUILD_RELEASE (!SPEC_VK_BK_BUILD_DEBUG)
 
 #if SPEC_VK_BK_BUILD_DEBUG
 

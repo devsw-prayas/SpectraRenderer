@@ -32,6 +32,15 @@ target_compile_definitions(SpectraPlatformRuntime PRIVATE
 
 target_compile_definitions(SpectraPlatformRuntime PUBLIC SPECTRA_PLATFORM_MAX_NUMA=4)
 
+# AUTO follows _DEBUG (set by the debug CRT); ON/OFF pin it. Module-scoped, so it never collides with a host's DEBUG.
+set(SPECTRA_ENABLE_DEBUG_CHECKS AUTO CACHE STRING "SpectraPlatformRuntime asserts: AUTO (follow _DEBUG), ON or OFF")
+set_property(CACHE SPECTRA_ENABLE_DEBUG_CHECKS PROPERTY STRINGS AUTO ON OFF)
+if (SPECTRA_ENABLE_DEBUG_CHECKS STREQUAL "ON")
+    target_compile_definitions(SpectraPlatformRuntime PUBLIC SPECTRA_DEBUG_CHECKS=1)
+elseif (SPECTRA_ENABLE_DEBUG_CHECKS STREQUAL "OFF")
+    target_compile_definitions(SpectraPlatformRuntime PUBLIC SPECTRA_DEBUG_CHECKS=0)
+endif()
+
 target_include_directories(SpectraPlatformRuntime
     PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}/src/Public

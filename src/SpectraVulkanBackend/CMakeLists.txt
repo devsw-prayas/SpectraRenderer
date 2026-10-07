@@ -37,6 +37,15 @@ target_compile_definitions(SpectraVulkanBackend PRIVATE
     SPEC_VK_BK_SHARED
 )
 
+# AUTO follows _DEBUG (set by the debug CRT); ON/OFF pin it. Module-scoped, so it never collides with a host's DEBUG.
+set(SPEC_VK_BK_ENABLE_DEBUG_CHECKS AUTO CACHE STRING "SpectraVulkanBackend asserts: AUTO (follow _DEBUG), ON or OFF")
+set_property(CACHE SPEC_VK_BK_ENABLE_DEBUG_CHECKS PROPERTY STRINGS AUTO ON OFF)
+if (SPEC_VK_BK_ENABLE_DEBUG_CHECKS STREQUAL "ON")
+    target_compile_definitions(SpectraVulkanBackend PUBLIC SPEC_VK_BK_DEBUG_CHECKS=1)
+elseif (SPEC_VK_BK_ENABLE_DEBUG_CHECKS STREQUAL "OFF")
+    target_compile_definitions(SpectraVulkanBackend PUBLIC SPEC_VK_BK_DEBUG_CHECKS=0)
+endif()
+
 target_link_libraries(SpectraVulkanBackend PRIVATE SpectraInstrumentation)
 
 target_precompile_headers(SpectraVulkanBackend PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src/Public/SpectraVulkanBackend.h)
