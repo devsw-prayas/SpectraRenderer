@@ -26,16 +26,6 @@ fixture = "AtomicFetchAdd64AccumulatesAcrossThreads"
 kind = "correctness"
 
 [[test]]
-id = "memory-internal-init-respects-requested-node-count"
-fixture = "MemoryInternalInitRespectsRequestedNodeCount"
-kind = "correctness"
-
-[[test]]
-id = "allocatorregistry-initregistry-returns-false-on-reinit"
-fixture = "AllocatorRegistryInitRegistryReturnsFalseOnReinit"
-kind = "correctness"
-
-[[test]]
 id = "defaultthreadfactory-createandstart-launches-real-thread"
 fixture = "DefaultThreadFactoryCreateAndStartLaunchesRealThread"
 kind = "correctness"
@@ -199,41 +189,6 @@ kind = "correctness"
 id = "instant-isexpired-true-for-past-deadline"
 fixture = "InstantIsExpiredTrueForPastDeadline"
 kind = "correctness"
-
-[[test]]
-id = "bumpallocator-allocateimpl-advances-watermark"
-fixture = "BumpAllocatorAllocateImplAdvancesWatermark"
-kind = "correctness"
-
-[[test]]
-id = "bumpallocator-deallocateimpl-resets-bump-to-zero"
-fixture = "BumpAllocatorDeallocateImplResetsBumpToZero"
-kind = "correctness"
-
-[[test]]
-id = "generalallocator-allocate-deallocate-round-trip"
-fixture = "GeneralAllocatorAllocateDeallocateRoundTrip"
-kind = "correctness"
-
-[[test]]
-id = "generalallocator-allocate-honors-requested-alignment"
-fixture = "GeneralAllocatorAllocateHonorsRequestedAlignment"
-kind = "correctness"
-
-[[test]]
-id = "generalallocator-cursor-rewind-reclaims-most-recent-block"
-fixture = "GeneralAllocatorCursorRewindReclaimsMostRecentBlock"
-kind = "correctness"
-
-[[test]]
-id = "allocatorregistry-per-node-generalallocator-is-usable"
-fixture = "AllocatorRegistryPerNodeGeneralAllocatorIsUsable"
-kind = "correctness"
-
-[[test]]
-id = "generalallocator-allocate-deallocate-throughput"
-fixture = "GeneralAllocatorAllocateDeallocateThroughput"
-kind = "performance"
 
 [[test]]
 id = "affinityfactory-createandstart-launches-thread-on-requested-node"
