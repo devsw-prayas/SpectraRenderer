@@ -74,6 +74,11 @@ namespace Spectra::Memory::Heap {
 		// O(n), debug/tests only.
 		SPEC_MEM_NODISCARD bool checkHeap() const;
 
+		// Shrinks the pool from the end if its last block is free, decommitting the tail.
+		// Never below v_KeepBytes or one kGrowChunk; call at quiet points, not per free.
+		void trim(size_t v_KeepBytes = 0);
+		SPEC_MEM_NODISCARD size_t poolSize() const;
+
 	private:
 		// Finds (growing once if needed) and unlinks a free block of at least v_Size.
 		SPEC_MEM_NODISCARD BlockHeader* acquireBlock(size_t v_Size);
@@ -113,6 +118,10 @@ namespace Spectra::Memory::Heap {
 		SPEC_MEM_NODISCARD bool owns(const void* p_Ptr) const;
 		SPEC_MEM_NODISCARD bool checkHeap();
 
+		// Drains pending remote frees first, so they can count toward the free tail.
+		void trim(size_t v_KeepBytes = 0);
+		SPEC_MEM_NODISCARD size_t poolSize();
+
 	private:
 		// Caller must hold m_Lock.
 		void drainRemoteFrees();
@@ -133,6 +142,7 @@ namespace Spectra::Memory::Heap {
 		SPEC_MEM_NODISCARD static void* allocateAligned(size_t v_Bytes, size_t v_Alignment, size_t v_Node = 0);
 		// Routes to the owning node's heap by address, so any thread may free any pointer.
 		static void deallocate(void* p_Ptr);
+		static void trim(size_t v_KeepBytes = 0);
 
 		SPEC_MEM_NODISCARD static SyncHeap& forNode(size_t v_Node);
 		SPEC_MEM_NODISCARD static SyncHeap* ownerOf(const void* p_Ptr);

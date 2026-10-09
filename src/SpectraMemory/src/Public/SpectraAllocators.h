@@ -18,8 +18,9 @@ namespace Spectra::Memory::Allocators {
 		LinearArena() = default;
 		explicit LinearArena(const MemoryHandle& ro_Handle) : m_Handle(ro_Handle) {}
 
-		LinearArena(const LinearArena&) = default;
-		LinearArena& operator=(const LinearArena&) = default;
+		// Non-copyable: two copies would bump over the same pages.
+		LinearArena(const LinearArena&) = delete;
+		LinearArena& operator=(const LinearArena&) = delete;
 
 		LinearArena(LinearArena&&) noexcept = default;
 		LinearArena& operator=(LinearArena&&) noexcept = default;
@@ -31,7 +32,7 @@ namespace Spectra::Memory::Allocators {
 		void deallocateImpl();
 	};
 
-	SPEC_ARENA_METADATA(LinearArena, "Linear persistent arena", 0 /*TODO*/, "linear-arena")
+	SPEC_ARENA_METADATA(LinearArena, "Linear persistent arena", 0, "linear-arena")
 
 	// TODO: inject SpectraInstrumentation/Profiler hooks (allocate/deallocate) later.
 	class SPEC_MEM_RUNTIME_API StackArena : public IArena<StackArena> {
@@ -44,8 +45,9 @@ namespace Spectra::Memory::Allocators {
 		StackArena() = default;
 		explicit StackArena(const MemoryHandle& ro_Handle) : m_Handle(ro_Handle) {}
 
-		StackArena(const StackArena&) = default;
-		StackArena& operator=(const StackArena&) = default;
+		// Non-copyable: two copies would bump over the same pages.
+		StackArena(const StackArena&) = delete;
+		StackArena& operator=(const StackArena&) = delete;
 
 		StackArena(StackArena&&) noexcept = default;
 		StackArena& operator=(StackArena&&) noexcept = default;
@@ -60,7 +62,7 @@ namespace Spectra::Memory::Allocators {
 		void unwind(Marker v_Marker);
 	};
 
-	SPEC_ARENA_METADATA(StackArena, "LIFO bump arena with mark/unwind rewind points", 1 /*TODO*/, "stack-arena")
+	SPEC_ARENA_METADATA(StackArena, "LIFO bump arena with mark/unwind rewind points", 1, "stack-arena")
 
 	// TODO: Add a StackArenaScope RAII guard that calls unwind() on destruction.
 
@@ -92,7 +94,7 @@ namespace Spectra::Memory::Allocators {
 		void trim(size_t v_KeepBytes = 0);
 	};
 
-	SPEC_ARENA_METADATA(ReclaimableLinearArena, "Linear arena that decommits on reset", 2 /*TODO*/, "reclaimable-linear-arena")
+	SPEC_ARENA_METADATA(ReclaimableLinearArena, "Linear arena that decommits on reset", 2, "reclaimable-linear-arena")
 
 	// TODO: inject SpectraInstrumentation/Profiler hooks (allocate/deallocate) later.
 	class SPEC_MEM_RUNTIME_API ReclaimableStackArena : public IArena<ReclaimableStackArena> {
@@ -123,7 +125,7 @@ namespace Spectra::Memory::Allocators {
 		void trim(size_t v_KeepBytes = 0);
 	};
 
-	SPEC_ARENA_METADATA(ReclaimableStackArena, "LIFO bump arena that decommits on unwind", 3 /*TODO*/, "reclaimable-stack-arena")
+	SPEC_ARENA_METADATA(ReclaimableStackArena, "LIFO bump arena that decommits on unwind", 3, "reclaimable-stack-arena")
 
 	// Tag-distinguished raw allocator over LinearArena.
 	template<typename Tag>

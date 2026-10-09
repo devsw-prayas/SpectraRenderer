@@ -246,6 +246,32 @@ namespace Spectra::Memory::Heap {
 		return true;
 	}
 
+	void TlsfHeap::trim(size_t v_KeepBytes) {
+		if (!m_Sentinel) return;
+		BlockHeader* last = m_Sentinel->m_PrevPhys;
+		if (!last || !isFree(last)) return;
+
+		// The last block must keep a minimal payload, and the new sentinel sits just past it.
+		const size_t lastEnd = static_cast<size_t>(payloadOf(last) - m_Base) + kMinBlock + kHeaderSize;
+		const size_t floor = alignUp(lastEnd > v_KeepBytes ? lastEnd : v_KeepBytes, kGrowChunk);
+		if (floor >= m_PoolEnd) return;
+
+		removeFree(last);
+		auto* sentinel = reinterpret_cast<BlockHeader*>(m_Base + floor - kHeaderSize);
+		last->m_SizeAndFlags = static_cast<size_t>(reinterpret_cast<uint8_t*>(sentinel) - payloadOf(last)) | kFreeBit;
+		sentinel->m_PrevPhys = last;
+		sentinel->m_SizeAndFlags = 0;
+		m_Sentinel = sentinel;
+		m_PoolEnd = floor;
+		insertFree(last);
+
+		decommitAbove(m_Handle, m_PoolEnd);
+	}
+
+	size_t TlsfHeap::poolSize() const {
+		return m_PoolEnd;
+	}
+
 	bool TlsfHeap::checkHeap() const {
 		if (!m_Sentinel) return true;
 
@@ -318,6 +344,10 @@ namespace Spectra::Memory::Heap {
 			return;
 		}
 
+		// Checked here because the drain happens later, far from the bad call site.
+		SPEC_MEM_DEBUG_ASSERT(m_Heap.owns(p_Ptr));
+		SPEC_MEM_DEBUG_ASSERT(!isFree(headerOf(p_Ptr)));
+
 		// Push-only + drain-by-exchange means no pop races, so ABA can't happen here.
 		using Platform::Runtime::Intrinsic::MemoryOrder;
 		auto* link = static_cast<uintptr_t*>(p_Ptr);
@@ -339,6 +369,20 @@ namespace Spectra::Memory::Heap {
 		const bool ok = m_Heap.checkHeap();
 		m_Lock.unlock();
 		return ok;
+	}
+
+	void SyncHeap::trim(size_t v_KeepBytes) {
+		m_Lock.lock();
+		drainRemoteFrees();
+		m_Heap.trim(v_KeepBytes);
+		m_Lock.unlock();
+	}
+
+	size_t SyncHeap::poolSize() {
+		m_Lock.lock();
+		const size_t size = m_Heap.poolSize();
+		m_Lock.unlock();
+		return size;
 	}
 
 	void SyncHeap::drainRemoteFrees() {
@@ -388,6 +432,10 @@ namespace Spectra::Memory::Heap {
 		SyncHeap* owner = ownerOf(p_Ptr);
 		SPEC_MEM_ASSERT(owner);
 		owner->deallocate(p_Ptr);
+	}
+
+	void HeapRegistry::trim(size_t v_KeepBytes) {
+		for (size_t node = 0; node < s_nodeCount; ++node) s_heaps[node].trim(v_KeepBytes);
 	}
 
 	SyncHeap& HeapRegistry::forNode(size_t v_Node) {
