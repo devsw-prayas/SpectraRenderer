@@ -64,6 +64,67 @@ namespace Spectra::Memory::Allocators {
 
 	// TODO: Add a StackArenaScope RAII guard that calls unwind() on destruction.
 
+	// Reclaimable variants: same bump behaviour, but reset/unwind hand pages back to the OS.
+	// Non-copyable, since two copies would decommit pages the other still uses.
+
+	// TODO: inject SpectraInstrumentation/Profiler hooks (allocate/deallocate) later.
+	class SPEC_MEM_RUNTIME_API ReclaimableLinearArena : public IArena<ReclaimableLinearArena> {
+		MemoryHandle m_Handle;
+		size_t m_Cursor = 0;
+	public:
+		ReclaimableLinearArena() = default;
+		explicit ReclaimableLinearArena(const MemoryHandle& ro_Handle) : m_Handle(ro_Handle) {}
+
+		ReclaimableLinearArena(const ReclaimableLinearArena&) = delete;
+		ReclaimableLinearArena& operator=(const ReclaimableLinearArena&) = delete;
+
+		ReclaimableLinearArena(ReclaimableLinearArena&&) noexcept = default;
+		ReclaimableLinearArena& operator=(ReclaimableLinearArena&&) noexcept = default;
+
+		void init(MemoryHandle* p_Handle);
+
+		SPEC_MEM_NODISCARD void* allocateImpl(size_t v_Bytes, size_t v_Alignment);
+		SPEC_MEM_NODISCARD void* allocateImpl(size_t v_Bytes);
+		// Rewinds to zero and decommits everything.
+		void deallocateImpl();
+
+		// Decommits above max(cursor, v_KeepBytes) without moving the cursor.
+		void trim(size_t v_KeepBytes = 0);
+	};
+
+	SPEC_ARENA_METADATA(ReclaimableLinearArena, "Linear arena that decommits on reset", 2 /*TODO*/, "reclaimable-linear-arena")
+
+	// TODO: inject SpectraInstrumentation/Profiler hooks (allocate/deallocate) later.
+	class SPEC_MEM_RUNTIME_API ReclaimableStackArena : public IArena<ReclaimableStackArena> {
+		MemoryHandle m_Handle;
+		size_t m_Cursor = 0;
+	public:
+		using Marker = size_t;
+
+		ReclaimableStackArena() = default;
+		explicit ReclaimableStackArena(const MemoryHandle& ro_Handle) : m_Handle(ro_Handle) {}
+
+		ReclaimableStackArena(const ReclaimableStackArena&) = delete;
+		ReclaimableStackArena& operator=(const ReclaimableStackArena&) = delete;
+
+		ReclaimableStackArena(ReclaimableStackArena&&) noexcept = default;
+		ReclaimableStackArena& operator=(ReclaimableStackArena&&) noexcept = default;
+
+		void init(MemoryHandle* p_Handle);
+
+		SPEC_MEM_NODISCARD void* allocateImpl(size_t v_Bytes, size_t v_Alignment);
+		SPEC_MEM_NODISCARD void* allocateImpl(size_t v_Bytes);
+		void deallocateImpl();
+
+		SPEC_MEM_NODISCARD Marker mark() const;
+		// Decommits whole chunks above the marker.
+		void unwind(Marker v_Marker);
+
+		void trim(size_t v_KeepBytes = 0);
+	};
+
+	SPEC_ARENA_METADATA(ReclaimableStackArena, "LIFO bump arena that decommits on unwind", 3 /*TODO*/, "reclaimable-stack-arena")
+
 	// Tag-distinguished raw allocator over LinearArena.
 	template<typename Tag>
 	struct RawArenaAllocator final : IAllocator<void, LinearArena, RawArenaAllocator<Tag>> {};

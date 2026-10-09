@@ -117,4 +117,11 @@ namespace Spectra::Memory {
 	// Commits the reserved pages needed to reach v_Offset, if they are not committed yet.
 	// Updates the handle's committed high-water mark; callers must keep their own allocation cursor.
 	SPEC_MEM_NODISCARD SPEC_MEM_RUNTIME_API bool commitPageIfNeeded(MemoryHandle& ro_Handle, size_t v_Offset) noexcept;
+
+	// Same granularity the heap grows in, so a cursor hovering near a boundary doesn't commit/decommit every cycle.
+	constexpr Bytes DECOMMIT_CHUNK = 2_MiB;
+
+	// Returns every committed page above v_KeepBytes (rounded up to DECOMMIT_CHUNK) to the OS.
+	// Inverse of commitPageIfNeeded: the committed range stays a prefix of the region.
+	SPEC_MEM_RUNTIME_API void decommitAbove(MemoryHandle& ro_Handle, size_t v_KeepBytes) noexcept;
 }

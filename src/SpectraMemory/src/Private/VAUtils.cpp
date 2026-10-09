@@ -63,4 +63,16 @@ namespace Spectra::Memory {
 		Memory::commit(ro_Handle, commitDesc);
 		return true;
 	}
+
+	void decommitAbove(MemoryHandle& ro_Handle, size_t v_KeepBytes) noexcept {
+		const size_t keep = (v_KeepBytes + DECOMMIT_CHUNK - 1) & ~(DECOMMIT_CHUNK - 1);
+		if (keep >= ro_Handle.m_CommittedSize) return;
+
+		VirtualMemoryDesc decommitDesc{};
+		initMemoryDesc(decommitDesc);
+		setTargetAddress(decommitDesc, static_cast<uint8_t*>(ro_Handle.m_Memory.m_BaseAddress) + keep);
+		setSize(decommitDesc, ro_Handle.m_CommittedSize - keep);
+		setMemoryState(decommitDesc, MemoryState::DECOMMIT);
+		Memory::decommit(ro_Handle, decommitDesc);
+	}
 }
