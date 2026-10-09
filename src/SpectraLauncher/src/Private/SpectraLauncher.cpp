@@ -128,6 +128,35 @@ namespace {
 		return ok;
 	}
 
+	// Raw threads exit without detaching; all attaches only succeed if thread exit frees the registry slot.
+	bool runThreadAdoptionCheck() {
+		using namespace Corium::Core;
+		printf("[thread] attach/detach on foreign threads\n");
+
+		const bool attached = this_thread::attach();
+		const bool nativeBound = Frame::this_thread::currentFrame() == std::addressof(Frame::this_thread::nativeContext());
+		const bool handleValid = NativeThread::getNumaNode(this_thread::currentHandle()) == 0u;
+		const bool closeRefused = !NativeThread::closeHandle(this_thread::currentHandle());
+		const bool nested = this_thread::attach();
+		this_thread::detach();
+		const bool stillAttached = Frame::this_thread::currentFrame() != nullptr;
+		this_thread::detach();
+		const bool released = Frame::this_thread::currentFrame() == nullptr;
+
+		constexpr int kThreads = 300;	// more than MAX_CORIUM_THREADS, so slots must be reused
+		int exitAttached = 0;
+		for (int i = 0; i < kThreads; ++i) {
+			bool ok = false;
+			std::thread([&ok] { ok = this_thread::attach() && Frame::this_thread::currentFrame() != nullptr; }).join();
+			exitAttached += ok ? 1 : 0;
+		}
+
+		const bool ok = attached && nativeBound && handleValid && closeRefused && nested && stillAttached && released && exitAttached == kThreads;
+		printf("[thread] %s (attach=%d, native=%d, handle=%d, close refused=%d, nested=%d, released=%d, exit-attached %d/%d)\n",
+			ok ? "passed" : "FAILED", attached, nativeBound, handleValid, closeRefused, nested && stillAttached, released, exitAttached, kThreads);
+		return ok;
+	}
+
 	// Suspend a frame on thread A, resume it on thread B. Only frame-owned state (its stack) may survive the hop;
 	// the thread id is read fresh after the resume and must differ.
 	bool runFrameMigrationCheck() {
@@ -570,7 +599,7 @@ int main(int v_Argc, char** p_Argv) {
 
 	Corium::CoriumRuntime::initRuntime();
 	printf("[main] Runtime initialised.\n");
-	const bool frameOk = runFrameAttachCheck() && runFrameMigrationCheck() && runFrameCaptureCheck() && runFrameExceptionCheck();
+	const bool frameOk = runFrameAttachCheck() && runThreadAdoptionCheck() && runFrameMigrationCheck() && runFrameCaptureCheck() && runFrameExceptionCheck();
 
 	for (int i = 1; i < v_Argc; ++i)
 		if (std::strcmp(p_Argv[i], "--window") == 0) runWindowThread();
