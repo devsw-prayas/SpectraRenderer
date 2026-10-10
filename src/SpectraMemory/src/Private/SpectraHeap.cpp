@@ -1,3 +1,4 @@
+#include "SpecMemDiagnostics.h"
 #include "SpectraMemory.h"
 #include "SpectraHeap.h"
 #include "VAUtils.h"
@@ -397,9 +398,11 @@ namespace Spectra::Memory::Heap {
 
 	SyncHeap HeapRegistry::s_heaps[Internal::MAX_NUMA_NODES];
 	size_t HeapRegistry::s_nodeCount = 0;
+	NodeResolveFn HeapRegistry::s_resolve = nullptr;
 
-	void HeapRegistry::init() {
+	void HeapRegistry::init(NodeResolveFn p_Resolve) {
 		SPEC_MEM_ASSERT(s_nodeCount == 0);
+		s_resolve = p_Resolve;
 		for (size_t node = 0; node < Internal::MAX_NUMA_NODES; ++node) {
 			// Internal::init() leaves slots past the physical node count invalid.
 			if (!Internal::g_TlsfHeap[node].isValid()) break;
@@ -420,11 +423,11 @@ namespace Spectra::Memory::Heap {
 	}
 
 	void* HeapRegistry::allocate(size_t v_Bytes, size_t v_Node) {
-		return forNode(v_Node).allocate(v_Bytes);
+		return forNode(resolveNode(v_Node)).allocate(v_Bytes);
 	}
 
 	void* HeapRegistry::allocateAligned(size_t v_Bytes, size_t v_Alignment, size_t v_Node) {
-		return forNode(v_Node).allocateAligned(v_Bytes, v_Alignment);
+		return forNode(resolveNode(v_Node)).allocateAligned(v_Bytes, v_Alignment);
 	}
 
 	void HeapRegistry::deallocate(void* p_Ptr) {
@@ -441,6 +444,15 @@ namespace Spectra::Memory::Heap {
 	SyncHeap& HeapRegistry::forNode(size_t v_Node) {
 		SPEC_MEM_ASSERT(v_Node < s_nodeCount);
 		return s_heaps[v_Node];
+	}
+
+	size_t HeapRegistry::resolveNode(size_t v_Node) {
+		if (v_Node != CURRENT_NODE) return v_Node;
+		if (s_nodeCount <= 1 || s_resolve == nullptr) return 0;
+		const uint32_t node = s_resolve();
+		if (node == UINT32_MAX) return 0;
+		// Nodes past MAX_NUMA_NODES have no heap of their own; fold them onto one that does.
+		return static_cast<size_t>(node) % s_nodeCount;
 	}
 
 	SyncHeap* HeapRegistry::ownerOf(const void* p_Ptr) {

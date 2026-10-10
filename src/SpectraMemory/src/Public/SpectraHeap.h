@@ -5,6 +5,7 @@
 #include "MemoryRegion.h"
 #include "PlatformAtomics.h"
 #include <CoriumSync.h>
+#include <cstdint>
 
 namespace Spectra::Memory::Heap {
 	static constexpr size_t kSlLog2 = SPECTRA_TLSF_SL_LOG2;
@@ -127,24 +128,33 @@ namespace Spectra::Memory::Heap {
 		void drainRemoteFrees();
 	};
 
+	// Default node argument: whatever the resolver passed to HeapRegistry::init says (node 0 without one).
+	static constexpr size_t CURRENT_NODE = SIZE_MAX;
+	// Must be cheap, must not allocate, callable from any thread. UINT32_MAX means unknown.
+	using NodeResolveFn = uint32_t(*)() noexcept;
+
 	// One SyncHeap per active NUMA node, each over that node's g_TlsfHeap slice.
 	class SPEC_MEM_RUNTIME_API HeapRegistry final {
 		static SyncHeap s_heaps[Internal::MAX_NUMA_NODES];
 		static size_t s_nodeCount;
+		static NodeResolveFn s_resolve;
 
 	public:
-		// Requires Internal::init() to have carved the address space first.
-		static void init();
+		// Requires Internal::init() to have carved the address space first. Set once here, never swapped.
+		static void init(NodeResolveFn p_Resolve = nullptr);
 		SPEC_MEM_NODISCARD static bool isInit();
 		SPEC_MEM_NODISCARD static size_t nodeCount();
 
-		SPEC_MEM_NODISCARD static void* allocate(size_t v_Bytes, size_t v_Node = 0);
-		SPEC_MEM_NODISCARD static void* allocateAligned(size_t v_Bytes, size_t v_Alignment, size_t v_Node = 0);
+		SPEC_MEM_NODISCARD static void* allocate(size_t v_Bytes, size_t v_Node = CURRENT_NODE);
+		SPEC_MEM_NODISCARD static void* allocateAligned(size_t v_Bytes, size_t v_Alignment, size_t v_Node = CURRENT_NODE);
 		// Routes to the owning node's heap by address, so any thread may free any pointer.
 		static void deallocate(void* p_Ptr);
 		static void trim(size_t v_KeepBytes = 0);
 
 		SPEC_MEM_NODISCARD static SyncHeap& forNode(size_t v_Node);
 		SPEC_MEM_NODISCARD static SyncHeap* ownerOf(const void* p_Ptr);
+
+	private:
+		SPEC_MEM_NODISCARD static size_t resolveNode(size_t v_Node);
 	};
 }
