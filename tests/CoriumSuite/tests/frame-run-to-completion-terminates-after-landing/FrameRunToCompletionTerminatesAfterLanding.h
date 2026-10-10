@@ -26,19 +26,19 @@ private:
 		using Frame::Provenance;
 
 		int fails = 0;
-		Frame::FrameHandle* native = std::addressof(Frame::this_thread::nativeContext());
+		Frame::FrameHandle* native = std::addressof(Frame::this_frame::nativeContext());
 
 		// The thread's own context is running, and its memory is the thread's, not the frame pool's.
 		FRAME_DONE_CHECK(native->m_State == FrameState::RUNNING);
 		FRAME_DONE_CHECK(native->m_Origin == Provenance::CALLEE_OWNED);
-		FRAME_DONE_CHECK(Frame::this_thread::currentFrame() == native);
+		FRAME_DONE_CHECK(Frame::this_frame::currentFrame() == native);
 
 		// ---- pool-backed frame
 		int poolRuns = 0;
 		FrameState stateInside = FrameState::TERMINATED;
 		auto poolClosure = makeClosure<void()>([&]() {
 			++poolRuns;
-			stateInside = Frame::this_thread::currentFrame()->m_State;
+			stateInside = Frame::this_frame::currentFrame()->m_State;
 		});
 
 		Frame::FrameStackDesc poolDesc;
@@ -58,7 +58,7 @@ private:
 		FRAME_DONE_CHECK(poolRuns == 1);
 		FRAME_DONE_CHECK(stateInside == FrameState::RUNNING);
 		// The pool frame's block went back on landing, so its handle is not read here; the caller-owned frame below shows TERMINATED.
-		FRAME_DONE_CHECK(Frame::this_thread::currentFrame() == native);
+		FRAME_DONE_CHECK(Frame::this_frame::currentFrame() == native);
 		FRAME_DONE_CHECK(native->m_State == FrameState::RUNNING);
 
 		// ---- caller-owned frame on static storage

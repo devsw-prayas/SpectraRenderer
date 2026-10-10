@@ -9,7 +9,6 @@
 #include <CoriumSync.h>
 #include <CoriumFactory.h>
 #include <CoriumThread.h>
-#include <CoriumMemoryHandler.h>
 #include <CoriumEnvironment.h>
 #include <CoriumChrono.h>
 #include <CoriumRuntime.h>

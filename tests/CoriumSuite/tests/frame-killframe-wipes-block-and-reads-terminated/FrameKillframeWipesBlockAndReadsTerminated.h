@@ -47,7 +47,7 @@ private:
 		if (!created) return fails + 1;
 		frame = *created;
 
-		Frame::FrameHandle* native = std::addressof(Frame::this_thread::nativeContext());
+		Frame::FrameHandle* native = std::addressof(Frame::this_frame::nativeContext());
 		NativeFrame::switchTo(native, frame, false);
 		FRAME_KILL_CHECK(stage == 1);
 		FRAME_KILL_CHECK(frame->m_State == FrameState::SUSPENDED);
@@ -66,7 +66,7 @@ private:
 		FRAME_KILL_CHECK(handleNonzero == 1);                  // only m_State, which now reads TERMINATED
 		FRAME_KILL_CHECK(frame->m_State == FrameState::TERMINATED);
 		FRAME_KILL_CHECK(stage == 1);
-		FRAME_KILL_CHECK(Frame::this_thread::currentFrame() == native);
+		FRAME_KILL_CHECK(Frame::this_frame::currentFrame() == native);
 		return fails;
 	}
 #undef FRAME_KILL_CHECK

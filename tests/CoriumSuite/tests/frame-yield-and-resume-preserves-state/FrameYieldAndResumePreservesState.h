@@ -44,7 +44,7 @@ private:
 
 		auto closure = makeClosure<void()>([&]() {
 			stage = 1;
-			currentInside = Frame::this_thread::currentFrame() == frame;
+			currentInside = Frame::this_frame::currentFrame() == frame;
 			mxcsrInside = _mm_getcsr();
 
 			CORIUM_ALIGNAS(16) float values[4] = { 1, 2, 3, 4 };
@@ -69,21 +69,21 @@ private:
 		if (!created) return fails + 1;
 		frame = *created;
 
-		Frame::FrameHandle* native = std::addressof(Frame::this_thread::nativeContext());
+		Frame::FrameHandle* native = std::addressof(Frame::this_frame::nativeContext());
 		FRAME_YIELD_CHECK(frame->m_State == FrameState::READY);
 
 		NativeFrame::switchTo(native, frame, false);
 		FRAME_YIELD_CHECK(stage == 1);
 		FRAME_YIELD_CHECK(currentInside);
 		FRAME_YIELD_CHECK(mxcsrInside == 0x1F80);
-		FRAME_YIELD_CHECK(Frame::this_thread::currentFrame() == native);
+		FRAME_YIELD_CHECK(Frame::this_frame::currentFrame() == native);
 		FRAME_YIELD_CHECK(frame->m_State == FrameState::SUSPENDED);
 
 		NativeFrame::switchTo(native, frame, false);
 		FRAME_YIELD_CHECK(stage == 2);
 		FRAME_YIELD_CHECK(sum == 30.0f);
 		FRAME_YIELD_CHECK(deepOk);
-		FRAME_YIELD_CHECK(Frame::this_thread::currentFrame() == native);
+		FRAME_YIELD_CHECK(Frame::this_frame::currentFrame() == native);
 		// A finished pool frame hands its block back, so its handle is invalid from here on and is not read again.
 		return fails;
 	}
