@@ -177,6 +177,13 @@ namespace Spectra::Platform::Runtime::Environment {
         return g_OsInfo;
     }
 
+    uint32_t PlatformProbe::getCurrentNumaNode() noexcept {
+        PROCESSOR_NUMBER processor{};
+        GetCurrentProcessorNumberEx(&processor);
+        USHORT node = 0;
+        return GetNumaProcessorNodeEx(&processor, &node) ? static_cast<uint32_t>(node) : UINT32_MAX;
+    }
+
     const VectorizeCapabilities& PlatformProbe::getVectorizeCapablities() {
         SPECTRA_ASSERT(g_IsProcessInfoInitialized);
         return g_VectorizeCapabilities;

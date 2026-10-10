@@ -31,9 +31,9 @@ namespace Spectra::Platform::Runtime::Thread {
 		return temp;
 	}
 
-	// ------ ThreadLaunchExecDesc -------- (It's confusing to say the least, okay!)
+	// ------ ThreadAttrDesc --------
 
-	void initLaunchExecDesc(ThreadLaunchExecDesc& ro_Desc) {
+	void initAttrDesc(ThreadAttrDesc& ro_Desc) {
 		ro_Desc.m_Desc.m_AffMask = 0;
 		ro_Desc.m_BasePriority = Priority::PRIORITY_NORMAL;
 		ro_Desc.m_CommitSize = 0;
@@ -47,53 +47,53 @@ namespace Spectra::Platform::Runtime::Thread {
 		ro_Desc.m_CanDetach = Disallow;
 	}
 
-	void commitStackSize(ThreadLaunchExecDesc& ro_Desc, Bytes v_Size) {
+	void commitStackSize(ThreadAttrDesc& ro_Desc, Bytes v_Size) {
 		ro_Desc.m_CommitSize = v_Size;
 		ro_Desc.m_ReserveSize = 0;
 	}
 
-	void reserveStackSize(ThreadLaunchExecDesc& ro_Desc, Bytes v_Size) {
+	void reserveStackSize(ThreadAttrDesc& ro_Desc, Bytes v_Size) {
 		ro_Desc.m_ReserveSize = v_Size;
 		ro_Desc.m_CommitSize = 0;
 	}
 
-	void enableGuardPage(ThreadLaunchExecDesc& ro_Desc, Flag v_Permission) {
+	void enableGuardPage(ThreadAttrDesc& ro_Desc, Flag v_Permission) {
 		ro_Desc.m_GuardsEnabled = v_Permission;
 	}
 
-	void supportIdealProcessor(ThreadLaunchExecDesc& ro_Desc, Flag v_Permission) {
+	void supportIdealProcessor(ThreadAttrDesc& ro_Desc, Flag v_Permission) {
 		ro_Desc.m_SupportsIdealProcessor = v_Permission;
 	}
 
-	void idealProcessor(ThreadLaunchExecDesc& ro_Desc, Dword v_Processor) {
+	void idealProcessor(ThreadAttrDesc& ro_Desc, Dword v_Processor) {
 		ro_Desc.m_IdealProcessor = v_Processor;
 	}
 
-	void supportProcessorGroups(ThreadLaunchExecDesc& ro_Desc, Flag v_Permission) {
+	void supportProcessorGroups(ThreadAttrDesc& ro_Desc, Flag v_Permission) {
 		ro_Desc.m_SupportsThreadGroup = v_Permission;
 	}
 
-	void groupID(ThreadLaunchExecDesc& ro_Desc, Dword v_GroupID) {
+	void groupID(ThreadAttrDesc& ro_Desc, Dword v_GroupID) {
 		ro_Desc.m_Desc.m_GroupId = v_GroupID;
 	}
 
-	void affinityMask(ThreadLaunchExecDesc& ro_Desc, ProcessorIdx v_Mask) {
+	void affinityMask(ThreadAttrDesc& ro_Desc, ProcessorIdx v_Mask) {
 		ro_Desc.m_Desc.m_AffMask = v_Mask;
 	}
 
-	void priorityBoosting(ThreadLaunchExecDesc& ro_Desc, Flag v_Permission) {
+	void priorityBoosting(ThreadAttrDesc& ro_Desc, Flag v_Permission) {
 		ro_Desc.m_PriorityBoost = v_Permission;
 	}
 
-	void basePriority(ThreadLaunchExecDesc& ro_Desc, Priority v_BasePriority) {
+	void basePriority(ThreadAttrDesc& ro_Desc, Priority v_BasePriority) {
 		ro_Desc.m_BasePriority = v_BasePriority;
 	}
 
-	void	allowDetachable(ThreadLaunchExecDesc& ro_Desc, Flag v_Permission) {
+	void	allowDetachable(ThreadAttrDesc& ro_Desc, Flag v_Permission) {
 		ro_Desc.m_CanDetach = v_Permission;
 	}
 
-	bool validateLaunchExecDesc(const ThreadLaunchExecDesc& ro_Desc) {
+	bool validateAttrDesc(const ThreadAttrDesc& ro_Desc) {
 		if (ro_Desc.m_CommitSize != 0 && ro_Desc.m_ReserveSize != 0) return false;
 		if (ro_Desc.m_IdealProcessor && !ro_Desc.m_SupportsIdealProcessor) return  false;
 		if (ro_Desc.m_Desc.m_GroupId && !ro_Desc.m_SupportsThreadGroup) return false;

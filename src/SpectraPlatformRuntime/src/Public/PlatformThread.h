@@ -9,7 +9,7 @@ namespace Spectra::Platform::Runtime::Thread {
 
 	public:
 		static ThreadHandle createThread(
-			const ThreadLaunchDesc& ro_LaunchDesc, const ThreadLaunchExecDesc& ro_ExecDesc) noexcept;
+			const ThreadLaunchDesc& ro_LaunchDesc, const ThreadAttrDesc& ro_AttrDesc) noexcept;
 		static bool detachThread(ThreadHandle v_Handle) noexcept;
 		static bool closeHandle(ThreadHandle v_Handle) noexcept;
 		static ThreadHandle duplicateHandle(ThreadHandle v_handle) noexcept;

@@ -98,7 +98,7 @@ namespace Spectra::Platform::Runtime::Thread {
 	};
 
 	// [Payload]: 40B [sizeof]: 64B
-	struct SPECTRA_RUNTIME_API alignas(32) ThreadLaunchExecDesc final {
+	struct SPECTRA_RUNTIME_API alignas(32) ThreadAttrDesc final {
 		AffinityDesc m_Desc;
 
 		Bytes        m_CommitSize;
@@ -114,39 +114,39 @@ namespace Spectra::Platform::Runtime::Thread {
 		Flag		 m_CanDetach;
 	};
 
-	void SPECTRA_RUNTIME_API initLaunchExecDesc(ThreadLaunchExecDesc& ro_Desc);
-	void SPECTRA_RUNTIME_API commitStackSize(ThreadLaunchExecDesc& ro_Desc, Bytes v_Size);
-	void SPECTRA_RUNTIME_API reserveStackSize(ThreadLaunchExecDesc& ro_Desc, Bytes v_Size);
+	void SPECTRA_RUNTIME_API initAttrDesc(ThreadAttrDesc& ro_Desc);
+	void SPECTRA_RUNTIME_API commitStackSize(ThreadAttrDesc& ro_Desc, Bytes v_Size);
+	void SPECTRA_RUNTIME_API reserveStackSize(ThreadAttrDesc& ro_Desc, Bytes v_Size);
 
-	void SPECTRA_RUNTIME_API enableGuardPage(ThreadLaunchExecDesc& ro_Desc, Flag v_Permission);
+	void SPECTRA_RUNTIME_API enableGuardPage(ThreadAttrDesc& ro_Desc, Flag v_Permission);
 
-	void SPECTRA_RUNTIME_API supportIdealProcessor(ThreadLaunchExecDesc& ro_Desc, Flag v_Permission);
-	void SPECTRA_RUNTIME_API idealProcessor(ThreadLaunchExecDesc& ro_Desc, Dword v_Processor);
+	void SPECTRA_RUNTIME_API supportIdealProcessor(ThreadAttrDesc& ro_Desc, Flag v_Permission);
+	void SPECTRA_RUNTIME_API idealProcessor(ThreadAttrDesc& ro_Desc, Dword v_Processor);
 
-	void SPECTRA_RUNTIME_API supportProcessorGroups(ThreadLaunchExecDesc& ro_Desc, Flag v_Permission);
-	void SPECTRA_RUNTIME_API groupID(ThreadLaunchExecDesc& ro_Desc, Dword v_GroupID);
+	void SPECTRA_RUNTIME_API supportProcessorGroups(ThreadAttrDesc& ro_Desc, Flag v_Permission);
+	void SPECTRA_RUNTIME_API groupID(ThreadAttrDesc& ro_Desc, Dword v_GroupID);
 
-	void SPECTRA_RUNTIME_API affinityMask(ThreadLaunchExecDesc& ro_Desc, ProcessorIdx v_Mask);
+	void SPECTRA_RUNTIME_API affinityMask(ThreadAttrDesc& ro_Desc, ProcessorIdx v_Mask);
 
 	template<size_t N>
-	void SPECTRA_RUNTIME_API affinityMaskFromFlags(ThreadLaunchExecDesc& ro_Desc, std::array<Flag, N> v_Cores [[maybe_unused]] ) {
+	void SPECTRA_RUNTIME_API affinityMaskFromFlags(ThreadAttrDesc& ro_Desc, std::array<Flag, N> v_Cores [[maybe_unused]] ) {
 		ProcessorIdx mask = 0;
 		for (size_t i = 0; i < N; i++) if (v_Cores[i]) mask |= (static_cast<ProcessorIdx>(1) << i);
 		affinityMask(ro_Desc, mask);
 	}
 
 	template<size_t N>
-	void SPECTRA_RUNTIME_API affinityMaskFromCores(ThreadLaunchExecDesc& ro_Desc, std::array<Dword, N> v_Cores [[maybe_unused]] ) {
+	void SPECTRA_RUNTIME_API affinityMaskFromCores(ThreadAttrDesc& ro_Desc, std::array<Dword, N> v_Cores [[maybe_unused]] ) {
 		ProcessorIdx mask = 0;
 		for (auto core : v_Cores) mask |= (static_cast<ProcessorIdx>(1) << core);
 		affinityMask(ro_Desc, mask);
 	}
 
-	void SPECTRA_RUNTIME_API priorityBoosting(ThreadLaunchExecDesc& ro_Desc, Flag v_Permission);
-	void SPECTRA_RUNTIME_API basePriority(ThreadLaunchExecDesc& ro_Desc, Priority v_BasePriority);
-	void SPECTRA_RUNTIME_API allowDetachable(ThreadLaunchExecDesc& ro_Desc, Flag v_Permission);
+	void SPECTRA_RUNTIME_API priorityBoosting(ThreadAttrDesc& ro_Desc, Flag v_Permission);
+	void SPECTRA_RUNTIME_API basePriority(ThreadAttrDesc& ro_Desc, Priority v_BasePriority);
+	void SPECTRA_RUNTIME_API allowDetachable(ThreadAttrDesc& ro_Desc, Flag v_Permission);
 
-	bool SPECTRA_RUNTIME_API validateLaunchExecDesc(const ThreadLaunchExecDesc& ro_Desc);
+	bool SPECTRA_RUNTIME_API validateAttrDesc(const ThreadAttrDesc& ro_Desc);
 
 	// [Payload] : 32B [sizeof] : 32B
 	struct SPECTRA_RUNTIME_API alignas(32) ParkHandle final {
@@ -163,7 +163,10 @@ namespace Spectra::Platform::Runtime::Thread {
 	};
 
 	namespace this_platform_thread {
-		static thread_local ThreadHandle t_MyHandle = ThreadHandle::getInvalidHandle();
-		static thread_local ParkHandle t_MyParkingPermit = ParkHandle{ 0 };
+		// Accessors, not data: a DLL cannot export thread_local, and a header-level one gives every TU its own copy.
+		SPECTRA_RUNTIME_API ThreadHandle& currentHandle() noexcept;
+		SPECTRA_RUNTIME_API ParkHandle& currentPermit() noexcept;
+		// True only on threads launched through PlatformThread::createThread.
+		SPECTRA_NODISCARD SPECTRA_RUNTIME_API bool isSpectraThread() noexcept;
 	}
 }

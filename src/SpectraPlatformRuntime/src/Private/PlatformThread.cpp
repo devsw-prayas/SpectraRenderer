@@ -92,12 +92,28 @@ namespace Spectra::Platform::Runtime::Thread {
 	namespace {
 		RegistryEntry g_Registry[SPECTRA_PLATFORM_MAX_THREADS];
 
+		thread_local ThreadHandle t_MyHandle = ThreadHandle::getInvalidHandle();
+		thread_local ParkHandle t_MyParkingPermit{ 0u };
+		thread_local bool t_IsSpectraThread = false;
+
 		size_t findFreeSlot() noexcept {
 			for (size_t i = 0; i < SPECTRA_PLATFORM_MAX_THREADS; ++i) {
 				if (g_Registry[i].state() == ThreadState::REAPED && !g_Registry[i].hasOutstandingTokens()) return i;
 			}
 			return INVALID_THREAD_SLOT;
 		}
+	}
+
+	ThreadHandle& this_platform_thread::currentHandle() noexcept {
+		return t_MyHandle;
+	}
+
+	ParkHandle& this_platform_thread::currentPermit() noexcept {
+		return t_MyParkingPermit;
+	}
+
+	bool this_platform_thread::isSpectraThread() noexcept {
+		return t_IsSpectraThread;
 	}
 
 	bool PlatformThread::isValidHandle(const ThreadHandle& ro_Handle) noexcept {
@@ -128,12 +144,13 @@ namespace Spectra::Platform::Runtime::Thread {
 
 		entry->setState(ThreadState::RUNNING);
 
-		this_platform_thread::t_MyHandle = ThreadHandle(
+		t_MyHandle = ThreadHandle(
 			slot,
 			entry->m_Generation,
 			0u,
 			ThreadState::RUNNING);
-		this_platform_thread::t_MyParkingPermit = ParkHandle{ 0u };
+		t_MyParkingPermit = ParkHandle{ 0u };
+		t_IsSpectraThread = true;
 
 		if (entry->m_StartupEntry) entry->m_StartupEntry(entry->m_StartupContext);
 		if (entry->m_StartEntry)   entry->m_StartEntry(entry->m_StartContext);
@@ -149,8 +166,8 @@ namespace Spectra::Platform::Runtime::Thread {
 
 	// PlatformThread — method implementations
 
-	ThreadHandle PlatformThread::createThread(const ThreadLaunchDesc& ro_LaunchDesc, const ThreadLaunchExecDesc& ro_ExecDesc) noexcept {
-		if (!validateLaunchExecDesc(ro_ExecDesc)) return ThreadHandle::getInvalidHandle();
+	ThreadHandle PlatformThread::createThread(const ThreadLaunchDesc& ro_LaunchDesc, const ThreadAttrDesc& ro_AttrDesc) noexcept {
+		if (!validateAttrDesc(ro_AttrDesc)) return ThreadHandle::getInvalidHandle();
 
 		const size_t slot = findFreeSlot();
 		if (slot == INVALID_THREAD_SLOT) return ThreadHandle::getInvalidHandle();
@@ -160,8 +177,8 @@ namespace Spectra::Platform::Runtime::Thread {
 		if (token == INVALID_THREAD_SLOT) return ThreadHandle::getInvalidHandle();
 
 #if defined(SPECTRA_COMPILER_MSVC)
-		const uint32_t attributeCount = (ro_ExecDesc.m_SupportsThreadGroup ? 1u : 0u)
-			+ (ro_ExecDesc.m_SupportsIdealProcessor ? 1u : 0u);
+		const uint32_t attributeCount = (ro_AttrDesc.m_SupportsThreadGroup ? 1u : 0u)
+			+ (ro_AttrDesc.m_SupportsIdealProcessor ? 1u : 0u);
 
 		LPPROC_THREAD_ATTRIBUTE_LIST attributeList = nullptr;
 		LPVOID attributeListBuf = nullptr;
@@ -177,29 +194,41 @@ namespace Spectra::Platform::Runtime::Thread {
 			attributeList = static_cast<LPPROC_THREAD_ATTRIBUTE_LIST>(attributeListBuf);
 			InitializeProcThreadAttributeList(attributeList, attributeCount, 0, &attributeListSize);
 
-			if (ro_ExecDesc.m_SupportsThreadGroup) {
+			if (ro_AttrDesc.m_SupportsThreadGroup) {
 				GROUP_AFFINITY groupAffinity{};
-				groupAffinity.Mask = static_cast<KAFFINITY>(ro_ExecDesc.m_Desc.m_AffMask);
-				groupAffinity.Group = static_cast<WORD>(ro_ExecDesc.m_Desc.m_GroupId);
+				groupAffinity.Mask = static_cast<KAFFINITY>(ro_AttrDesc.m_Desc.m_AffMask);
+				groupAffinity.Group = static_cast<WORD>(ro_AttrDesc.m_Desc.m_GroupId);
 				UpdateProcThreadAttribute(attributeList, 0, PROC_THREAD_ATTRIBUTE_GROUP_AFFINITY,
 					&groupAffinity, sizeof(groupAffinity), nullptr, nullptr);
 			}
-			if (ro_ExecDesc.m_SupportsIdealProcessor) {
+			if (ro_AttrDesc.m_SupportsIdealProcessor) {
 				PROCESSOR_NUMBER processorNumber{};
-				processorNumber.Group = static_cast<WORD>(ro_ExecDesc.m_Desc.m_GroupId);
-				processorNumber.Number = static_cast<BYTE>(ro_ExecDesc.m_IdealProcessor);
+				processorNumber.Group = static_cast<WORD>(ro_AttrDesc.m_Desc.m_GroupId);
+				processorNumber.Number = static_cast<BYTE>(ro_AttrDesc.m_IdealProcessor);
 				UpdateProcThreadAttribute(attributeList, 0, PROC_THREAD_ATTRIBUTE_IDEAL_PROCESSOR,
 					&processorNumber, sizeof(processorNumber), nullptr, nullptr);
 			}
 		}
 
-		DWORD createFlags = ro_LaunchDesc.m_StartsSuspended ? CREATE_SUSPENDED : 0u;
+		// The thunk reads the entry, so it must be fully published before the thread can run:
+		// always create suspended, fill the entry, then resume unless the caller asked otherwise.
+		entry.m_StartContext = ro_LaunchDesc.m_StartContext;
+		entry.m_StartEntry = ro_LaunchDesc.m_StartEntry;
+		entry.m_StartupContext = ro_LaunchDesc.m_StartupContext;
+		entry.m_StartupEntry = ro_LaunchDesc.m_StartupEntry;
+		entry.m_ShutdownContext = ro_LaunchDesc.m_ShutdownContext;
+		entry.m_ShutdownEntry = ro_LaunchDesc.m_ShutdownEntry;
+		entry.m_CanDetach = ro_AttrDesc.m_CanDetach;
+		++entry.m_Generation;
+		entry.setState(ThreadState::CREATED);
+
+		DWORD createFlags = CREATE_SUSPENDED;
 		SIZE_T stackSize = 0;
-		if (ro_ExecDesc.m_ReserveSize != 0) {
-			stackSize = static_cast<SIZE_T>(ro_ExecDesc.m_ReserveSize);
+		if (ro_AttrDesc.m_ReserveSize != 0) {
+			stackSize = static_cast<SIZE_T>(ro_AttrDesc.m_ReserveSize);
 			createFlags |= STACK_SIZE_PARAM_IS_A_RESERVATION;
-		} else if (ro_ExecDesc.m_CommitSize != 0) {
-			stackSize = static_cast<SIZE_T>(ro_ExecDesc.m_CommitSize);
+		} else if (ro_AttrDesc.m_CommitSize != 0) {
+			stackSize = static_cast<SIZE_T>(ro_AttrDesc.m_CommitSize);
 		}
 
 		DWORD osThreadId = 0;
@@ -219,25 +248,18 @@ namespace Spectra::Platform::Runtime::Thread {
 		}
 
 		if (!osHandle || osHandle == INVALID_HANDLE_VALUE) {
+			entry.setState(ThreadState::REAPED);
 			entry.releaseToken(token);
 			return ThreadHandle::getInvalidHandle();
 		}
 
-		int winPriority = Spectra::Platform::Runtime::Internal::ThreadMappings::toWin32Priority(ro_ExecDesc.m_BasePriority);
+		int winPriority = Spectra::Platform::Runtime::Internal::ThreadMappings::toWin32Priority(ro_AttrDesc.m_BasePriority);
 		SetThreadPriority(osHandle, winPriority);
-		if (!ro_ExecDesc.m_PriorityBoost) SetThreadPriorityBoost(osHandle, TRUE);
+		if (!ro_AttrDesc.m_PriorityBoost) SetThreadPriorityBoost(osHandle, TRUE);
 
 		entry.m_OsHandle = osHandle;
 		entry.m_OsThreadId = osThreadId;
-		entry.m_StartContext = ro_LaunchDesc.m_StartContext;
-		entry.m_StartEntry = ro_LaunchDesc.m_StartEntry;
-		entry.m_StartupContext = ro_LaunchDesc.m_StartupContext;
-		entry.m_StartupEntry = ro_LaunchDesc.m_StartupEntry;
-		entry.m_ShutdownContext = ro_LaunchDesc.m_ShutdownContext;
-		entry.m_ShutdownEntry = ro_LaunchDesc.m_ShutdownEntry;
-		entry.m_CanDetach = ro_ExecDesc.m_CanDetach;
-		++entry.m_Generation;
-		entry.setState(ThreadState::CREATED);
+		if (!ro_LaunchDesc.m_StartsSuspended) ResumeThread(osHandle);
 
 		return ThreadHandle(slot, entry.m_Generation, token, ThreadState::CREATED);
 #else

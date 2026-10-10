@@ -65,6 +65,8 @@ namespace Spectra::Platform::Runtime::Environment {
 		static const CpuInfo& getCpuInfo();
 		static const VectorizeCapabilities& getVectorizeCapablities();
 		static const OsInfo& getOsInfo();
+		// Node of the processor the caller is on right now. No allocation, no init needed. UINT32_MAX if unknown.
+		static uint32_t getCurrentNumaNode() noexcept;
 	};
 
 	class SPECTRA_RUNTIME_API PlatformProcess final {
