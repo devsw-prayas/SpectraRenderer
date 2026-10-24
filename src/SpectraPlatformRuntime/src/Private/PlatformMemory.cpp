@@ -484,3 +484,86 @@ namespace Spectra::Platform::Runtime::Memory {
 		return info;
 	}
 }
+namespace Spectra::Platform::Runtime::Memory {
+	namespace {
+		using VirtualAlloc2Fn = PVOID(WINAPI*)(HANDLE, PVOID, SIZE_T, ULONG, ULONG, MEM_EXTENDED_PARAMETER*, ULONG);
+		using MapViewOfFile3Fn = PVOID(WINAPI*)(HANDLE, HANDLE, PVOID, ULONG64, SIZE_T, ULONG, ULONG, MEM_EXTENDED_PARAMETER*, ULONG);
+		using UnmapViewOfFile2Fn = BOOL(WINAPI*)(HANDLE, PVOID, ULONG);
+
+		struct PlaceholderApi {
+			VirtualAlloc2Fn m_VirtualAlloc2 = nullptr;
+			MapViewOfFile3Fn m_MapViewOfFile3 = nullptr;
+			UnmapViewOfFile2Fn m_UnmapViewOfFile2 = nullptr;
+		};
+
+		const PlaceholderApi& placeholderApi() {
+			static const PlaceholderApi s_api = [] {
+				PlaceholderApi api;
+				if (HMODULE kernelBase = GetModuleHandleW(L"kernelbase.dll")) {
+					api.m_VirtualAlloc2 = reinterpret_cast<VirtualAlloc2Fn>(GetProcAddress(kernelBase, "VirtualAlloc2"));
+					api.m_MapViewOfFile3 = reinterpret_cast<MapViewOfFile3Fn>(GetProcAddress(kernelBase, "MapViewOfFile3"));
+					api.m_UnmapViewOfFile2 = reinterpret_cast<UnmapViewOfFile2Fn>(GetProcAddress(kernelBase, "UnmapViewOfFile2"));
+				}
+				return api;
+			}();
+			return s_api;
+		}
+
+		// Fills one NUMA parameter; returns how many parameters to pass.
+		ULONG numaParameter(MEM_EXTENDED_PARAMETER& r_Parameter, uint32_t v_NumaNode) {
+			if (v_NumaNode == UINT32_MAX) return 0;
+			r_Parameter = {};
+			r_Parameter.Type = MemExtendedParameterNumaNode;
+			r_Parameter.ULong = v_NumaNode;
+			return 1;
+		}
+	}
+
+	bool PlatformPlaceholders::isSupported() {
+		const PlaceholderApi& api = placeholderApi();
+		return api.m_VirtualAlloc2 && api.m_MapViewOfFile3 && api.m_UnmapViewOfFile2;
+	}
+
+	void* PlatformPlaceholders::reserve(size_t v_Size, uint32_t v_NumaNode) {
+		if (!isSupported()) return nullptr;
+		MEM_EXTENDED_PARAMETER parameter;
+		const ULONG count = numaParameter(parameter, v_NumaNode);
+		return placeholderApi().m_VirtualAlloc2(GetCurrentProcess(), nullptr, v_Size, MEM_RESERVE | MEM_RESERVE_PLACEHOLDER, PAGE_NOACCESS, count ? &parameter : nullptr, count);
+	}
+
+	bool PlatformPlaceholders::split(void* p_Base, size_t v_Size) {
+		return VirtualFree(p_Base, v_Size, MEM_RELEASE | MEM_PRESERVE_PLACEHOLDER) != 0;
+	}
+
+	bool PlatformPlaceholders::coalesce(void* p_Base, size_t v_Size) {
+		return VirtualFree(p_Base, v_Size, MEM_RELEASE | MEM_COALESCE_PLACEHOLDERS) != 0;
+	}
+
+	bool PlatformPlaceholders::replaceWithReserve(void* p_Base, size_t v_Size, uint32_t v_NumaNode) {
+		if (!isSupported()) return false;
+		MEM_EXTENDED_PARAMETER parameter;
+		const ULONG count = numaParameter(parameter, v_NumaNode);
+		return placeholderApi().m_VirtualAlloc2(GetCurrentProcess(), p_Base, v_Size, MEM_RESERVE | MEM_REPLACE_PLACEHOLDER, PAGE_NOACCESS, count ? &parameter : nullptr, count) == p_Base;
+	}
+
+	bool PlatformPlaceholders::mapView(void* p_Section, uint64_t v_Offset, void* p_Base, size_t v_Size, bool v_Writable, uint32_t v_NumaNode) {
+		if (!isSupported()) return false;
+		MEM_EXTENDED_PARAMETER parameter;
+		const ULONG count = numaParameter(parameter, v_NumaNode);
+		return placeholderApi().m_MapViewOfFile3(static_cast<HANDLE>(p_Section), GetCurrentProcess(), p_Base, v_Offset, v_Size, MEM_REPLACE_PLACEHOLDER,
+			v_Writable ? PAGE_READWRITE : PAGE_READONLY, count ? &parameter : nullptr, count) == p_Base;
+	}
+
+	bool PlatformPlaceholders::unmapView(void* p_Base) {
+		return isSupported() && placeholderApi().m_UnmapViewOfFile2(GetCurrentProcess(), p_Base, MEM_PRESERVE_PLACEHOLDER) != 0;
+	}
+
+	bool PlatformPlaceholders::flushView(const void* p_Base, size_t v_Size) {
+		return FlushViewOfFile(p_Base, v_Size) != 0;
+	}
+
+	bool PlatformPlaceholders::prefetch(const void* p_Base, size_t v_Size) {
+		WIN32_MEMORY_RANGE_ENTRY range{ const_cast<void*>(p_Base), v_Size };
+		return PrefetchVirtualMemory(GetCurrentProcess(), 1, &range, 0) != 0;
+	}
+}

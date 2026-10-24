@@ -193,6 +193,14 @@ namespace Spectra::Platform::Runtime::Environment {
         return GetCurrentProcessId();
     }
 
+    bool PlatformProcess::isProcessAlive(uint32_t v_ProcessId) {
+        HANDLE process = OpenProcess(SYNCHRONIZE, FALSE, v_ProcessId);
+        if (process == nullptr) return GetLastError() == ERROR_ACCESS_DENIED;  // exists, just not ours to open
+        const bool alive = WaitForSingleObject(process, 0) == WAIT_TIMEOUT;
+        CloseHandle(process);
+        return alive;
+    }
+
     const char* PlatformProcess::getExecutablePath() {
         static char s_Path[MAX_PATH];
         GetModuleFileNameA(nullptr, s_Path, MAX_PATH);

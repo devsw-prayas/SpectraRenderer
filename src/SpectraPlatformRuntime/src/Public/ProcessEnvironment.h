@@ -72,6 +72,7 @@ namespace Spectra::Platform::Runtime::Environment {
 	class SPECTRA_RUNTIME_API PlatformProcess final {
 	public:
 		static uint32_t getCurrentProcessId();
+		static bool isProcessAlive(uint32_t v_ProcessId);
 		static const char* getExecutablePath();
 		static const char* getWorkingDirectory();
 		static size_t getEnvironmentVariable(const char* p_Name, char* p_Buffer, unsigned long v_BufferSize);

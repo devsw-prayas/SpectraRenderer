@@ -508,3 +508,272 @@ namespace Spectra::Platform::Runtime::File {
 		ro_Mapping.m_MappingSize = 0;
 	}
 }
+namespace Spectra::Platform::Runtime::File {
+	namespace {
+		constexpr uint32_t WIDE_PATH_CAPACITY = 32768;
+		constexpr uint32_t MAX_TREE_DEPTH = 128;
+
+		bool isDotEntry(const wchar_t* p_Name) {
+			return p_Name[0] == L'.' && (p_Name[1] == L'\0' || (p_Name[1] == L'.' && p_Name[2] == L'\0'));
+		}
+
+		// p_Path holds the directory on entry and is restored on return.
+		bool removeTreeAt(wchar_t* p_Path, size_t v_Length, uint32_t v_Depth) {
+			if (v_Depth > MAX_TREE_DEPTH || v_Length + 3 >= WIDE_PATH_CAPACITY) return false;
+			p_Path[v_Length] = L'\\';
+			p_Path[v_Length + 1] = L'*';
+			p_Path[v_Length + 2] = L'\0';
+
+			WIN32_FIND_DATAW data{};
+			HANDLE find = FindFirstFileExW(p_Path, FindExInfoBasic, &data, FindExSearchNameMatch, nullptr, FIND_FIRST_EX_LARGE_FETCH);
+			bool ok = true;
+			if (find != INVALID_HANDLE_VALUE) {
+				do {
+					if (isDotEntry(data.cFileName)) continue;
+					const size_t nameLength = wcslen(data.cFileName);
+					if (v_Length + 1 + nameLength >= WIDE_PATH_CAPACITY) {
+						ok = false;
+						break;
+					}
+					std::memcpy(p_Path + v_Length + 1, data.cFileName, (nameLength + 1) * sizeof(wchar_t));
+					// Reparse points are unlinked, never followed.
+					const bool isDirectory = (data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0;
+					const bool isLink = (data.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT) != 0;
+					if (data.dwFileAttributes & FILE_ATTRIBUTE_READONLY)
+						SetFileAttributesW(p_Path, data.dwFileAttributes & ~FILE_ATTRIBUTE_READONLY);
+					if (isDirectory && !isLink) ok = removeTreeAt(p_Path, v_Length + 1 + nameLength, v_Depth + 1);
+					else if (isDirectory) ok = RemoveDirectoryW(p_Path) != 0;
+					else ok = DeleteFileW(p_Path) != 0;
+				} while (ok && FindNextFileW(find, &data));
+				FindClose(find);
+			}
+			p_Path[v_Length] = L'\0';
+			return ok && RemoveDirectoryW(p_Path) != 0;
+		}
+	}
+
+	bool Files::deleteFile(const wchar_t* p_Path) {
+		SPECTRA_ASSERT(p_Path != nullptr);
+		return DeleteFileW(p_Path) != 0;
+	}
+
+	bool Files::renameFile(const wchar_t* p_OldPath, const wchar_t* p_NewPath) {
+		SPECTRA_ASSERT(p_OldPath != nullptr && p_NewPath != nullptr);
+		return MoveFileExW(p_OldPath, p_NewPath, MOVEFILE_REPLACE_EXISTING) != 0;
+	}
+
+	bool Files::createDirectory(const wchar_t* p_Path) {
+		SPECTRA_ASSERT(p_Path != nullptr);
+		if (CreateDirectoryW(p_Path, nullptr)) return true;
+		return GetLastError() == ERROR_ALREADY_EXISTS && getAttribute(p_Path) == PathAttribute::DIRECTORY;
+	}
+
+	bool Files::removeDirectory(const wchar_t* p_Path) {
+		SPECTRA_ASSERT(p_Path != nullptr);
+		return RemoveDirectoryW(p_Path) != 0;
+	}
+
+	bool Files::removeTree(const wchar_t* p_Path) {
+		SPECTRA_ASSERT(p_Path != nullptr);
+		const size_t length = wcslen(p_Path);
+		if (length == 0 || length >= WIDE_PATH_CAPACITY) return false;
+		if (getAttribute(p_Path) != PathAttribute::DIRECTORY) return false;
+
+		wchar_t* path = static_cast<wchar_t*>(std::malloc(WIDE_PATH_CAPACITY * sizeof(wchar_t)));
+		if (path == nullptr) return false;
+		std::memcpy(path, p_Path, (length + 1) * sizeof(wchar_t));
+		const bool ok = removeTreeAt(path, length, 0);
+		std::free(path);
+		return ok;
+	}
+
+	PathAttribute Files::getAttribute(const wchar_t* p_Path) {
+		SPECTRA_ASSERT(p_Path != nullptr);
+		const DWORD attributes = GetFileAttributesW(p_Path);
+		if (attributes == INVALID_FILE_ATTRIBUTES) return PathAttribute::MISSING;
+		return (attributes & FILE_ATTRIBUTE_DIRECTORY) ? PathAttribute::DIRECTORY : PathAttribute::FILE;
+	}
+
+	bool Files::forEachChild(const wchar_t* p_Directory, ChildVisitFn p_Visit, void* p_Context) {
+		SPECTRA_ASSERT(p_Directory != nullptr && p_Visit != nullptr);
+		const size_t length = wcslen(p_Directory);
+		wchar_t pattern[WIDE_PATH_CAPACITY];
+		if (length + 3 > WIDE_PATH_CAPACITY) return false;
+		std::memcpy(pattern, p_Directory, length * sizeof(wchar_t));
+		std::memcpy(pattern + length, L"\\*", 3 * sizeof(wchar_t));
+
+		WIN32_FIND_DATAW data{};
+		HANDLE find = FindFirstFileExW(pattern, FindExInfoBasic, &data, FindExSearchNameMatch, nullptr, FIND_FIRST_EX_LARGE_FETCH);
+		if (find == INVALID_HANDLE_VALUE) return GetLastError() == ERROR_FILE_NOT_FOUND;
+		do {
+			if (isDotEntry(data.cFileName)) continue;
+			if (!p_Visit(data.cFileName, (data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0, p_Context)) break;
+		} while (FindNextFileW(find, &data));
+		FindClose(find);
+		return true;
+	}
+
+	bool Files::getKnownFolder(KnownFolder v_Folder, wchar_t* p_Out, uint32_t v_Capacity, uint32_t& r_Length) {
+		SPECTRA_ASSERT(p_Out != nullptr && v_Capacity > 0);
+		r_Length = 0;
+		DWORD length = 0;
+		switch (v_Folder) {
+			case KnownFolder::LOCAL_APP_DATA:
+				length = GetEnvironmentVariableW(L"LOCALAPPDATA", p_Out, v_Capacity);
+				break;
+			case KnownFolder::TEMP:
+				length = GetTempPathW(v_Capacity, p_Out);
+				break;
+			case KnownFolder::EXECUTABLE_DIR:
+				length = GetModuleFileNameW(nullptr, p_Out, v_Capacity);
+				if (length == v_Capacity) return false;
+				while (length > 0 && p_Out[length - 1] != L'\\') --length;
+				break;
+		}
+		if (length == 0 || length >= v_Capacity) return false;
+		while (length > 0 && (p_Out[length - 1] == L'\\' || p_Out[length - 1] == L'/')) --length;
+		p_Out[length] = L'\0';
+		r_Length = length;
+		return length > 0;
+	}
+}
+
+namespace Spectra::Platform::Runtime::File {
+	namespace {
+		// ReadFile/WriteFile take a DWORD; larger requests go in chunks.
+		constexpr size_t IO_CHUNK = 1ull << 30;
+
+		uint64_t ticksOf(const FILETIME& r_Time) {
+			return (uint64_t(r_Time.dwHighDateTime) << 32) | r_Time.dwLowDateTime;
+		}
+
+		DWORD dispositionOf(FileOpenMode v_Mode) {
+			switch (v_Mode) {
+				case FileOpenMode::CREATE_NEW_FILE:        return CREATE_NEW;
+				case FileOpenMode::CREATE_ALWAYS_FILE:     return CREATE_ALWAYS;
+				case FileOpenMode::OPEN_EXISTING_FILE:     return OPEN_EXISTING;
+				case FileOpenMode::OPEN_ALWAYS_FILE:       return OPEN_ALWAYS;
+				case FileOpenMode::TRUNCATE_EXISTING_FILE: return TRUNCATE_EXISTING;
+			}
+			return OPEN_EXISTING;
+		}
+	}
+
+	void* Files::openNative(const wchar_t* p_Path, const NativeOpenDesc& ro_Desc) {
+		SPECTRA_ASSERT(p_Path != nullptr);
+		DWORD access = 0;
+		if (ro_Desc.m_Access != FileAccess::WRITE) access |= GENERIC_READ;
+		if (ro_Desc.m_Access != FileAccess::READ) access |= GENERIC_WRITE;
+
+		const uint8_t share = uint8_t(ro_Desc.m_Share);
+		DWORD shareMode = 0;
+		if (share & uint8_t(NativeShare::READ)) shareMode |= FILE_SHARE_READ;
+		if (share & uint8_t(NativeShare::WRITE)) shareMode |= FILE_SHARE_WRITE;
+		if (share & uint8_t(NativeShare::REMOVE)) shareMode |= FILE_SHARE_DELETE;
+
+		DWORD flags = FILE_ATTRIBUTE_NORMAL;
+		if (ro_Desc.m_Buffering == NativeBuffering::DIRECT) flags |= FILE_FLAG_NO_BUFFERING;
+		if (ro_Desc.m_Buffering == NativeBuffering::WRITE_THROUGH) flags |= FILE_FLAG_WRITE_THROUGH;
+
+		HANDLE handle = CreateFileW(p_Path, access, shareMode, nullptr, dispositionOf(ro_Desc.m_OpenMode), flags, nullptr);
+		return handle == INVALID_HANDLE_VALUE ? nullptr : handle;
+	}
+
+	bool Files::closeNative(void* p_Handle) {
+		return p_Handle != nullptr && CloseHandle(static_cast<HANDLE>(p_Handle)) != 0;
+	}
+
+	bool Files::readAt(void* p_Handle, void* p_Buffer, size_t v_Bytes, uint64_t v_Offset, size_t& r_Read) {
+		r_Read = 0;
+		while (r_Read < v_Bytes) {
+			const DWORD chunk = DWORD(std::min(v_Bytes - r_Read, IO_CHUNK));
+			const uint64_t offset = v_Offset + r_Read;
+			OVERLAPPED position{};
+			position.Offset = DWORD(offset);
+			position.OffsetHigh = DWORD(offset >> 32);
+			DWORD done = 0;
+			if (!ReadFile(static_cast<HANDLE>(p_Handle), static_cast<uint8_t*>(p_Buffer) + r_Read, chunk, &done, &position))
+				return GetLastError() == ERROR_HANDLE_EOF;
+			r_Read += done;
+			if (done < chunk) return true;  // end of file
+		}
+		return true;
+	}
+
+	bool Files::writeAt(void* p_Handle, const void* p_Buffer, size_t v_Bytes, uint64_t v_Offset, size_t& r_Written) {
+		r_Written = 0;
+		while (r_Written < v_Bytes) {
+			const DWORD chunk = DWORD(std::min(v_Bytes - r_Written, IO_CHUNK));
+			const uint64_t offset = v_Offset + r_Written;
+			OVERLAPPED position{};
+			position.Offset = DWORD(offset);
+			position.OffsetHigh = DWORD(offset >> 32);
+			DWORD done = 0;
+			if (!WriteFile(static_cast<HANDLE>(p_Handle), static_cast<const uint8_t*>(p_Buffer) + r_Written, chunk, &done, &position)) return false;
+			r_Written += done;
+			if (done < chunk) return false;
+		}
+		return true;
+	}
+
+	bool Files::flushNative(void* p_Handle) {
+		return FlushFileBuffers(static_cast<HANDLE>(p_Handle)) != 0;
+	}
+
+	bool Files::getSize(void* p_Handle, uint64_t& r_Size) {
+		LARGE_INTEGER size{};
+		if (!GetFileSizeEx(static_cast<HANDLE>(p_Handle), &size)) return false;
+		r_Size = uint64_t(size.QuadPart);
+		return true;
+	}
+
+	bool Files::setSize(void* p_Handle, uint64_t v_Size) {
+		FILE_END_OF_FILE_INFO info{};
+		info.EndOfFile.QuadPart = LONGLONG(v_Size);
+		return SetFileInformationByHandle(static_cast<HANDLE>(p_Handle), FileEndOfFileInfo, &info, sizeof(info)) != 0;
+	}
+
+	uint32_t Files::sectorSize(void* p_Handle) {
+		FILE_STORAGE_INFO info{};
+		if (GetFileInformationByHandleEx(static_cast<HANDLE>(p_Handle), FileStorageInfo, &info, sizeof(info)) && info.PhysicalBytesPerSectorForPerformance != 0)
+			return info.PhysicalBytesPerSectorForPerformance;
+		return 4096;
+	}
+
+	bool Files::stat(const wchar_t* p_Path, NativeStat& r_Stat) {
+		WIN32_FILE_ATTRIBUTE_DATA data{};
+		if (!GetFileAttributesExW(p_Path, GetFileExInfoStandard, &data)) return false;
+		r_Stat.m_Size = (uint64_t(data.nFileSizeHigh) << 32) | data.nFileSizeLow;
+		r_Stat.m_CreationTime = ticksOf(data.ftCreationTime);
+		r_Stat.m_WriteTime = ticksOf(data.ftLastWriteTime);
+		r_Stat.m_IsDirectory = (data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0;
+		r_Stat.m_IsReadOnly = (data.dwFileAttributes & FILE_ATTRIBUTE_READONLY) != 0;
+		r_Stat.m_IsLink = (data.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT) != 0;
+		return true;
+	}
+
+	bool Files::copyFile(const wchar_t* p_From, const wchar_t* p_To, bool v_Overwrite) {
+		return CopyFileW(p_From, p_To, v_Overwrite ? FALSE : TRUE) != 0;
+	}
+
+	NativeError Files::lastError() {
+		switch (GetLastError()) {
+			case ERROR_SUCCESS:                                      return NativeError::NONE;
+			case ERROR_FILE_NOT_FOUND: case ERROR_PATH_NOT_FOUND:    return NativeError::NOT_FOUND;
+			case ERROR_FILE_EXISTS: case ERROR_ALREADY_EXISTS:       return NativeError::ALREADY_EXISTS;
+			case ERROR_ACCESS_DENIED:                                return NativeError::ACCESS_DENIED;
+			case ERROR_SHARING_VIOLATION: case ERROR_LOCK_VIOLATION: return NativeError::SHARING_VIOLATION;
+			case ERROR_DISK_FULL: case ERROR_HANDLE_DISK_FULL:       return NativeError::DISK_FULL;
+			default:                                                 return NativeError::OTHER;
+		}
+	}
+
+	void* Files::createSection(void* p_File, bool v_Writable, uint64_t v_MaxSize) {
+		return CreateFileMappingW(static_cast<HANDLE>(p_File), nullptr, v_Writable ? PAGE_READWRITE : PAGE_READONLY,
+			DWORD(v_MaxSize >> 32), DWORD(v_MaxSize), nullptr);
+	}
+
+	bool Files::closeSection(void* p_Section) {
+		return p_Section != nullptr && CloseHandle(static_cast<HANDLE>(p_Section)) != 0;
+	}
+}
