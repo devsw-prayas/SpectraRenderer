@@ -5,6 +5,8 @@
 #include "MemBehavior.h"
 #include "SpecMemAllocator.h"
 #include "MemoryRegion.h"
+#include "VAUtils.h"
+#include <CoriumSync.h>
 
 namespace Spectra::Memory::Allocators {
 
@@ -134,4 +136,74 @@ namespace Spectra::Memory::Allocators {
 	// Backing allocator for ClosureFunction/FunctionView payloads.
 	using ClosureAllocator = RawArenaAllocator<struct ClosureTag>;
 
+	// Stack arena that hands out reserved space: allocate commits only the page the allocation starts on,
+	// the owner commits the rest as it touches it. unwind decommits everything above the marker.
+	class SPEC_MEM_RUNTIME_API LazyStackArena : public IArena<LazyStackArena> {
+		MemoryHandle m_Handle{};
+		size_t m_Cursor = 0;
+		size_t m_HighWater = 0;
+		bool m_CommitOnTouch = true;
+
+	public:
+		using Marker = size_t;
+
+		LazyStackArena() = default;
+
+		LazyStackArena(const LazyStackArena&) = delete;
+		LazyStackArena& operator=(const LazyStackArena&) = delete;
+
+		LazyStackArena(LazyStackArena&&) noexcept = default;
+		LazyStackArena& operator=(LazyStackArena&&) noexcept = default;
+
+		void init(MemoryHandle* p_Handle);
+
+		SPEC_MEM_NODISCARD void* allocateImpl(size_t v_Bytes, size_t v_Alignment);
+		SPEC_MEM_NODISCARD void* allocateImpl(size_t v_Bytes);
+		void deallocateImpl();
+
+		SPEC_MEM_NODISCARD Marker mark() const;
+		void unwind(Marker v_Marker);
+
+		SPEC_MEM_NODISCARD const MemoryHandle& handle() const;
+		// Off for placeholder regions, where the owner maps instead of committing.
+		void setCommitOnTouch(bool v_Commit);
+		SPEC_MEM_NODISCARD bool commitsOnTouch() const;
+	};
+
+	SPEC_ARENA_METADATA(LazyStackArena, "LIFO arena that commits on touch and decommits on unwind", 4, "lazy-stack-arena")
+
+	constexpr size_t BLOCK_SIZE = 2_MiB;
+
+	// Contiguous block runs over a LazyStackArena, freed in any order. Freed holes are reused first;
+	// when the top run frees, the arena unwinds past every free run below it.
+	class SPEC_MEM_RUNTIME_API BlockedAllocator final : public IAllocator<void, LazyStackArena, BlockedAllocator> {
+		static constexpr uint32_t MAX_BLOCKS = 16384;
+
+		uint64_t m_Free[MAX_BLOCKS / 64]{};
+		Corium::Runtime::Sync::CriticalSection m_Lock;
+
+	public:
+		BlockedAllocator() = default;
+
+		BlockedAllocator(const BlockedAllocator&) = delete;
+		BlockedAllocator& operator=(const BlockedAllocator&) = delete;
+
+		BlockedAllocator(BlockedAllocator&&) = delete;
+		BlockedAllocator& operator=(BlockedAllocator&&) = delete;
+
+		// Sizes round up to whole blocks. Alignment beyond a block is refused.
+		SPEC_MEM_NODISCARD void* allocateImpl(size_t v_Bytes, size_t v_Alignment);
+		SPEC_MEM_NODISCARD void* allocateImpl(size_t v_Bytes);
+		void deallocateImpl(void* p_Ptr, size_t v_Bytes);
+
+		SPEC_MEM_NODISCARD bool owns(const void* p_Ptr) const;
+		// Placeholder regions hand out address space only: no commit on allocate, no decommit on free.
+		void setPlaceholder(bool v_Placeholder);
+		SPEC_MEM_NODISCARD bool isPlaceholder() const;
+
+		// A MemoryHandle over a run, ready for an arena.
+		SPEC_MEM_NODISCARD static MemoryHandle handleFor(void* p_Ptr, size_t v_Bytes, size_t v_NumaNode);
+	};
+
+	SPEC_ALLOCATOR_METADATA(void, LazyStackArena, "Block runs freed in any order", 0, "blocked-allocator", AllocShape::Raw)
 }

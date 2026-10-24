@@ -38,7 +38,11 @@ namespace Spectra::Memory::Internal {
 	constexpr size_t PoolReserveSize = 32_GiB;
 	constexpr size_t SmartPointerControlBlockSize = 16_GiB;
 	constexpr size_t ClosureRegionSize = 4_GiB; // ~8M closures @ 512B/closure
-	constexpr size_t MemMapFileRegionSize = 32_GiB;
+	constexpr size_t MemMapFileRegionSize = 48_GiB;
+	constexpr size_t FileStagingSize = 16_GiB - SectionGuardSize;  // direct I/O staging, ordinary reservation
+	constexpr size_t MappedViewSize = 32_GiB;                       // file views, placeholder reservation
+	static_assert(FileStagingSize + SectionGuardSize + MappedViewSize == MemMapFileRegionSize);
+	constexpr size_t FileSystemRegionSize = 2_GiB;   // per-project path trees, BlockedAllocator
 	constexpr size_t InstrumentationRegionSize = 16_GiB;
 	constexpr size_t UiDisplayRegionSize = 4_GiB;
 
@@ -53,13 +57,13 @@ namespace Spectra::Memory::Internal {
 		- 6 * SectionGuardSize;
 
 	// Reserved/Future VA per node — computed as whatever is left after all
-	// top-level named regions and guards (7 guards total: 5 inter-region + 2
+	// top-level named regions and guards (8 guards total: 6 inter-region + 2
 	// outer null). Sub-region guards inside RuntimeObjects are accounted for
 	// separately, out of RuntimeObjectsSize's own budget (see RuntimeCoreObjectsSize).
 	constexpr size_t Reserve = g_TotalVA
-		- (RuntimeObjectsSize + PoolReserveSize + MemMapFileRegionSize
+		- (RuntimeObjectsSize + PoolReserveSize + MemMapFileRegionSize + FileSystemRegionSize
 			+ InstrumentationRegionSize + UiDisplayRegionSize)
-		- 7 * NullGuardSize;
+		- 8 * NullGuardSize;
 
 	// -------------------------------------------------------------------------
 	// Per-node base reservations — one independent VA block per NUMA node
@@ -180,14 +184,35 @@ namespace Spectra::Memory::Internal {
 	// +----------------------------------------------------------------+
 
 	// +----------------------------------------------------------------+
-	// | MEMORY-MAPPED FILES / FILE STAGING (32 GiB)                    |
+	// | MEMORY-MAPPED FILES / FILE STAGING (48 GiB)                    |
 	// | SpectraFileSystem-backed MemoryRegion payload mounting.        |
 	extern VARegion g_MemMapFileRegion[MAX_NUMA_NODES];
+	//   +------------------------------------------------------------+
+	//   | FILE STAGING (16 GiB - 2 MiB) - Direct I/O buffers          |
+	extern VARegion g_FileStagingRegion[MAX_NUMA_NODES];
+	//   | Guard (2 MiB)                                               |
+	extern VARegion g_FileStagingGuard[MAX_NUMA_NODES];
+	//   | MAPPED VIEWS (32 GiB) - reserved as a placeholder, views    |
+	//   | are mapped into it at chosen addresses                      |
+	extern VARegion g_MappedViewRegion[MAX_NUMA_NODES];
+	extern bool g_MappedViewIsPlaceholder[MAX_NUMA_NODES];  // false when the OS has no placeholder support
+	//   +------------------------------------------------------------+
 	// +----------------------------------------------------------------+
 
 	// +----------------------------------------------------------------+
 	// | Guard (2 MiB)                                                  |
 	extern VARegion g_MemMapFileRegionGuard[MAX_NUMA_NODES];
+	// +----------------------------------------------------------------+
+
+	// +----------------------------------------------------------------+
+	// | FILE SYSTEM (2 GiB)                                            |
+	// | SpectraFileSystem path trees, handed out as block runs.        |
+	extern VARegion g_FileSystemRegion[MAX_NUMA_NODES];
+	// +----------------------------------------------------------------+
+
+	// +----------------------------------------------------------------+
+	// | Guard (2 MiB)                                                  |
+	extern VARegion g_FileSystemRegionGuard[MAX_NUMA_NODES];
 	// +----------------------------------------------------------------+
 
 	// +----------------------------------------------------------------+
@@ -213,7 +238,7 @@ namespace Spectra::Memory::Internal {
 	// +----------------------------------------------------------------+
 
 	// +----------------------------------------------------------------+
-	// | RESERVED / FUTURE VA (~75.99 GiB)                              |
+	// | RESERVED / FUTURE VA (~57.98 GiB)                              |
 	// | Unclaimed headroom for not-yet-designed consumers.             |
 	extern VARegion g_ReservedVA[MAX_NUMA_NODES];
 	// +----------------------------------------------------------------+

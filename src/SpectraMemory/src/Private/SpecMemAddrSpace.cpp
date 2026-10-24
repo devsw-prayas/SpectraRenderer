@@ -1,6 +1,7 @@
 #include "SpectraMemory.h"
 #include "SpecMemAddrSpace.h"
 #include "ProcessEnvironment.h"
+#include "PlatformMemory.h"
 
 namespace Spectra::Memory::Internal {
 	using namespace Platform::Runtime::Environment;
@@ -22,6 +23,12 @@ namespace Spectra::Memory::Internal {
 	VARegion g_PoolReserveGuard[MAX_NUMA_NODES];
 	VARegion g_MemMapFileRegion[MAX_NUMA_NODES];
 	VARegion g_MemMapFileRegionGuard[MAX_NUMA_NODES];
+	VARegion g_FileStagingRegion[MAX_NUMA_NODES];
+	VARegion g_FileStagingGuard[MAX_NUMA_NODES];
+	VARegion g_MappedViewRegion[MAX_NUMA_NODES];
+	bool g_MappedViewIsPlaceholder[MAX_NUMA_NODES];
+	VARegion g_FileSystemRegion[MAX_NUMA_NODES];
+	VARegion g_FileSystemRegionGuard[MAX_NUMA_NODES];
 	VARegion g_InstrumentationRegion[MAX_NUMA_NODES];
 	VARegion g_InstrumentationRegionGuard[MAX_NUMA_NODES];
 	VARegion g_UiDisplayRegion[MAX_NUMA_NODES];
@@ -54,6 +61,21 @@ namespace Spectra::Memory::Internal {
 	// physically present NUMA node count are never initialized.
 	// -------------------------------------------------------------------------
 
+	namespace {
+		// Splits the node placeholder into [below views) [views) [above views) and makes the outer two ordinary reservations.
+		bool finishPlaceholderLayout(uint32_t v_Node) {
+			using Platform::Runtime::Memory::PlatformPlaceholders;
+			uint8_t* base = static_cast<uint8_t*>(g_NodeMemory[v_Node].m_Memory.m_BaseAddress);
+			uint8_t* views = g_MappedViewRegion[v_Node].m_Base;
+			uint8_t* viewsEnd = views + g_MappedViewRegion[v_Node].m_Size;
+			uint8_t* end = base + g_NodeMemory[v_Node].m_Memory.m_TotalSize;
+			return PlatformPlaceholders::split(base, size_t(views - base))
+				&& PlatformPlaceholders::split(views, size_t(viewsEnd - views))
+				&& PlatformPlaceholders::replaceWithReserve(base, size_t(views - base), v_Node)
+				&& PlatformPlaceholders::replaceWithReserve(viewsEnd, size_t(end - viewsEnd), v_Node);
+		}
+	}
+
 	bool init() {
 		Memory::init();
 		PlatformProbe::init();
@@ -62,13 +84,23 @@ namespace Spectra::Memory::Internal {
 		const uint32_t activeNodes = physicalNodes < MAX_NUMA_NODES ? physicalNodes : static_cast<uint32_t>(MAX_NUMA_NODES);
 
 		for (uint32_t node = 0; node < activeNodes; ++node) {
-			VirtualMemoryDesc desc{};
-			initMemoryDesc(desc);
-			setSize(desc, g_TotalVA);
-			setNumaNode(desc, node);
-			setMemoryState(desc, MemoryState::RESERVE);
-
-			g_NodeMemory[node] = Memory::reserve(desc);
+			// Reserved as one placeholder so the mapped-view slice can stay one; everything else is
+			// turned back into ordinary reservations at the same addresses once the layout is sliced.
+			using Platform::Runtime::Memory::PlatformPlaceholders;
+			void* placeholder = PlatformPlaceholders::reserve(g_TotalVA, node);
+			if (placeholder != nullptr) {
+				g_NodeMemory[node].m_Memory.m_BaseAddress = placeholder;
+				g_NodeMemory[node].m_Memory.m_TotalSize = g_TotalVA;
+				g_NodeMemory[node].m_CommittedSize = 0;
+				g_NodeMemory[node].m_NumaNode = node;
+			} else {
+				VirtualMemoryDesc desc{};
+				initMemoryDesc(desc);
+				setSize(desc, g_TotalVA);
+				setNumaNode(desc, node);
+				setMemoryState(desc, MemoryState::RESERVE);
+				g_NodeMemory[node] = Memory::reserve(desc);
+			}
 
 			VARegionSlicer slicer{ g_NodeMemory[node] };
 
@@ -98,13 +130,29 @@ namespace Spectra::Memory::Internal {
 			// +----------------------------------------------------------------+
 
 			// +----------------------------------------------------------------+
-			// | MEMORY-MAPPED FILES / FILE STAGING (32 GiB)                    |
+			// | MEMORY-MAPPED FILES / FILE STAGING (48 GiB)                    |
 			g_MemMapFileRegion[node] = slicer.slice(MemMapFileRegionSize);
+			{
+				VARegionSlicer files{ g_MemMapFileRegion[node] };
+				g_FileStagingRegion[node] = files.slice(FileStagingSize);
+				g_FileStagingGuard[node] = files.slice(SectionGuardSize);
+				g_MappedViewRegion[node] = files.slice(MappedViewSize);
+			}
 			// +----------------------------------------------------------------+
 
 			// +----------------------------------------------------------------+
 			// | Guard (2 MiB)                                                  |
 			g_MemMapFileRegionGuard[node] = slicer.slice(SectionGuardSize);
+			// +----------------------------------------------------------------+
+
+			// +----------------------------------------------------------------+
+			// | FILE SYSTEM (2 GiB)                                            |
+			g_FileSystemRegion[node] = slicer.slice(FileSystemRegionSize);
+			// +----------------------------------------------------------------+
+
+			// +----------------------------------------------------------------+
+			// | Guard (2 MiB)                                                  |
+			g_FileSystemRegionGuard[node] = slicer.slice(SectionGuardSize);
 			// +----------------------------------------------------------------+
 
 			// +----------------------------------------------------------------+
@@ -128,7 +176,7 @@ namespace Spectra::Memory::Internal {
 			// +----------------------------------------------------------------+
 
 			// +----------------------------------------------------------------+
-			// | RESERVED / FUTURE VA (~75.99 GiB)                              |
+			// | RESERVED / FUTURE VA (~57.98 GiB)                              |
 			g_ReservedVA[node] = slicer.slice(Reserve);
 			// +----------------------------------------------------------------+
 
@@ -208,12 +256,17 @@ namespace Spectra::Memory::Internal {
 				//   +------------------------------------------------------------+
 			}
 
+			if (placeholder != nullptr && !finishPlaceholderLayout(node)) return false;
+			g_MappedViewIsPlaceholder[node] = placeholder != nullptr;
+
 			// --- Lock guard regions for this node --------------------------------
 
 			lockGuard(g_LowerNullGuard[node]);
 			lockGuard(g_RuntimeObjectsGuard[node]);
 			lockGuard(g_PoolReserveGuard[node]);
 			lockGuard(g_MemMapFileRegionGuard[node]);
+			lockGuard(g_FileStagingGuard[node]);
+			lockGuard(g_FileSystemRegionGuard[node]);
 			lockGuard(g_InstrumentationRegionGuard[node]);
 			lockGuard(g_UiDisplayRegionGuard[node]);
 			lockGuard(g_UpperNullGuard[node]);
