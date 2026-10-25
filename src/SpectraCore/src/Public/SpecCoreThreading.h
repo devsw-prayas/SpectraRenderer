@@ -5,6 +5,7 @@
 #include "PlatformThread.h"
 #include "CoriumThread.h"
 #include "ThreadSupport.h"
+#include <CoriumSync.h>
 
 namespace Spectra::Core::Threads {
 	// Bitmask: a PlatformThread that attached to Corium is SPECTRA | CORIUM. Zero-initialised storage
@@ -77,6 +78,7 @@ namespace Spectra::Core::Threads {
 
 
 	using ParkingSupport = Corium::Core::ParkingSupport;
+	using ReadWriteLock = Corium::Runtime::Sync::ReadWriteLock;
 
 	// [Payload]: 33B [sizeof]: 64B. m_Kind says which union member is live.
 	struct alignas(32) SpectraThread final {

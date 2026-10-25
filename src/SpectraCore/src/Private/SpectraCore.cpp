@@ -8,6 +8,7 @@
 #include <PlatformFileSystem.h>
 #include <SpecMemAddrSpace.h>
 #include <SpectraHeap.h>
+#include <SpecMemRegistry.h>
 #include <CoriumRuntime.h>
 
 namespace {
@@ -25,6 +26,7 @@ namespace Spectra::Core {
 
 		if (!Memory::Internal::init()) return false;
 		Memory::Heap::HeapRegistry::init(&Platform::Runtime::Environment::PlatformProbe::getCurrentNumaNode);
+		Memory::AllocatorRegistry::init();
 
 		Corium::CoriumRuntime::initRuntime();
 
