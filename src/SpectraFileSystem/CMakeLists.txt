@@ -36,3 +36,5 @@ target_compile_options(SpectraFileSystem PRIVATE
     $<$<AND:$<COMPILE_LANGUAGE:CXX>,$<CXX_COMPILER_FRONTEND_VARIANT:MSVC>>:/arch:AVX2 /W4 /permissive->
     $<$<AND:$<COMPILE_LANGUAGE:CXX>,$<NOT:$<CXX_COMPILER_FRONTEND_VARIANT:MSVC>>>:-mavx2 -Wall -Wextra -Wpedantic>
 )
+
+target_link_libraries(SpectraFileSystem PUBLIC SpectraCore)
