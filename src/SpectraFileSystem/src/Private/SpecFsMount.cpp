@@ -46,9 +46,21 @@ namespace Spectra::FileSystem {
 			return slot.m_Used && slot.m_Generation == v_Mount.m_Generation ? &slot : nullptr;
 		}
 
+		bool equalsFolded(std::string_view v_A, std::string_view v_B) noexcept {
+			if (v_A.size() != v_B.size()) return false;
+			for (size_t i = 0; i < v_A.size(); ++i) {
+				char a = v_A[i], b = v_B[i];
+				if (a >= 'A' && a <= 'Z') a = char(a + 32);
+				if (b >= 'A' && b <= 'Z') b = char(b + 32);
+				if (a != b) return false;
+			}
+			return true;
+		}
+
+		// Case-insensitive, like path segments: "User:/" and "user:/" are the same mount.
 		uint32_t findIndex(std::string_view v_Name) noexcept {
 			for (uint32_t i = 0; i < MAX_MOUNTS; ++i)
-				if (g_Mounts[i].m_Used && nameOf(g_Mounts[i]) == v_Name) return i;
+				if (g_Mounts[i].m_Used && equalsFolded(nameOf(g_Mounts[i]), v_Name)) return i;
 			return UINT32_MAX;
 		}
 
@@ -249,7 +261,12 @@ namespace Spectra::FileSystem {
 		PathBuffer user;
 		if (!knownFolder(KnownFolder::LOCAL_APP_DATA, user) || !Paths::join(user, "Spectra") || !ensureDirectory(user)) return false;  // err: no user:/
 		if (!Mounts::add("user", user, MountFlags::NONE, Trees::DEFAULT_BLOCKS / 4, g_User)) return false;
-		if (!mountTemp()) return false;
+		if (!mountTemp()) {
+			// Leave nothing mounted so a retry starts clean.
+			(void)Mounts::remove(g_User);
+			g_User = {};
+			return false;
+		}
 
 		// engine:/ is optional at this layer: a missing data folder only fails the loads that need it.
 		PathBuffer engine;
