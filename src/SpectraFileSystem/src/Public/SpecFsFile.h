@@ -67,7 +67,7 @@ namespace Spectra::FileSystem {
 
 		SPEC_FS_NODISCARD bool isOpen() const noexcept;
 	};
-	static_assert(sizeof(File) == 64);
+	SPEC_FS_STATIC_ASSERT(sizeof(File) == 64, "File must be 64 bytes");
 
 	struct FileStat {
 		uint64_t m_Size;

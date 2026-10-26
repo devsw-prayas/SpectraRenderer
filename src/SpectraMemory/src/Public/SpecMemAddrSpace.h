@@ -1,5 +1,6 @@
 #pragma once
 #include "SpectraMemory.h"
+#include "SpecMemDiagnostics.h"
 #include "VAUtils.h"
 #include "MemoryRegion.h"
 
@@ -41,7 +42,7 @@ namespace Spectra::Memory::Internal {
 	constexpr size_t MemMapFileRegionSize = 48_GiB;
 	constexpr size_t FileStagingSize = 16_GiB - SectionGuardSize;  // direct I/O staging, ordinary reservation
 	constexpr size_t MappedViewSize = 32_GiB;                       // file views, placeholder reservation
-	static_assert(FileStagingSize + SectionGuardSize + MappedViewSize == MemMapFileRegionSize);
+	SPEC_MEM_STATIC_ASSERT(FileStagingSize + SectionGuardSize + MappedViewSize == MemMapFileRegionSize, "MemMapFile split must cover the region");
 	constexpr size_t FileSystemRegionSize = 2_GiB;   // per-project path trees, BlockedAllocator
 	constexpr size_t InstrumentationRegionSize = 16_GiB;
 	constexpr size_t UiDisplayRegionSize = 4_GiB;

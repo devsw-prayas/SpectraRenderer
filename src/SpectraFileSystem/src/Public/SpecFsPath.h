@@ -1,13 +1,14 @@
 #pragma once
 #include "SpectraFileSystem.h"
 #include "SpecFsCompiler.h"
+#include "SpecFsDiagnostic.h"
 
 namespace Spectra::FileSystem {
 	enum class PathKind : uint8_t {
 		EMPTY,
-		MOUNTED,         // "engine:/Settings/x.ini"
-		RELATIVE,        // "Assets/wood.png"
-		NATIVE_ABSOLUTE  // "C:/Imports/scene.xml", import sources only
+		MOUNTED,
+		RELATIVE,
+		NATIVE_ABSOLUTE
 	};
 
 	constexpr uint32_t PATH_CAPACITY = 507;
@@ -21,8 +22,8 @@ namespace Spectra::FileSystem {
 		PathKind m_Kind;
 		uint8_t  m_MountEnd;  // one past "name:/", 0 if not mounted
 	};
-	static_assert(sizeof(PathBuffer) == 512);
-	static_assert(std::is_trivially_copyable_v<PathBuffer>);
+	SPEC_FS_STATIC_ASSERT(sizeof(PathBuffer) == 512, "PathBuffer must be 512 bytes");
+	SPEC_FS_STATIC_ASSERT(std::is_trivially_copyable_v<PathBuffer>, "PathBuffer must be trivially copyable");
 
 	// Failures return false and push an exec (module 0x07); make leaves the buffer EMPTY, the rest leave it unchanged.
 	// Mount names are only text here; layer 3 resolves them, "project" included.

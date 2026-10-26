@@ -32,7 +32,7 @@ namespace Spectra::FileSystem {
 
 		SPEC_FS_NODISCARD bool isMapped() const noexcept;
 	};
-	static_assert(sizeof(MappedView) == 64);
+	SPEC_FS_STATIC_ASSERT(sizeof(MappedView) == 64, "MappedView must be 64 bytes");
 
 	// A fixed-size view that moves along a file. Re-maps only when a request leaves the current window.
 	struct SPEC_FS_RUNTIME_API MappedWindow {

@@ -34,7 +34,7 @@ namespace Spectra::FileSystem {
 		uint32_t m_FirstChild;   // doubles as the free-list link once FREE
 		uint32_t m_NextSibling;
 	};
-	static_assert(sizeof(TreeNode) == 32);
+	SPEC_FS_STATIC_ASSERT(sizeof(TreeNode) == 32, "TreeNode must be 32 bytes");
 
 	struct EdgeSlot {
 		uint32_t m_Node;  // 0 empty (root is never a child), UINT32_MAX tombstone
