@@ -202,11 +202,26 @@ namespace Spectra::FileSystem {
 			}
 		}
 
-		// Walks or creates every segment. Rolls back what it created on failure.
-		bool insertLocked(PathTree& r_Tree, const PathBuffer& r_Path, uint32_t& r_Out) noexcept {
-			uint32_t created[MAX_SEGMENTS];
-			uint32_t createdCount = 0;
-			const auto nameMark = r_Tree.m_NameArena.mark();
+		struct CreatedNodes {
+			uint32_t m_Nodes[MAX_SEGMENTS];
+			uint32_t m_Count;
+			Memory::Allocators::ReclaimableStackArena::Marker m_NameMark;
+		};
+
+		void rollback(PathTree& r_Tree, CreatedNodes& r_Created) noexcept {
+			while (r_Created.m_Count > 0) {
+				const uint32_t node = r_Created.m_Nodes[--r_Created.m_Count];
+				dropEdge(r_Tree, node);
+				unlinkChild(r_Tree, node);
+				freeNode(r_Tree, node);
+			}
+			r_Tree.m_NameArena.unwind(r_Created.m_NameMark);
+		}
+
+		// Walks or creates every segment, recording what it created. Rolls that back on failure.
+		bool insertLocked(PathTree& r_Tree, const PathBuffer& r_Path, uint32_t& r_Out, CreatedNodes& r_Created) noexcept {
+			r_Created.m_Count = 0;
+			r_Created.m_NameMark = r_Tree.m_NameArena.mark();
 
 			uint32_t current = 0;
 			uint16_t offset = 0;
@@ -217,21 +232,23 @@ namespace Spectra::FileSystem {
 				if (child == NODE_NONE) {
 					child = addChild(r_Tree, current, segment, hash);
 					if (child == NODE_NONE) {
-						while (createdCount > 0) {
-							const uint32_t node = created[--createdCount];
-							dropEdge(r_Tree, node);
-							unlinkChild(r_Tree, node);
-							freeNode(r_Tree, node);
-						}
-						r_Tree.m_NameArena.unwind(nameMark);
+						rollback(r_Tree, r_Created);
 						return false;
 					}
-					created[createdCount++] = child;
+					r_Created.m_Nodes[r_Created.m_Count++] = child;
 				}
 				current = child;
 			}
 			r_Out = current;
 			return true;
+		}
+
+		// A removed node keeps its slot while pinned, one generation past the handles that pinned it.
+		bool validPin(const PathTree& r_Tree, NodeHandle v_Node) noexcept {
+			if (v_Node.m_Index >= r_Tree.m_NodeCount) return false;
+			const TreeNode& node = r_Tree.m_Nodes[v_Node.m_Index];
+			if (has(node.m_Flags, NodeFlags::ALIVE)) return node.m_Generation == v_Node.m_Generation;
+			return !has(node.m_Flags, NodeFlags::FREE) && node.m_Generation == v_Node.m_Generation + 1;
 		}
 
 		NodeHandle handleOf(const PathTree& r_Tree, uint32_t v_Node) noexcept {
@@ -306,7 +323,8 @@ namespace Spectra::FileSystem {
 		if (!onThisMount(r_Tree, r_Path)) return false;  // exec OutsideMount
 		r_Tree.m_Lock.lockWrite();
 		uint32_t node = NODE_NONE;
-		const bool ok = insertLocked(r_Tree, r_Path, node);
+		CreatedNodes created;
+		const bool ok = insertLocked(r_Tree, r_Path, node, created);
 		if (ok) r_Out = handleOf(r_Tree, node);
 		r_Tree.m_Lock.unlockWrite();
 		return ok;
@@ -322,12 +340,16 @@ namespace Spectra::FileSystem {
 		r_Tree.m_Lock.lockWrite();
 		bool ok = validHandle(r_Tree, v_Node) && v_Node.m_Index != 0;  // exec NotFound
 		uint32_t newParent = NODE_NONE;
-		if (ok) ok = insertLocked(r_Tree, parentPath, newParent);
+		CreatedNodes created;
+		bool parentsMade = ok && insertLocked(r_Tree, parentPath, newParent, created);
+		ok = parentsMade;
 		for (uint32_t up = newParent; ok && up != NODE_NONE; up = r_Tree.m_Nodes[up].m_Parent)
 			ok = up != v_Node.m_Index;  // exec InvalidPath: into its own subtree
 		if (ok) ok = findChild(r_Tree, newParent, newName, newHash) == NODE_NONE;  // exec AlreadyExists
 		uint32_t nameOffset = 0;
 		if (ok) ok = reserveEdge(r_Tree) && storeName(r_Tree, newName, nameOffset);
+		// Parents made for a rename that failed go back out with it.
+		if (!ok && parentsMade) rollback(r_Tree, created);
 
 		if (ok) {
 			TreeNode& node = r_Tree.m_Nodes[v_Node.m_Index];
@@ -364,11 +386,15 @@ namespace Spectra::FileSystem {
 	}
 
 	void Trees::unpin(PathTree& r_Tree, NodeHandle v_Node) noexcept {
-		if (v_Node.m_Index >= r_Tree.m_NodeCount) return;
-		TreeNode& node = r_Tree.m_Nodes[v_Node.m_Index];
-		const uint32_t previous = node.m_OpenCount.fetchAdd(UINT32_MAX, MemoryOrder::ACQ_REL);
-		SPEC_FS_ASSERT(previous != 0);
+		r_Tree.m_Lock.lockRead();
+		const bool valid = validPin(r_Tree, v_Node);
+		SPEC_FS_ASSERT(valid);
+		const uint32_t previous = valid ? r_Tree.m_Nodes[v_Node.m_Index].m_OpenCount.fetchAdd(UINT32_MAX, MemoryOrder::ACQ_REL) : 0;
+		r_Tree.m_Lock.unlockRead();
+		SPEC_FS_ASSERT(!valid || previous != 0);
 		if (previous != 1) return;
+
+		TreeNode& node = r_Tree.m_Nodes[v_Node.m_Index];
 
 		r_Tree.m_Lock.lockWrite();
 		if (!has(node.m_Flags, NodeFlags::ALIVE) && !has(node.m_Flags, NodeFlags::FREE) && node.m_OpenCount.load(MemoryOrder::ACQUIRE) == 0)
