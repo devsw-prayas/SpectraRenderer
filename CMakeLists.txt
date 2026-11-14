@@ -140,6 +140,7 @@ add_subdirectory(src/SpectraFileSystem)
 add_subdirectory(src/SpectraProfiler)
 add_subdirectory(src/SpectraRHI)
 add_subdirectory(src/SpectraInstrumentation)
+add_subdirectory(scratch/Bootstrap)
 
 foreach(target ${SPECTRA_STL_ARCH_CONSUMERS})
     target_compile_options(${target} PRIVATE

@@ -53,9 +53,33 @@ namespace Spectra::FileSystem {
 			return true;
 		}
 
+		struct ForbiddenMask {
+			uint64_t m_Low;
+			uint64_t m_High;
+		};
+
+		constexpr ForbiddenMask makeForbiddenMask() noexcept {
+			ForbiddenMask mask{ 0x00000000FFFFFFFFull, 0 };
+			for (const char c : std::string_view("<>:\"|?*")) {
+				const uint8_t code = uint8_t(c);
+				if (code < 64) mask.m_Low |= 1ull << code;
+				else mask.m_High |= 1ull << (code - 64);
+			}
+			return mask;
+		}
+
+		constexpr ForbiddenMask FORBIDDEN_SEGMENT_CHARS = makeForbiddenMask();
+
+		// Bytes >= 0x80 are UTF-8 and left to isValidUtf8.
+		bool isForbiddenSegmentChar(char v_Char) noexcept {
+			const uint8_t code = uint8_t(v_Char);
+			if (code >= 128) return false;
+			return code < 64 ? (FORBIDDEN_SEGMENT_CHARS.m_Low >> code) & 1 : (FORBIDDEN_SEGMENT_CHARS.m_High >> (code - 64)) & 1;
+		}
+
 		bool isValidSegment(std::string_view v_Segment) noexcept {
 			for (const char c : v_Segment)
-				if (uint8_t(c) < 0x20 || std::strchr("<>:\"|?*", c) != nullptr) return false;
+				if (isForbiddenSegmentChar(c)) return false;
 			const char last = v_Segment.back();
 			return last != '.' && last != ' ' && !isReservedName(v_Segment) && isValidUtf8(v_Segment);
 		}
