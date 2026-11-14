@@ -2,245 +2,245 @@
 # Hades suite manifest
 [[test]]
 id = "sync-parkhandle-wait-wake-round-trip"
-fixture = "SyncPrimitivesParkHandleWaitWakeRoundTrip"
+fixture = "TestFixture1"
 kind = "correctness"
 
 [[test]]
 id = "semaphore-acquire-release-unparks-waiter"
-fixture = "SemaphoreAcquireReleaseUnparksWaiter"
+fixture = "TestFixture2"
 kind = "correctness"
 
 [[test]]
 id = "cyclicbarrier-await-releases-all-parties"
-fixture = "CyclicBarrierAwaitReleasesAllParties"
+fixture = "TestFixture3"
 kind = "correctness"
 
 [[test]]
 id = "atomicfetchadd32-accumulates-across-threads"
-fixture = "AtomicFetchAdd32AccumulatesAcrossThreads"
+fixture = "TestFixture4"
 kind = "correctness"
 
 [[test]]
 id = "atomicfetchadd64-accumulates-across-threads"
-fixture = "AtomicFetchAdd64AccumulatesAcrossThreads"
+fixture = "TestFixture5"
 kind = "correctness"
 
 [[test]]
 id = "defaultthreadfactory-createandstart-launches-real-thread"
-fixture = "DefaultThreadFactoryCreateAndStartLaunchesRealThread"
+fixture = "TestFixture6"
 kind = "correctness"
 
 [[test]]
 id = "athreadfactory-createandstart-is-reusable-across-calls"
-fixture = "AThreadFactoryCreateAndStartIsReusableAcrossCalls"
+fixture = "TestFixture7"
 kind = "correctness"
 
 [[test]]
 id = "nativethread-createthread-requires-validated-descriptor"
-fixture = "NativeThreadCreateThreadRequiresValidatedDescriptor"
+fixture = "TestFixture8"
 kind = "correctness"
 
 [[test]]
 id = "countdownlatch-await-releases-after-zero"
-fixture = "CountDownLatchAwaitReleasesAfterZero"
+fixture = "TestFixture9"
 kind = "correctness"
 
 [[test]]
 id = "countdownlatch-getcount-decrements-per-call"
-fixture = "CountDownLatchGetCountDecrementsPerCall"
+fixture = "TestFixture10"
 kind = "correctness"
 
 [[test]]
 id = "countdownlatch-timed-await-expires-before-countdown"
-fixture = "CountDownLatchTimedAwaitExpiresBeforeCountDown"
+fixture = "TestFixture11"
 kind = "correctness"
 
 [[test]]
 id = "cyclicbarrier-reset-unblocks-waiters-as-broken"
-fixture = "CyclicBarrierResetUnblocksWaitersAsBroken"
+fixture = "TestFixture12"
 kind = "correctness"
 
 [[test]]
 id = "cyclicbarrier-getparties-reflects-constructor-arg"
-fixture = "CyclicBarrierGetPartiesReflectsConstructorArg"
+fixture = "TestFixture13"
 kind = "correctness"
 
 [[test]]
 id = "semaphore-tryacquire-times-out-when-exhausted"
-fixture = "SemaphoreTryAcquireTimesOutWhenExhausted"
+fixture = "TestFixture14"
 kind = "correctness"
 
 [[test]]
 id = "semaphore-availablepermits-tracks-acquire-release"
-fixture = "SemaphoreAvailablePermitsTracksAcquireRelease"
+fixture = "TestFixture15"
 kind = "correctness"
 
 [[test]]
 id = "semaphore-tryacquire-succeeds-when-permits-available"
-fixture = "SemaphoreTryAcquireSucceedsWhenPermitsAvailable"
+fixture = "TestFixture16"
 kind = "correctness"
 
 [[test]]
 id = "criticalsection-trylock-fails-while-held-by-other-thread"
-fixture = "CriticalSectionTryLockFailsWhileHeldByOtherThread"
+fixture = "TestFixture17"
 kind = "correctness"
 
 [[test]]
 id = "criticalsection-is-recursive-on-same-thread"
-fixture = "CriticalSectionIsRecursiveOnSameThread"
+fixture = "TestFixture18"
 kind = "correctness"
 
 [[test]]
 id = "reentrantlock-holdcount-increments-on-reentry"
-fixture = "ReentrantLockHoldCountIncrementsOnReentry"
+fixture = "TestFixture19"
 kind = "correctness"
 
 [[test]]
 id = "reentrantlock-trylock-timed-fails-when-held-by-other-thread"
-fixture = "ReentrantLockTryLockTimedFailsWhenHeldByOtherThread"
+fixture = "TestFixture20"
 kind = "correctness"
 
 [[test]]
 id = "readwritelock-allows-concurrent-readers"
-fixture = "ReadWriteLockAllowsConcurrentReaders"
+fixture = "TestFixture21"
 kind = "correctness"
 
 [[test]]
 id = "readwritelock-writer-excludes-readers"
-fixture = "ReadWriteLockWriterExcludesReaders"
+fixture = "TestFixture22"
 kind = "correctness"
 
 [[test]]
 id = "readwritelock-writer-excludes-writers"
-fixture = "ReadWriteLockWriterExcludesWriters"
+fixture = "TestFixture23"
 kind = "correctness"
 
 [[test]]
 id = "stampedlock-validate-succeeds-with-no-intervening-writer"
-fixture = "StampedLockValidateSucceedsWithNoInterveningWriter"
+fixture = "TestFixture24"
 kind = "correctness"
 
 [[test]]
 id = "stampedlock-validate-fails-after-intervening-write"
-fixture = "StampedLockValidateFailsAfterInterveningWrite"
+fixture = "TestFixture25"
 kind = "correctness"
 
 [[test]]
 id = "stampedlock-tryconverttowritelock-succeeds-when-uncontended"
-fixture = "StampedLockTryConvertToWriteLockSucceedsWhenUncontended"
+fixture = "TestFixture26"
 kind = "correctness"
 
 [[test]]
 id = "phaser-arriveandawaitadvance-increments-phase"
-fixture = "PhaserArriveAndAwaitAdvanceIncrementsPhase"
+fixture = "TestFixture27"
 kind = "correctness"
 
 [[test]]
 id = "phaser-register-increases-registered-parties"
-fixture = "PhaserRegisterIncreasesRegisteredParties"
+fixture = "TestFixture28"
 kind = "correctness"
 
 [[test]]
 id = "phaser-forcetermination-sets-isterminated"
-fixture = "PhaserForceTerminationSetsIsTerminated"
+fixture = "TestFixture29"
 kind = "correctness"
 
 [[test]]
 id = "condition-signal-wakes-single-awaiting-thread"
-fixture = "ConditionSignalWakesSingleAwaitingThread"
+fixture = "TestFixture30"
 kind = "correctness"
 
 [[test]]
 id = "condition-timed-await-expires-without-signal"
-fixture = "ConditionTimedAwaitExpiresWithoutSignal"
+fixture = "TestFixture31"
 kind = "correctness"
 
 [[test]]
 id = "exchanger-timed-exchange-times-out-with-no-partner"
-fixture = "ExchangerTimedExchangeTimesOutWithNoPartner"
+fixture = "TestFixture32"
 kind = "correctness"
 
 [[test]]
 id = "monotonicclock-now-is-non-decreasing"
-fixture = "MonotonicClockNowIsNonDecreasing"
+fixture = "TestFixture33"
 kind = "correctness"
 
 [[test]]
 id = "interval-arithmetic-add-subtract-round-trips"
-fixture = "IntervalArithmeticAddSubtractRoundTrips"
+fixture = "TestFixture34"
 kind = "correctness"
 
 [[test]]
 id = "interval-conversions-match-nanosecond-basis"
-fixture = "IntervalConversionsMatchNanosecondBasis"
+fixture = "TestFixture35"
 kind = "correctness"
 
 [[test]]
 id = "chrono-udls-produce-expected-nanosecond-counts"
-fixture = "ChronoUDLsProduceExpectedNanosecondCounts"
+fixture = "TestFixture36"
 kind = "correctness"
 
 [[test]]
 id = "chrono-until-produces-future-deadline"
-fixture = "ChronoUntilProducesFutureDeadline"
+fixture = "TestFixture37"
 kind = "correctness"
 
 [[test]]
 id = "instant-isexpired-true-for-past-deadline"
-fixture = "InstantIsExpiredTrueForPastDeadline"
+fixture = "TestFixture38"
 kind = "correctness"
 
 [[test]]
 id = "affinityfactory-createandstart-launches-thread-on-requested-node"
-fixture = "AffinityFactoryCreateAndStartLaunchesThreadOnRequestedNode"
+fixture = "TestFixture39"
 kind = "correctness"
 
 [[test]]
 id = "priorityfactory-createandstart-applies-requested-priority"
-fixture = "PriorityFactoryCreateAndStartAppliesRequestedPriority"
+fixture = "TestFixture40"
 kind = "correctness"
 
 [[test]]
 id = "nativethread-isalive-true-immediately-after-create"
-fixture = "NativeThreadIsAliveTrueImmediatelyAfterCreate"
+fixture = "TestFixture41"
 kind = "correctness"
 
 [[test]]
 id = "nativethread-jointhread-waits-for-completion"
-fixture = "NativeThreadJoinThreadWaitsForCompletion"
+fixture = "TestFixture42"
 kind = "correctness"
 
 [[test]]
 id = "affinityfactory-rejects-mask-outside-node-in-debug"
-fixture = "AffinityFactoryRejectsMaskOutsideNodeInDebug"
+fixture = "TestFixture43"
 kind = "correctness"
 
 
 [[test]]
 id = "framestackdesc-validate-enforces-provenance-rules"
-fixture = "FrameStackDescValidateEnforcesProvenanceRules"
+fixture = "TestFixture44"
 kind = "correctness"
 [[test]]
 id = "atomics-all-widths-are-exact"
-fixture = "AtomicsAllWidthsAreExact"
+fixture = "TestFixture45"
 kind = "correctness"
 
 [[test]]
 id = "frame-yield-and-resume-preserves-state"
-fixture = "FrameYieldAndResumePreservesState"
+fixture = "TestFixture46"
 kind = "correctness"
 
 [[test]]
 id = "frame-run-to-completion-terminates-after-landing"
-fixture = "FrameRunToCompletionTerminatesAfterLanding"
+fixture = "TestFixture47"
 kind = "correctness"
 
 [[test]]
 id = "frame-killframe-wipes-block-and-reads-terminated"
-fixture = "FrameKillframeWipesBlockAndReadsTerminated"
+fixture = "TestFixture48"
 kind = "correctness"
 
 [[test]]
 id = "frame-guard-page-sits-between-header-and-stack"
-fixture = "FrameGuardPageSitsBetweenHeaderAndStack"
+fixture = "TestFixture49"
 kind = "correctness"

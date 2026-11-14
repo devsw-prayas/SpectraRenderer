@@ -1,140 +1,140 @@
 # Hades suite manifest
 [[test]]
 id = "memset-matches-reference-size-sweep"
-fixture = "MemsetMatchesReferenceSizeSweep"
+fixture = "TestFixture1"
 kind = "correctness"
 
 [[test]]
 id = "memset-matches-reference-alignment-sweep"
-fixture = "MemsetMatchesReferenceAlignmentSweep"
+fixture = "TestFixture2"
 kind = "correctness"
 
 [[test]]
 id = "memset-large-streaming-path-matches-reference"
-fixture = "MemsetLargeStreamingPathMatchesReference"
+fixture = "TestFixture3"
 kind = "correctness"
 
 [[test]]
 id = "memset-zero-size-writes-nothing"
-fixture = "MemsetZeroSizeWritesNothing"
+fixture = "TestFixture4"
 kind = "correctness"
 
 [[test]]
 id = "memcopy-matches-reference-size-sweep"
-fixture = "MemcopyMatchesReferenceSizeSweep"
+fixture = "TestFixture5"
 kind = "correctness"
 
 [[test]]
 id = "memcopy-matches-reference-alignment-sweep"
-fixture = "MemcopyMatchesReferenceAlignmentSweep"
+fixture = "TestFixture6"
 kind = "correctness"
 
 [[test]]
 id = "memcopy-large-streaming-path-matches-reference"
-fixture = "MemcopyLargeStreamingPathMatchesReference"
+fixture = "TestFixture7"
 kind = "correctness"
 
 [[test]]
 id = "memcopy-zero-size-writes-nothing"
-fixture = "MemcopyZeroSizeWritesNothing"
+fixture = "TestFixture8"
 kind = "correctness"
 
 [[test]]
 id = "memcopy-does-not-modify-source"
-fixture = "MemcopyDoesNotModifySource"
+fixture = "TestFixture9"
 kind = "correctness"
 
 [[test]]
 id = "memequal-identical-buffers-return-true-size-sweep"
-fixture = "MemequalIdenticalBuffersReturnTrueSizeSweep"
+fixture = "TestFixture10"
 kind = "correctness"
 
 [[test]]
 id = "memequal-single-byte-difference-detected-at-every-position"
-fixture = "MemequalSingleByteDifferenceDetectedAtEveryPosition"
+fixture = "TestFixture11"
 kind = "correctness"
 
 [[test]]
 id = "memcompare-sign-matches-reference-size-sweep"
-fixture = "MemcompareSignMatchesReferenceSizeSweep"
+fixture = "TestFixture12"
 kind = "correctness"
 
 [[test]]
 id = "memcompare-uses-unsigned-byte-ordering"
-fixture = "MemcompareUsesUnsignedByteOrdering"
+fixture = "TestFixture13"
 kind = "correctness"
 
 [[test]]
 id = "memcompare-reports-first-differing-byte"
-fixture = "MemcompareReportsFirstDifferingByte"
+fixture = "TestFixture14"
 kind = "correctness"
 
 [[test]]
 id = "memfindbyte-matches-memchr-size-sweep"
-fixture = "MemfindbyteMatchesMemchrSizeSweep"
+fixture = "TestFixture15"
 kind = "correctness"
 
 [[test]]
 id = "memfindbyte-returns-first-of-multiple-occurrences"
-fixture = "MemfindbyteReturnsFirstOfMultipleOccurrences"
+fixture = "TestFixture16"
 kind = "correctness"
 
 [[test]]
 id = "memfindbyte-alignment-sweep"
-fixture = "MemfindbyteAlignmentSweep"
+fixture = "TestFixture17"
 kind = "correctness"
 
 [[test]]
 id = "memfindbyte-const-and-mutable-overloads-agree"
-fixture = "MemfindbyteConstAndMutableOverloadsAgree"
+fixture = "TestFixture18"
 kind = "correctness"
 
 [[test]]
 id = "memfindbyte-finds-zero-and-0xff-needles"
-fixture = "MemfindbyteFindsZeroAnd0xffNeedles"
+fixture = "TestFixture19"
 kind = "correctness"
 
 [[test]]
 id = "prefetch-calls-do-not-alter-memory"
-fixture = "PrefetchCallsDoNotAlterMemory"
+fixture = "TestFixture20"
 kind = "correctness"
 
 [[test]]
 id = "memset-throughput-l1"
-fixture = "MemsetThroughputL1"
+fixture = "TestFixture21"
 kind = "performance"
 
 [[test]]
 id = "memset-throughput-l2"
-fixture = "MemsetThroughputL2"
+fixture = "TestFixture22"
 kind = "performance"
 
 [[test]]
 id = "memset-throughput-dram"
-fixture = "MemsetThroughputDram"
+fixture = "TestFixture23"
 kind = "performance"
 
 [[test]]
 id = "memcopy-throughput-l1"
-fixture = "MemcopyThroughputL1"
+fixture = "TestFixture24"
 kind = "performance"
 
 [[test]]
 id = "memcopy-throughput-l2"
-fixture = "MemcopyThroughputL2"
+fixture = "TestFixture25"
 kind = "performance"
 
 [[test]]
 id = "memcopy-throughput-dram"
-fixture = "MemcopyThroughputDram"
+fixture = "TestFixture26"
 kind = "performance"
 
 [[test]]
 id = "memequal-throughput-l2"
-fixture = "MemequalThroughputL2"
+fixture = "TestFixture27"
 kind = "performance"
 
 [[test]]
 id = "memfindbyte-throughput-l2"
-fixture = "MemfindbyteThroughputL2"
+fixture = "TestFixture28"
 kind = "performance"

@@ -1,136 +1,136 @@
 # Hades suite manifest
 [[test]]
 id = "destroy-epoch-atomicity-race"
-fixture = "DestroyEpochAtomicityRace"
+fixture = "TestFixture1"
 kind = "correctness"
 
 [[test]]
 id = "nodefor-rejects-cross-region-handle"
-fixture = "NodeForRejectsCrossRegionHandle"
+fixture = "TestFixture2"
 kind = "correctness"
 
 [[test]]
 id = "allocatenode-exhausts-capacity-despite-dead"
-fixture = "AllocateNodeExhaustsCapacityDespiteDeadSlots"
+fixture = "TestFixture3"
 kind = "correctness"
 
 [[test]]
 id = "region-allocate-construct-destroy-basic"
-fixture = "RegionAllocateConstructDestroyBasic"
+fixture = "TestFixture4"
 kind = "correctness"
 
 [[test]]
 id = "region-allocate-zero-count-fails"
-fixture = "RegionAllocateZeroCountFails"
+fixture = "TestFixture5"
 kind = "correctness"
 
 [[test]]
 id = "region-allocate-size-overflow-rejected"
-fixture = "RegionAllocateSizeOverflowRejected"
+fixture = "TestFixture6"
 kind = "correctness"
 
 [[test]]
 id = "region-construct-rejects-misaligned-handle"
-fixture = "RegionConstructRejectsMisalignedHandle"
+fixture = "TestFixture7"
 kind = "correctness"
 
 [[test]]
 id = "region-destroy-double-free-detected"
-fixture = "RegionDestroyDoubleFreeDetected"
+fixture = "TestFixture8"
 kind = "correctness"
 
 [[test]]
 id = "region-destroy-wrong-thread-strict-policy"
-fixture = "RegionDestroyWrongThreadStrictPolicy"
+fixture = "TestFixture9"
 kind = "correctness"
 
 [[test]]
 id = "region-leak-assert-on-unfreed"
-fixture = "RegionLeakAssertOnUnfreedAllocation"
+fixture = "TestFixture10"
 kind = "correctness"
 
 [[test]]
 id = "region-oob-allocation-rejected"
-fixture = "RegionOutOfBoundsAllocationRejected"
+fixture = "TestFixture11"
 kind = "correctness"
 
 [[test]]
 id = "region-layout-aliases-compile"
-fixture = "RegionNormalEnhancedStaticLayoutAliasesCompile"
+fixture = "TestFixture12"
 kind = "correctness"
 
 [[test]]
 id = "shadowedmemory-operator-plus-negative-offset-rejected"
-fixture = "ShadowedMemoryOperatorPlusNegativeOffsetRejected"
+fixture = "TestFixture13"
 kind = "correctness"
 
 [[test]]
 id = "shadowedmemory-operator-plus-inbounds-succeeds"
-fixture = "ShadowedMemoryOperatorPlusInBoundsSucceeds"
+fixture = "TestFixture14"
 kind = "correctness"
 
 [[test]]
 id = "shadowedmemory-uaf-traps-on-access"
-fixture = "ShadowedMemoryUseAfterFreeTrapsOnAccess"
+fixture = "TestFixture15"
 kind = "correctness"
 
 [[test]]
 id = "shadowedmemory-equality-compares-generation"
-fixture = "ShadowedMemoryEqualityComparesGenerationNotJustAddress"
+fixture = "TestFixture16"
 kind = "correctness"
 
 [[test]]
 id = "shadowstateof-detects-lifecycle-states"
-fixture = "ShadowStateOfDetectsUninitializedConstructedDestroyed"
+fixture = "TestFixture17"
 kind = "correctness"
 
 [[test]]
 id = "quarantine-enqueue-flusheligible-roundtrip"
-fixture = "QuarantineEnqueueFlushEligibleRoundTrip"
+fixture = "TestFixture18"
 kind = "correctness"
 
 [[test]]
 id = "quarantine-flush-respects-epoch-window"
-fixture = "QuarantineFlushEligibleRespectsEpochWindow"
+fixture = "TestFixture19"
 kind = "correctness"
 
 [[test]]
 id = "quarantine-saturation-fail-fast"
-fixture = "QuarantineSaturationTriggersFailFast"
+fixture = "TestFixture20"
 kind = "correctness"
 
 [[test]]
 id = "quarantine-enqueue-throughput"
-fixture = "QuarantineEnqueueThroughput"
+fixture = "TestFixture21"
 kind = "performance"
 
 [[test]]
 id = "drainthread-advances-epoch-automatically"
-fixture = "DrainThreadAdvancesEpochAutomatically"
+fixture = "TestFixture22"
 kind = "correctness"
 
 [[test]]
 id = "drainthread-auto-flushes-without-force"
-fixture = "DrainThreadAutoFlushesQuarantinedBlockWithoutForce"
+fixture = "TestFixture23"
 kind = "correctness"
 
 [[test]]
 id = "teardown-joins-drain-thread-cleanly"
-fixture = "TeardownShadowzoneJoinsDrainThreadCleanly"
+fixture = "TestFixture24"
 kind = "correctness"
 
 [[test]]
 id = "violation-stack-pop-empty"
-fixture = "ViolationStackPopReturnsFalseWhenEmpty"
+fixture = "TestFixture25"
 kind = "correctness"
 
 [[test]]
 id = "violation-stack-lifo-overflow-eviction"
-fixture = "ViolationStackLIFOOrderingAndOverflowEviction"
+fixture = "TestFixture26"
 kind = "correctness"
 
 [[test]]
 id = "violation-stack-is-per-thread"
-fixture = "ViolationStackIsPerThread"
+fixture = "TestFixture27"
 kind = "correctness"
 
