@@ -19,5 +19,4 @@
 #  define BOOTSTRAP_API __declspec(dllimport)
 #endif
 
-// Scratch entry: the launcher calls this on its own thread with --bootstrap, after every subsystem has booted.
 BOOTSTRAP_API int bootstrapRun();
