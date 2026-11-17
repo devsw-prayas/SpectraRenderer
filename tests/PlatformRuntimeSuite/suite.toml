@@ -1,0 +1,66 @@
+# Hades suite manifest
+[[test]]
+id = "chrono-clocks-advance-and-durations-convert"
+fixture = "TestFixture1"
+kind = "correctness"
+
+[[test]]
+id = "memory-alignment-helpers-round-and-detect"
+fixture = "TestFixture2"
+kind = "correctness"
+
+[[test]]
+id = "memory-reserve-commit-decommit-release-round-trip"
+fixture = "TestFixture3"
+kind = "correctness"
+
+[[test]]
+id = "memory-info-and-capabilities-are-sane"
+fixture = "TestFixture4"
+kind = "correctness"
+
+[[test]]
+id = "thread-create-join-and-isalive"
+fixture = "TestFixture5"
+kind = "correctness"
+
+[[test]]
+id = "thread-suspend-resume-and-priority-round-trip"
+fixture = "TestFixture6"
+kind = "correctness"
+
+[[test]]
+id = "thread-park-wakes-on-wake-and-times-out-without"
+fixture = "TestFixture7"
+kind = "correctness"
+
+[[test]]
+id = "files-directories-create-enumerate-and-remove-tree"
+fixture = "TestFixture8"
+kind = "correctness"
+
+[[test]]
+id = "files-native-write-read-size-round-trip"
+fixture = "TestFixture9"
+kind = "correctness"
+
+[[test]]
+id = "files-rename-copy-stat-and-delete"
+fixture = "TestFixture10"
+kind = "correctness"
+
+[[test]]
+id = "environment-cpu-os-and-process-queries-are-sane"
+fixture = "TestFixture11"
+kind = "correctness"
+
+[[test]]
+id = "environment-variable-set-get-round-trip"
+fixture = "TestFixture12"
+kind = "correctness"
+
+[[test]]
+id = "atomics-ops-return-expected-values-and-stay-exact-across-threads"
+fixture = "TestFixture13"
+kind = "correctness"
+
