@@ -1,0 +1,21 @@
+# Hades suite manifest
+[[test]]
+id = "heap-allocate-free-stress-keeps-contents-and-structure"
+fixture = "TestFixture1"
+kind = "correctness"
+
+[[test]]
+id = "heap-cross-thread-frees-stay-consistent"
+fixture = "TestFixture2"
+kind = "correctness"
+
+[[test]]
+id = "heap-trim-shrinks-pool-after-transient-load"
+fixture = "TestFixture3"
+kind = "correctness"
+
+[[test]]
+id = "arenas-reject-bad-input-and-decommit-on-reset-unwind-trim"
+fixture = "TestFixture4"
+kind = "correctness"
+
