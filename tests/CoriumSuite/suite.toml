@@ -279,3 +279,18 @@ id = "phaser-forcetermination-wakes-awaiting-thread"
 fixture = "TestFixture56"
 kind = "correctness"
 
+[[test]]
+id = "cyclicbarrier-stays-broken-until-reset"
+fixture = "TestFixture57"
+kind = "correctness"
+
+[[test]]
+id = "cyclicbarrier-await-returns-arrival-index"
+fixture = "TestFixture58"
+kind = "correctness"
+
+[[test]]
+id = "exchanger-untimed-exchange-needs-no-default-constructor"
+fixture = "TestFixture59"
+kind = "correctness"
+

@@ -20,6 +20,7 @@ private:
 	Corium::Core::Factory::DefaultThreadFactory m_factory{};
 	Corium::Core::ThreadHandle m_t1{};
 	bool m_joinSuccess{ false };
+	uint32_t m_awaitResult{ 0 };
 
 public:
 	explicit TestFixture12(Hades::Runtime::NullDeviceAdapter& ro_Adapter) noexcept
@@ -37,7 +38,7 @@ public:
 	void executeImpl() noexcept {
 		m_t1 = m_factory.createAndStart(Corium::Core::makeClosure<void()>([this]() {
 			m_threadStarted.store(true, Corium::Core::Atomics::MemoryOrder::RELEASE);
-			m_barrier.await();
+			m_awaitResult = m_barrier.await();
 			m_threadReturned.store(true, Corium::Core::Atomics::MemoryOrder::RELEASE);
 		}), "BarrierResetWaitThread");
 
@@ -55,7 +56,8 @@ public:
 
 		CORIUM_ASSERT(m_joinSuccess);
 		CORIUM_ASSERT(m_threadReturned.load(Corium::Core::Atomics::MemoryOrder::ACQUIRE));
-		CORIUM_ASSERT(m_barrier.isBroken());
+		CORIUM_ASSERT(m_awaitResult == Corium::Runtime::Sync::CyclicBarrier::BROKEN);
+		CORIUM_ASSERT(!m_barrier.isBroken());
 	}
 
 	void resetImpl(Hades::Runtime::NullDeviceAdapter& ro_Adapter) noexcept {
