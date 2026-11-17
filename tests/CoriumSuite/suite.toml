@@ -294,3 +294,28 @@ id = "exchanger-untimed-exchange-needs-no-default-constructor"
 fixture = "TestFixture59"
 kind = "correctness"
 
+[[test]]
+id = "frame-native-context-binds-on-attach-and-not-on-raw-threads"
+fixture = "TestFixture60"
+kind = "correctness"
+
+[[test]]
+id = "thread-attach-detach-adopts-foreign-threads-and-reuses-slots"
+fixture = "TestFixture61"
+kind = "correctness"
+
+[[test]]
+id = "frame-migrates-from-thread-a-to-thread-b-with-stack-intact"
+fixture = "TestFixture62"
+kind = "correctness"
+
+[[test]]
+id = "frame-createframe-keeps-named-and-temporary-closures-alive"
+fixture = "TestFixture63"
+kind = "correctness"
+
+[[test]]
+id = "frame-exceptions-and-stack-walks-work-inside-a-frame"
+fixture = "TestFixture64"
+kind = "correctness"
+
