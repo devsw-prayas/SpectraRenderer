@@ -244,3 +244,38 @@ kind = "correctness"
 id = "frame-guard-page-sits-between-header-and-stack"
 fixture = "TestFixture49"
 kind = "correctness"
+[[test]]
+id = "semaphore-back-to-back-releases-wake-every-waiter"
+fixture = "TestFixture50"
+kind = "correctness"
+
+[[test]]
+id = "exchanger-pair-swaps-every-round"
+fixture = "TestFixture51"
+kind = "correctness"
+
+[[test]]
+id = "exchanger-timed-exchange-returns-value-on-timeout"
+fixture = "TestFixture52"
+kind = "correctness"
+
+[[test]]
+id = "countdownlatch-timed-await-parks-instead-of-spinning"
+fixture = "TestFixture53"
+kind = "correctness"
+
+[[test]]
+id = "cyclicbarrier-timed-await-parks-instead-of-spinning"
+fixture = "TestFixture54"
+kind = "correctness"
+
+[[test]]
+id = "cyclicbarrier-timeout-break-releases-untimed-waiter"
+fixture = "TestFixture55"
+kind = "correctness"
+
+[[test]]
+id = "phaser-forcetermination-wakes-awaiting-thread"
+fixture = "TestFixture56"
+kind = "correctness"
+
