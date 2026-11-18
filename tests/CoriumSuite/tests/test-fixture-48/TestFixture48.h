@@ -55,7 +55,9 @@ private:
 		const auto* base = reinterpret_cast<const uint8_t*>(frame);
 		const size_t blockSize = frame->m_StackSize;
 
-		NativeFrame::killFrame(frame);
+		FRAME_KILL_CHECK(NativeFrame::killFrame(frame));
+		// A second kill on the now-TERMINATED blank must refuse instead of re-wiping.
+		FRAME_KILL_CHECK(!NativeFrame::killFrame(frame));
 
 		size_t blockNonzero = 0;
 		for (size_t i = sizeof(Frame::FrameHandle); i < blockSize; ++i) blockNonzero += base[i] != 0;
