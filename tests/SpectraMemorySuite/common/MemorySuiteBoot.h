@@ -11,7 +11,8 @@ namespace MemorySuite {
 	inline bool boot() noexcept {
 		static const bool s_Booted = Spectra::Instrumentation::Internal::init()
 			&& Spectra::Memory::Internal::init()
-			&& (Corium::CoriumRuntime::initRuntime(), true);
+			&& (Corium::CoriumRuntime::initRuntime(), true)
+			&& (Spectra::Memory::Heap::HeapRegistry::init(), true);
 		return s_Booted;
 	}
 

@@ -52,7 +52,6 @@ public:
 
 	void startupImpl() noexcept {
 		CORIUM_ASSERT(MemorySuite::boot());
-		Spectra::Memory::Heap::HeapRegistry::init();
 	}
 
 	void executeImpl() noexcept {
