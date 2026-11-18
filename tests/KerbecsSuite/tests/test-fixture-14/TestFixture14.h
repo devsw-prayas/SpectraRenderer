@@ -52,8 +52,11 @@ public:
 		m_OutOfBoundsHandle = m_Handle + 8;
 		KERBECS_ASSERT(!static_cast<bool>(m_OutOfBoundsHandle) && "handle + 8 did not return null handle for out-of-bounds offset");
 
-		m_DestroySuccess = m_Region->destroy(m_Handle);
-		KERBECS_ASSERT(m_DestroySuccess && "Destroy failed");
+		// An array counts one live object per element; ~Region() traps on any left over.
+		for (int i = 0; i < 8; ++i) {
+			m_DestroySuccess = m_Region->destroy(m_Handle + i);
+			KERBECS_ASSERT(m_DestroySuccess && "Destroy failed");
+		}
 	}
 
 	void resetImpl(Hades::Runtime::NullDeviceAdapter& ro_Adapter) noexcept {

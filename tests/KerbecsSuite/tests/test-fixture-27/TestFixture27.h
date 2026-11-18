@@ -38,6 +38,9 @@ public:
 			while (!m_ThreadBTested.load(std::memory_order_acquire)) {
 				std::this_thread::yield();
 			}
+
+			// The stack is thread-local, so only thread A can pop its own violation.
+			m_ThreadAPopped = Kerbecs::popViolation(m_OutA);
 		});
 
 		std::thread threadB([&]() {
@@ -55,8 +58,6 @@ public:
 		// Thread B should not have popped the violation pushed by Thread A
 		KERBECS_ASSERT(!m_ThreadBPopped);
 
-		// Thread A should be able to pop its own violation
-		m_ThreadAPopped = Kerbecs::popViolation(m_OutA);
 		KERBECS_ASSERT(m_ThreadAPopped);
 		KERBECS_ASSERT(m_OutA.m_Kind == Kerbecs::ViolationKind::DoubleFree);
 		KERBECS_ASSERT(m_OutA.m_Address == reinterpret_cast<void*>(0x1234));

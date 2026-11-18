@@ -45,6 +45,9 @@ public:
 		m_DestroySuccess = m_Region->destroy(m_OldHandle);
 		KERBECS_ASSERT(m_DestroySuccess && "Destroy oldHandle failed");
 
+		// The registry refuses a block base still in quarantine; retire it to Dead first.
+		Kerbecs::Runtime::quarantine().flushEligible(SIZE_MAX, true);
+
 		// Reset/re-init the allocator so subsequent allocations reuse the same backing address offset
 		m_Allocator.init(m_BackingBuffer.data(), m_RegionSize);
 
@@ -63,6 +66,9 @@ public:
 				m_FoundMatchingAddress = true;
 				break;
 			}
+
+			// Non-matching probes would otherwise leak and trap ~Region().
+			KERBECS_ASSERT(m_Region->destroy(m_CurrentHandle) && "Destroy of probe handle failed");
 		}
 
 		KERBECS_ASSERT(m_FoundMatchingAddress && "Failed to obtain a handle reusing the same payload address");
@@ -72,6 +78,8 @@ public:
 		// operator== must evaluate to false, and operator!= to true.
 		KERBECS_ASSERT(!(m_OldHandle == m_NewHandle) && "ShadowedMemory equality returned true for handles with different generations");
 		KERBECS_ASSERT(m_OldHandle != m_NewHandle && "ShadowedMemory inequality returned false for handles with different generations");
+
+		KERBECS_ASSERT(m_Region->destroy(m_NewHandle) && "Destroy of reused handle failed");
 	}
 
 	void resetImpl(Hades::Runtime::NullDeviceAdapter& ro_Adapter) noexcept {

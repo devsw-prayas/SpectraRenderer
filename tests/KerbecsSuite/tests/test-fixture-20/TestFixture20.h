@@ -4,10 +4,26 @@
 #include <HadesChrono.h>
 #include <HadesHash.h>
 #include <AllocationRegistry.h>
+#include <KerbecsCompiler.h>
 #include <KerbecsDiagnostics.h>
 #include <KerbecsStats.h>
 #include <QuarantineQueue.h>
 #include <cstdint>
+
+#if defined(_MSC_VER)
+// Saturation is fail-fast (KERBECS_TRAP then abort); catching the trap stops it before abort.
+KERBECS_NOINLINE static bool triggerAndCatchSaturation(
+	Kerbecs::Quarantine::QuarantineQueue* p_Queue, void* p_Block, uint64_t v_Epoch, void* p_Allocator,
+	void (*p_Thunk)(void*, void*, size_t), Kerbecs::Tracing::AllocationRegistry* p_Registry) noexcept {
+	__try {
+		(void)p_Queue->enqueue(p_Block, sizeof(int), v_Epoch, p_Allocator, p_Thunk, p_Registry);
+		return false;
+	}
+	__except (1) {
+		return true;
+	}
+}
+#endif
 
 class TestFixture20 final
 	: public Hades::Runtime::IFixture<TestFixture20, Hades::Runtime::NullDeviceAdapter> {
@@ -42,17 +58,10 @@ public:
 		KERBECS_ASSERT(m_Queue.full() && "Queue should be full after capacity enqueues");
 		KERBECS_ASSERT(m_Queue.depth() == m_Capacity && "Queue depth should equal capacity");
 
-		m_OverflowOk = m_Queue.enqueue(
-			&m_OverflowBlock,
-			sizeof(int),
-			m_Epoch,
-			this,
-			m_DummyThunk,
-			&m_DummyRegistry
-		);
-		KERBECS_ASSERT(!m_OverflowOk && "Enqueue beyond capacity should fail when queue is saturated");
-		KERBECS_ASSERT(m_Queue.full() && "Queue should remain full after rejected over-capacity enqueue");
-		KERBECS_ASSERT(m_Queue.depth() == m_Capacity && "Queue depth should remain at capacity after rejected over-capacity enqueue");
+#if defined(_MSC_VER)
+		m_OverflowTrapped = triggerAndCatchSaturation(&m_Queue, &m_OverflowBlock, m_Epoch, this, m_DummyThunk, &m_DummyRegistry);
+		KERBECS_ASSERT(m_OverflowTrapped && "Enqueue beyond capacity should trap (fail-fast)");
+#endif
 
 		m_Queue.shutdown();
 	}
@@ -78,7 +87,7 @@ private:
 	int m_DummyBlocks[m_Capacity]{};
 	int m_OverflowBlock{ 999 };
 	bool m_Ok{ false };
-	bool m_OverflowOk{ false };
+	bool m_OverflowTrapped{ false };
 
 	static inline auto m_DummyThunk = [](void* p_Allocator, void* p_BlockBase, size_t v_BlockSize) {
 		KERBECS_UNUSED(p_Allocator);

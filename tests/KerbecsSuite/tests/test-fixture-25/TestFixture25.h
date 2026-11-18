@@ -14,6 +14,10 @@ public:
 	}
 
 	void startupImpl() noexcept {
+		// Earlier fixtures leave violations on this thread's stack; start from empty.
+		Kerbecs::Violation l_drain{};
+		while (Kerbecs::popViolation(l_drain)) {}
+
 		m_Out = Kerbecs::Violation{};
 		m_Out.m_Kind = Kerbecs::ViolationKind::DoubleFree;
 		m_Out.m_Address = reinterpret_cast<void*>(0xDEADBEEF);

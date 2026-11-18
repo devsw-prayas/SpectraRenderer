@@ -57,6 +57,10 @@ public:
 
 		KERBECS_ASSERT(m_Popped && "Expected a violation to be pushed on negative offset in operator+");
 		KERBECS_ASSERT(m_Violation.m_Kind == Kerbecs::ViolationKind::BufferOverflow && "Popped violation kind should be BufferOverflow");
+
+		// ~Region() traps on live allocations; an array counts one live object per element.
+		for (size_t i = 0; i < m_Count; ++i)
+			KERBECS_ASSERT(m_Region->destroy(m_Handle + static_cast<ptrdiff_t>(i)) && "Cleanup destroy failed");
 	}
 
 	void resetImpl(Hades::Runtime::NullDeviceAdapter& ro_Adapter) noexcept {

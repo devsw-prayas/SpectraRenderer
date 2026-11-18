@@ -97,16 +97,16 @@ public:
 		m_Seconds = m_DurationMs.count() / 1000.0;
 		m_RateOpsPerSec = (m_Seconds > 0.0) ? (static_cast<double>(m_TotalEnqueued) / m_Seconds) : 0.0;
 		KERBECS_UNUSED(m_RateOpsPerSec);
-
-		m_DummyRegistry.shutdown();
-		m_Queue.shutdown();
 	}
 
 	void resetImpl(Hades::Runtime::NullDeviceAdapter& ro_Adapter) noexcept {
 		(void)ro_Adapter;
 	}
 
+	// Performance fixtures run executeImpl repeatedly; shutting down there starved later slices.
 	void teardownImpl() noexcept {
+		m_DummyRegistry.shutdown();
+		m_Queue.shutdown();
 	}
 
 	uint64_t getDeterminismHashImpl() noexcept {
@@ -115,7 +115,8 @@ public:
 
 private:
 	static constexpr size_t m_Capacity{ 65536 };
-	static constexpr size_t m_EnqueuesPerThread{ 25000 };
+	// Saturation is fail-fast, so total enqueues (up to 8 producers) must fit capacity.
+	static constexpr size_t m_EnqueuesPerThread{ m_Capacity / 8 };
 	Kerbecs::Quarantine::QuarantineQueue m_Queue;
 	Kerbecs::KerbecsStats m_Stats{};
 	Kerbecs::Tracing::AllocationRegistry m_DummyRegistry{ 256 };
