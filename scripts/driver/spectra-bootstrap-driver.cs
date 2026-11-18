@@ -64,8 +64,9 @@ void PrintUsage()
     Console.WriteLine("  exec-gen                                               Regenerate <Module>.generated.h from config/spectra-err.json + spectra-exec.json (also runs automatically inside cmake-init)");
     Console.WriteLine("  build -c <Configuration> [-t <Target>] [-clangcl]      cmake --build (optionally a single target/submodule; -clangcl: build the clang-cl tree)");
     Console.WriteLine("  rebuild -c <Configuration> [-t <Target>] [-clangcl]    cmake --build --clean-first (optionally a single target/submodule; -clangcl: rebuild the clang-cl tree)");
-    Console.WriteLine("  run -c <Configuration> [-clangcl]                      Launch the configured run target (-clangcl: from the clang-cl tree)");
-    Console.WriteLine("  test [-c <Configuration>] [--fbt=<pattern>] [-ls]     Run every Hades suite listed in tests/test.config (-ls: list suites/tests instead)");
+    Console.WriteLine("  run -c <Configuration> [-clangcl] [--cdb]              Launch the configured run target (-clangcl: from the clang-cl tree, --cdb: under cdb, see below)");
+    Console.WriteLine("  test [-c <Configuration>] [--fbt=<pattern>] [-ls] [--cdb]   Run every Hades suite listed in tests/test.config (-ls: list suites/tests instead)");
+    Console.WriteLine("        --cdb: run under cdb; a crash prints faulting + all-thread stacks and writes crashes/<target>-<time>/{cdb.log,crash.dmp}");
     Console.WriteLine("  hades [-c <Configuration>] <args...>                   Passthrough to Hades-Driver.exe (init-suite/find-suite/new-test/run/validate/...)");
     Console.WriteLine("  filters list                                           List gitFilters from config.json and whether each is enabled locally");
     Console.WriteLine("  filters enable <name>                                  Configure the named filter's clean/smudge commands for its appliesTo submodule(s)");
@@ -212,6 +213,13 @@ int RunTarget(string p_RootDir, Config p_Config, string[] p_Rest)
     {
         Console.WriteLine($"[ERROR] {exePath} not found. Build configuration '{cfg}' first.");
         return 1;
+    }
+
+    if (p_Rest.Contains("--cdb"))
+    {
+        var cdb = ResolveCdb(p_Config);
+        if (cdb is null) return 1;
+        return RunUnderCdb(p_RootDir, p_Config, cdb, exePath, [], Path.GetDirectoryName(exePath)!, p_Config.RunTarget);
     }
 
     Console.WriteLine($"[INFO] Launching {exePath}...");
@@ -589,8 +597,16 @@ int TestSuites(string p_RootDir, Config p_Config, string[] p_Rest)
         return 1;
     }
 
-    var fbt = GetFlagValue(p_Rest, "--fbt");
+    // "--fbt=x" is a single token, so GetFlagValue (which wants "--fbt x") never saw it.
+    var fbt = GetFlagValue(p_Rest, "--fbt") ?? p_Rest.FirstOrDefault(a => a.StartsWith("--fbt="))?["--fbt=".Length..];
     var runArgs = "run" + (fbt is null ? "" : $" --fbt={fbt}");
+
+    string? cdb = null;
+    if (p_Rest.Contains("--cdb"))
+    {
+        cdb = ResolveCdb(p_Config);
+        if (cdb is null) return 1;
+    }
 
     var failures = new List<string>();
     foreach (var suiteName in suiteNames)
@@ -604,7 +620,35 @@ int TestSuites(string p_RootDir, Config p_Config, string[] p_Rest)
         }
 
         Console.WriteLine($"[INFO] === {suiteName} ===");
-        if (RunAt(hadesDriverExe, "find-suite .", suiteDir) != 0 || RunAt(hadesDriverExe, runArgs, suiteDir) != 0)
+        if (RunAt(hadesDriverExe, "find-suite .", suiteDir) != 0)
+        {
+            failures.Add(suiteName);
+            continue;
+        }
+
+        if (cdb is null)
+        {
+            if (RunAt(hadesDriverExe, runArgs, suiteDir) != 0) failures.Add(suiteName);
+            continue;
+        }
+
+        // Hades has no build-only mode, so regenerate + build by running with a filter that matches nothing
+        // (exit code then reflects the build alone), and launch the built suite under cdb directly.
+        var suiteCfg = p_Config.HadesSuiteBuildConfig;
+        if (RunAt(hadesDriverExe, $"run --config={suiteCfg} --fbt={p_Config.HadesBuildOnlyFilter}", suiteDir) != 0)
+        {
+            failures.Add(suiteName);
+            continue;
+        }
+        var suiteExe = Path.Combine(suiteDir, "generated", "build", suiteCfg, suiteName + ".exe");
+        if (!File.Exists(suiteExe))
+        {
+            Console.WriteLine($"[ERROR] {suiteExe} not found after build.");
+            failures.Add(suiteName);
+            continue;
+        }
+        string[] suiteArgs = fbt is null ? ["--format=console"] : [$"--fbt={fbt}", "--format=console"];
+        if (RunUnderCdb(p_RootDir, p_Config, cdb, suiteExe, suiteArgs, suiteDir, suiteName) != 0)
             failures.Add(suiteName);
     }
 
@@ -658,6 +702,101 @@ List<string> ExtractTestIds(string[] p_Lines)
         ids.Add(line[(eq + 1)..].Trim().Trim('"'));
     }
     return ids;
+}
+
+// cdb (--cdb on run/test)
+
+// The WinDbg Store app keeps cdb in a versioned WindowsApps folder, so it's resolved through the package
+// unless config.json pins an explicit cdbPath.
+string? ResolveCdb(Config p_Config)
+{
+    if (p_Config.CdbPath.Length > 0)
+    {
+        if (File.Exists(p_Config.CdbPath)) return p_Config.CdbPath;
+        Console.WriteLine($"[ERROR] cdbPath '{p_Config.CdbPath}' from config.json does not exist.");
+        return null;
+    }
+
+    var location = RunCapture("powershell", $"-NoProfile -Command \"(Get-AppxPackage -Name {p_Config.CdbAppxPackage}).InstallLocation\"").Trim();
+    var candidate = location.Length > 0 ? Path.Combine(location, p_Config.CdbArch, "cdb.exe") : "";
+    if (candidate.Length > 0 && File.Exists(candidate)) return candidate;
+
+    Console.WriteLine($"[ERROR] cdb not found: no '{p_Config.CdbAppxPackage}' package with {p_Config.CdbArch}\\cdb.exe. Install WinDbg or set cdbPath in config.json.");
+    return null;
+}
+
+// Runs p_Exe under cdb. A crash (second-chance exception, fast-fail, break instruction) prints the faulting stack,
+// every thread's stack and writes a full dump into <crashDir>/<label>-<timestamp>/; a clean run passes the exit code through.
+int RunUnderCdb(string p_RootDir, Config p_Config, string p_Cdb, string p_Exe, string[] p_Args, string p_WorkingDirectory, string p_Label)
+{
+    var crashDir = Path.Combine(p_RootDir, p_Config.CrashDir, $"{p_Label}-{DateTime.Now:yyyyMMdd-HHmmss}");
+    Directory.CreateDirectory(crashDir);
+    var logPath = Path.Combine(crashDir, "cdb.log");
+    var scriptPath = Path.Combine(crashDir, "script.cdb");
+    // cdb treats '\' as an escape inside quoted command strings; Windows takes '/' fine.
+    var dumpPath = Path.Combine(crashDir, "crash.dmp").Replace('\\', '/');
+
+    const string CRASH_MARK = "SPECTRA_CRASH";
+    const string EXIT_MARK = "SPECTRA_EXIT";
+    var onCrash = $".echo {CRASH_MARK};.lastevent;.ecxr;kP 64;~*kb 64;lm;.dump /o /ma \\\"{dumpPath}\\\";q";
+    var script = new List<string> { $"sxd -c2 \"{onCrash}\" *" };
+    // '*' doesn't cover codes with their own filter (sov, eh) nor fast-fail / heap corruption.
+    foreach (var code in new[] { "av", "sov", "eh", "c0000409", "c0000374" })
+        script.Add($"sxd -c2 \"{onCrash}\" {code}");
+    script.Add($"sxe -c \"{onCrash}\" bpe");
+    script.Add($"sxe -c \".echo {EXIT_MARK};.lastevent;q\" epr");
+    script.Add("sxi ld");
+    script.Add("g");
+    File.WriteAllLines(scriptPath, script);
+
+    var psi = new ProcessStartInfo(p_Cdb)
+    {
+        UseShellExecute = false,
+        RedirectStandardOutput = true,
+        RedirectStandardError = true,
+        WorkingDirectory = p_WorkingDirectory
+    };
+    foreach (var a in new[] { "-lines", "-logo", logPath, "-cf", scriptPath, p_Exe }.Concat(p_Args)) psi.ArgumentList.Add(a);
+
+    Console.WriteLine($"[INFO] Launching {p_Exe} under cdb (log: {logPath})...");
+    bool crashed = false, afterGo = false;
+    int? exitCode = null;
+    using var process = Process.Start(psi)!;
+    void OnLine(string? l_Line)
+    {
+        if (l_Line is null) return;
+        // The script is echoed before 'g'; after it, only debugger chatter needs filtering until a crash report starts.
+        var trimmed = l_Line.TrimStart();
+        if (trimmed.EndsWith("> g")) { afterGo = true; return; }
+        // Exact match: the marker also appears inside cdb's echo of the script lines.
+        if (trimmed == CRASH_MARK) { crashed = true; Console.WriteLine("[ERROR] ---- crash captured by cdb ----"); return; }
+        if (trimmed == EXIT_MARK) return;
+        var m = System.Text.RegularExpressions.Regex.Match(l_Line, @"Exit process [^,]+, code ([0-9a-fA-F]+)");
+        if (m.Success && !crashed) { exitCode = Convert.ToInt32(m.Groups[1].Value, 16); return; }
+        if (crashed) { if (!trimmed.StartsWith("NatVis script")) Console.WriteLine(l_Line); return; }
+        if (!afterGo || trimmed.StartsWith("ModLoad:") || trimmed.StartsWith("NatVis script") || trimmed.StartsWith("0:0")
+            || trimmed.StartsWith("quit:") || trimmed.StartsWith("debugger time:")) return;
+        Console.WriteLine(l_Line);
+    }
+    process.OutputDataReceived += (_, e) => OnLine(e.Data);
+    process.ErrorDataReceived += (_, e) => OnLine(e.Data);
+    process.BeginOutputReadLine();
+    process.BeginErrorReadLine();
+    process.WaitForExit();
+
+    if (crashed)
+    {
+        Console.WriteLine($"[ERROR] {p_Label} crashed. Dump + log: {crashDir}");
+        return 1;
+    }
+    // Nothing worth keeping from a clean run.
+    try { Directory.Delete(crashDir, true); } catch (IOException) { }
+    if (exitCode is null)
+    {
+        Console.WriteLine($"[ERROR] cdb ended without reporting {p_Label}'s exit (cdb exit {process.ExitCode}).");
+        return 1;
+    }
+    return exitCode.Value;
 }
 
 int RunAt(string p_Exe, string p_Arguments, string p_WorkingDirectory)
@@ -1758,6 +1897,12 @@ Config LoadConfig(string p_RootDir)
         GetString("testsDir"),
         GetString("testConfigFile"),
         GetString("hadesDriverTarget"),
+        GetString("hadesSuiteBuildConfig"),
+        GetString("hadesBuildOnlyFilter"),
+        GetString("cdbPath"),
+        GetString("cdbAppxPackage"),
+        GetString("cdbArch"),
+        GetString("crashDir"),
         GetString("srcDir"),
         GetString("configDir"),
         GetString("errCodesFile"),
@@ -1798,6 +1943,12 @@ record Config(
     string TestsDir,
     string TestConfigFile,
     string HadesDriverTarget,
+    string HadesSuiteBuildConfig,
+    string HadesBuildOnlyFilter,
+    string CdbPath,
+    string CdbAppxPackage,
+    string CdbArch,
+    string CrashDir,
     string SrcDir,
     string ConfigDir,
     string ErrCodesFile,

@@ -96,3 +96,6 @@ tests/*/generated/
 # Claude
 .claude/
 .production/
+
+# driver --cdb crash captures (dumps + logs)
+/crashes/

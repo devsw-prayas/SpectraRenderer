@@ -103,6 +103,8 @@ cmake --build . --config Release_win64
 
 Build outputs land in `bin/<config>/`. The pre-generated `Spectra.sln` can also be opened directly in Visual Studio. `driver.bat run -c <Configuration>` launches the built binary directly.
 
+Add `--cdb` to `run` or `test` to launch under cdb (WinDbg's console debugger, resolved from the WinDbg Store app or `cdbPath` in `scripts/driver/config/config.json`). On a crash it prints the faulting and all-thread stacks and writes `crashes/<target>-<time>/{cdb.log,crash.dmp}` (git-ignored); a clean run passes the exit code through and leaves nothing behind.
+
 ### Bootstrap Driver
 
 `driver.bat` is a standalone dev-convenience CLI (`scripts/driver/spectra-bootstrap-driver.cs`, a .NET 10 file-based C# app — no `.csproj`) that wraps common day-to-day commands as thin subprocess calls around cmake and the other scripts. It has no opinion on what those tools do internally; it just shells out and reports results.
